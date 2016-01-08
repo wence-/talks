@@ -1,0 +1,28 @@
+\begin{tikzpicture}[
+  dof/.style={circle, blue, fill},
+  mesh/.style={gray},
+  vertex/.style={circle, blue, fill}]
+
+\draw[mesh] (0,0) -- ++(60:3) -- +(-60:3) -- cycle;
+\draw[mesh] (3,0) -- ++(60:3) -- +(-180:3) -- cycle;
+\node[vertex] (v1) at (0,0) {};
+\node[vertex] (v2) at (60:3) {};
+\node[vertex] (v3) at (0:3) {};
+\node[vertex] (v4) at ($(0:3) + (60:3)$) {};
+\node[dof] (fd1) at (0:1) {};
+\node[dof] (fd2) at (0:2) {};
+\node[dof] (fd3) at (60:1) {};
+\node[dof] (fd4) at (60:2) {};
+\node[dof] (fd5) at ($(0:3) + (120:1)$) {};
+\node[dof] (fd6) at ($(0:3) + (120:2)$) {};
+\node[dof] (fd7) at ($(0:3) + (60:1)$) {};
+\node[dof] (fd8) at ($(0:3) + (60:2)$) {};
+\node[dof] (fd9) at ($(60:3) + (0:1)$) {};
+\node[dof] (fd10) at ($(60:3) + (0:2)$) {};
+\node[dof] (ed1) at (intersection cs: 
+first line={(0,0)--(30:3)}, 
+second line={(0:3)--($(0:3) + (150:3)$)}) {};
+\node[dof] (ed2) at (intersection cs: 
+first line={(0:3)--($(0:3) + (90:3)$)}, 
+second line={(60:3)--($(60:3) + (-30:3)$)}) {};
+\end{tikzpicture}

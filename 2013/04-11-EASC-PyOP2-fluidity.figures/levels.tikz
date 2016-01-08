@@ -1,0 +1,34 @@
+\begin{tikzpicture}[terminal/.style={draw, rectangle, 
+ inner sep = 0pt, rounded corners=0mm, minimum height=0.75cm},
+arrow/.style={-latex, draw, line width=2pt, black},
+sep/.style={dashed, line width=1.5pt, gray}]
+
+
+\node (user) at (0,0) [terminal, minimum width=4cm] {Application code};
+\node (rt) at (0, -1.5) [terminal, minimum width=4cm] {Runtime core};
+
+\node (mpi) at (0, -3.25) [terminal, minimum width=11.5cm, minimum height=0.5cm] {MPI};
+\node (sc) at (-4.5, -3.75) [terminal, minimum width=2.5cm, minimum height=0.5cm] {Sequential C};
+\node (oc) at (-1.5, -3.75) [terminal, minimum width=2.5cm, minimum height=0.5cm] {C with OpenMP};
+
+\node (cl) at (1.5, -3.75) [terminal, minimum width=2.5cm, minimum height=0.5cm] {OpenCL};
+\node (cu) at (4.5, -3.75) [terminal, minimum width=2.5cm, minimum height=0.5cm] {CUDA};
+
+\node (instant) at (-2.97, -5.5) [terminal, minimum width=5.625cm] {Instant};
+\node (pycl) at (1.5, -5.5) [terminal, minimum width=2.5cm] {PyOpenCL};
+\node (pycu) at (4.5, -5.5) [terminal, minimum width=2.5cm] {PyCUDA};
+
+\draw[arrow] (user) -- (rt);
+\draw[arrow] (rt.south) -- (mpi.north);
+% \draw[arrow] (rt.south) -- (cl.north);
+% \draw[arrow] (rt.south) -- (cu.north);
+\draw[arrow] (sc.south) -- +(0, -1.125);
+\draw[arrow] (oc.south) -- +(0, -1.125);
+\draw[arrow] (cl) -- (pycl);
+\draw[arrow] (cu) -- (pycu);
+
+\draw[sep] (-5.75, -0.75) -- (5.625, -0.75);
+\draw[sep] (-5.75, -2.5) -- (5.625, -2.5);
+\draw[sep] (-5.75, -4.5) -- (5.625, -4.5);
+
+\end{tikzpicture}

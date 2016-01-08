@@ -1,0 +1,14 @@
+\documentclass{article}
+\usepackage{tikz}
+
+\begin{document}
+
+\begin{tikzpicture}
+
+\node[rectangle, draw] (core) at (0,0) {core entities};
+\node[rectangle, draw, right of=core] (owned){owned entities};
+\node[rectangle, draw, right of=owned] (exec) {exec halo};
+\node[rectangle, draw, right of=exec] (nonexec) {non-exec halo};
+\end{tikzpicture}
+
+\end{document}

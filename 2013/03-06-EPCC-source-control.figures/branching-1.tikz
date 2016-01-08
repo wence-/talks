@@ -1,0 +1,25 @@
+\begin{tikzpicture}
+
+\tikzstyle{commit}=[draw, circle, inner sep=0pt,
+                    minimum width=5pt]
+
+\tikzstyle{master}=[fill=green]
+\tikzstyle{featureB}=[fill=blue]
+\tikzstyle{featureA}=[fill=orange]
+\tikzstyle{branch}=[draw, rectangle]
+\tikzstyle{tag}=[draw, diamond]
+\tikzstyle{merge}=[diamond,inner sep=0pt, minimum size=5pt]
+\node[commit, master] (A) {};
+\node[commit, master] (B) [right of=A] {};
+\node[commit, master] (C) [right of=B] {};
+
+\draw[<-, >=stealth] (A) -- (B);
+\draw[<-, >=stealth] (B) -- (C);
+
+
+\node[branch] (master) [above of=C] {master};
+\node[tag] (v1) [below of=C] {v1};
+\draw[<-, >=stealth] (C) -- (master);
+\draw[<-, >=stealth] (C) -- (v1);
+
+\end{tikzpicture}

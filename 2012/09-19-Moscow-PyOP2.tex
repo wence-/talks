@@ -1,0 +1,296 @@
+% Created 2016-01-08 Fri 17:01
+\documentclass[bigger]{beamer}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{fixltx2e}
+\usepackage{graphicx}
+\usepackage{grffile}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{textcomp}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\usepackage{minted}
+\usepackage{inconsolata}
+\usepackage{tikz}
+\usepgflibrary{shapes.geometric}
+\usetikzlibrary{calc}
+\usetikzlibrary{positioning}
+\usetikzlibrary{plotmarks}
+\usepackage{pgfplots}
+\mode<beamer>{\usetheme{EPCC}}
+\institute{EPCC, The University of Edinburgh}
+\AtBeginSection[]{\begin{frame}\tableofcontents[currentsection]\end{frame}}
+\usetheme{default}
+\author{Lawrence Mitchell}
+\date{Monday 10th December 2012}
+\title{PyOP2: a high-level framework for performance-portable simulations on unstructured meshes}
+\hypersetup{
+ pdfauthor={Lawrence Mitchell},
+ pdftitle={PyOP2: a high-level framework for performance-portable simulations on unstructured meshes},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 24.5.1 (Org mode 8.3.2)}, 
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+
+
+\section{Introduction}
+\label{sec:orgheadline3}
+
+
+\begin{frame}[label={sec:orgheadline1}]{Big picture}
+\begin{itemize}
+\item want to numerically solve PDEs
+\item in some (arbitrary shape) physical domain
+\item applications in
+\begin{itemize}
+\item ocean dynamics
+\item atmospheric dynamics
+\item race-car, airplane, building design
+\item bone modelling
+\item EM signal propagation (cloaking ships)
+\item \ldots{}
+\end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[label={sec:orgheadline2}]{Current status quo}
+\begin{itemize}
+\item numerics intimately tied to implementation
+\item domain scientist must be expert parallel programmer
+\item but science is hard, and programming is hard too
+\end{itemize}
+\end{frame}
+
+\section{Code generation for high performance}
+\label{sec:orgheadline10}
+
+\begin{frame}[label={sec:orgheadline4}]{Generate, don't transform}
+\begin{itemize}
+\item Writing compilers is hard
+\begin{itemize}
+\item but writing domain-specific compilers is "easy"
+\end{itemize}
+\item with the correct abstractions
+\begin{itemize}
+\item we can generate the best code
+\item without having to work hard analysing the problem
+\end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[label={sec:orgheadline5}]{Make the parallelism explicit}
+\begin{itemize}
+\item express \emph{what} to do, not \emph{how} to do it
+\item can choose best execution strategy
+\begin{itemize}
+\item different for CPU/GPU
+\item different for shared memory/distributed memory
+\end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[label={sec:orgheadline6}]{PyOP2}
+\begin{itemize}
+\item A library for unstructured mesh computations
+\begin{itemize}
+\item \url{http://github.com/OP2/PyOP2}
+\end{itemize}
+\item Implements the OP2 abstraction (\url{http://www.oerc.ox.ac.uk/research/op2})
+\item data types
+\begin{description}
+\item[{\emph{Set}}] e.g. Nodes or elements of a mesh
+\item[{\emph{Dat}}] data defined on a Set (one entry per set element)
+\item[{\emph{Map}}] a mapping between two sets (e.g. elements to nodes)
+\item[{\emph{Global}}] global data (one entry)
+\item[{\emph{Kernel}}] a piece of code to execute over the mesh
+\end{description}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[label={sec:orgheadline7}]{PyOP2 continued}
+\begin{itemize}
+\item access descriptors
+\begin{itemize}
+\item READ, RW, WRITE, INC
+\end{itemize}
+\item iteration construct
+\begin{description}
+\item[\verb~par\_loop~] execute a Kernel over every element in a Set
+\end{description}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile,label={sec:orgheadline8}]{An example}
+ \begin{minted}[frame=none,xleftmargin=1em,xrightmargin=1em,fontsize=\scriptsize,mathescape]{python}
+par_loop(kernel, elements,
+         element_data(IdentityMap, READ),
+         node_data(elem_node, WRITE),
+         elem_count(INC))
+\end{minted}
+
+\begin{itemize}
+\item executes \emph{kernel} for each ele in elements
+\begin{description}
+\item[{first argument}] data corresponding to ele (read-only)
+\item[{second argument}] the nodes of this ele (written)
+\item[{third argument}] a global counter (incremented)
+\end{description}
+
+\item runtime knows it has to care about data dependencies for
+\begin{itemize}
+\item write to \verb~node_data~
+\item increment into \verb~elem_count~
+\end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[label={sec:orgheadline9}]{What goes on under the hood?}
+\begin{itemize}
+\item kernel is a piece of C code (user provided)
+\item runtime \emph{generates} code
+\item different targets
+\begin{itemize}
+\item CPU
+\item CUDA
+\item OpenCL
+\end{itemize}
+
+\item switching from CPU to GPU needs
+\begin{itemize}
+\item one line change in source code
+\end{itemize}
+\end{itemize}
+\end{frame}
+
+\section{More automation}
+\label{sec:orgheadline14}
+\begin{frame}[label={sec:orgheadline11}]{flop.py}
+\begin{itemize}
+\item a high-performance implementation of UFL
+\begin{itemize}
+\item The Unified Form Language (\url{https://launchpad.net/UFL})
+\end{itemize}
+\item Uses Fluidity as the mesh framework
+\begin{itemize}
+\item (\url{http://launchpad.net/fluidity})
+\end{itemize}
+\item express weak form of PDE
+\begin{itemize}
+\item automatically generate the "user" kernel
+\item and its execution over the mesh
+\end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile,label={sec:orgheadline12}]{An example}
+ \begin{itemize}
+\item Helmholtz equation (the easy one)
+\end{itemize}
+\begin{displaymath}
+-\nabla^2 u + \eta u = f \;\; \eta > 0
+\end{displaymath}
+\begin{itemize}
+\item weak form (suitable BCs)
+\end{itemize}
+\begin{displaymath}
+\int_x (\nabla u \cdot \nabla v - \eta u v) dx = \int_x v f dx
+\end{displaymath}
+\begin{itemize}
+\item UFL
+\end{itemize}
+\begin{minted}[frame=none,xleftmargin=1em,xrightmargin=1em,fontsize=\scriptsize,mathescape]{python}
+f = state.scalar_fields["Tracer"]
+v = TestFunction(f)
+u = TrialFunction(f)
+a = (inner(grad(u), grad(v)) - eta * u * v)*dx
+L = v * f * dx
+solve(a == L, f)
+\end{minted}
+\end{frame}
+
+\begin{frame}[label={sec:orgheadline13}]{What happens under the hood}
+\begin{itemize}
+\item Generate local element assembly kernel
+\begin{itemize}
+\item C code
+\end{itemize}
+\item express execution over mesh in PyOP2
+\begin{itemize}
+\item global assembly of system
+\end{itemize}
+\item solve it
+\end{itemize}
+\end{frame}
+
+\section{Performance numbers}
+\label{sec:orgheadline19}
+
+\begin{frame}[label={sec:orgheadline15}]{Was it worth it?}
+\begin{itemize}
+\item DOLFIN (\url{http://launchpad.net/dolfin}) already implements UFL
+\begin{itemize}
+\item why bother?
+\end{itemize}
+\item We're faster
+\end{itemize}
+\begin{center}
+\includegraphics[width=.9\linewidth]{09-19-Moscow-PyOP2.figures/sequential.pdf}
+\end{center}
+\end{frame}
+
+\begin{frame}[label={sec:orgheadline16}]{Also, you get GPUs}
+\begin{center}
+\includegraphics[width=.9\linewidth]{09-19-Moscow-PyOP2.figures/cuda.pdf}
+\end{center}
+\end{frame}
+
+\begin{frame}[label={sec:orgheadline17}]{What can you do now?}
+\begin{itemize}
+\item CG-like discretisations
+\item Strong BCs
+\item Weak BCs
+\end{itemize}
+\end{frame}
+
+\begin{frame}[label={sec:orgheadline18}]{What's coming soon?}
+\begin{itemize}
+\item DG-like discretisations (January)
+\item MPI-parallel (January)
+\item Mixed function spaces (January?)
+\item Feature complete with dolfin (March)
+\end{itemize}
+\end{frame}
+
+\section{And finally}
+\label{sec:orgheadline22}
+
+\begin{frame}[label={sec:orgheadline20}]{Thanks}
+\begin{itemize}
+\item PyOP2 development is funded in part by MAPDES (EP/I00677X/1, EP/I006079/1)
+\begin{description}
+\item[{Imperial}] David Ham, Paul Kelly, Nicolas
+Loriant, Graham Markall, Florian Rathgeber
+\item[{Oxford}] Mike Giles, Gihan Mudalige, Istvan Reguly
+\end{description}
+\item And APOS-EU (FP7/277481)
+\begin{description}
+\item[{EPCC}] Me
+\end{description}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[label={sec:orgheadline21}]{Questions?}
+\begin{itemize}
+\item comments?
+\item anything else?
+\end{itemize}
+\end{frame}
+\end{document}

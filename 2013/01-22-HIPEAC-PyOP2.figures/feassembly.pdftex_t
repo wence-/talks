@@ -1,0 +1,47 @@
+\begin{picture}(0,0)%
+\includegraphics{feassembly_tex.pdf}%
+\end{picture}%
+\setlength{\unitlength}{4144sp}%
+%
+\begingroup\makeatletter\ifx\SetFigFontNFSS\undefined%
+\gdef\SetFigFontNFSS#1#2#3#4#5{%
+  \reset@font\fontsize{#1}{#2pt}%
+  \fontfamily{#3}\fontseries{#4}\fontshape{#5}%
+  \selectfont}%
+\fi\endgroup%
+\begin{picture}(4440,3056)(-104,-2254)
+\put(2161,479){\makebox(0,0)[b]{\smash{{\SetFigFontNFSS{12}{14.4}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$i$}%
+}}}}
+\put(2161,-16){\makebox(0,0)[b]{\smash{{\SetFigFontNFSS{12}{14.4}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$j$}%
+}}}}
+\put(3376, 29){\makebox(0,0)[b]{\smash{{\SetFigFontNFSS{12}{14.4}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$k$}%
+}}}}
+\put(2791,-691){\makebox(0,0)[b]{\smash{{\SetFigFontNFSS{10}{13}{\sfdefault}{\sfdefault}{\updefault}{\color[rgb]{0,0,0}$\displaystyle\int_x \nabla u \cdot \nabla v - \eta u v \mathrm{d}x=\int_x vf\mathrm{d}x$}%
+}}}}
+\put(451,-331){\makebox(0,0)[b]{\smash{{\SetFigFontNFSS{12}{14.4}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$i$}%
+}}}}
+\put(721,-331){\makebox(0,0)[b]{\smash{{\SetFigFontNFSS{12}{14.4}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$j$}%
+}}}}
+\put(1396,-331){\makebox(0,0)[b]{\smash{{\SetFigFontNFSS{12}{14.4}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$k$}%
+}}}}
+\put(4321,-961){\makebox(0,0)[b]{\smash{{\SetFigFontNFSS{12}{14.4}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$i$}%
+}}}}
+\put(4321,-1231){\makebox(0,0)[b]{\smash{{\SetFigFontNFSS{12}{14.4}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$j$}%
+}}}}
+\put(4321,-1906){\makebox(0,0)[b]{\smash{{\SetFigFontNFSS{12}{14.4}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$k$}%
+}}}}
+\put(-89,-961){\makebox(0,0)[b]{\smash{{\SetFigFontNFSS{12}{14.4}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$i$}%
+}}}}
+\put(-89,-1231){\makebox(0,0)[b]{\smash{{\SetFigFontNFSS{12}{14.4}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$j$}%
+}}}}
+\put(-89,-1906){\makebox(0,0)[b]{\smash{{\SetFigFontNFSS{12}{14.4}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$k$}%
+}}}}
+\put(2566,209){\makebox(0,0)[b]{\smash{{\SetFigFontNFSS{12}{14.4}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$e$}%
+}}}}
+\put(2431,-1546){\makebox(0,0)[lb]{\smash{{\SetFigFontNFSS{12}{14.4}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$\mathrm{M}^e$}%
+}}}}
+\put(3421,-1546){\makebox(0,0)[rb]{\smash{{\SetFigFontNFSS{12}{14.4}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$\mathbf{b}^e$}%
+}}}}
+\put(2791,-2176){\makebox(0,0)[b]{\smash{{\SetFigFontNFSS{12}{14.4}{\familydefault}{\mddefault}{\updefault}{\color[rgb]{0,0,0}$\mathbf{M}\mathbf{x}=\mathbf{b}$}%
+}}}}
+\end{picture}%

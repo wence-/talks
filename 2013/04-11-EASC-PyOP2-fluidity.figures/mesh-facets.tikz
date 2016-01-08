@@ -1,0 +1,12 @@
+\begin{tikzpicture}[
+  mesh/.style={gray},
+  vertex/.style={circle, black, fill},
+  facet/.style={blue, line width=2pt}]
+
+\draw[mesh, facet] (0,0) -- ++(60:3) -- +(-60:3) -- cycle;
+\draw[mesh, facet] (3,0) -- ++(60:3) -- +(-180:3) -- cycle;
+\node[vertex] (v1) at (0,0) {};
+\node[vertex] (v2) at (60:3) {};
+\node[vertex] (v3) at (0:3) {};
+\node[vertex] (v4) at ($(0:3) + (60:3)$) {};
+\end{tikzpicture}

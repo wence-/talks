@@ -1,0 +1,15 @@
+\begin{tikzpicture}[
+  mesh/.style={gray},
+  vertex/.style={circle, black, fill, inner sep=0pt, minimum size = 3pt},
+centroid/.style={circle, blue, fill, inner sep=0pt, minimum size = 4pt}]
+
+\draw[mesh] (0,0) -- (3,0) -- (2,1) -- cycle;
+\draw[mesh] (3,0) -- (4,1) -- (2,1) -- cycle;
+\node[vertex] (v1) at (0,0) {};
+\node[vertex] (v2) at (3,0) {};
+\node[vertex] (v3) at (2,1) {};
+\node[vertex] (v4) at (4,1) {};
+
+\node[centroid] (c1) at (1.67, 0.33) {};
+\node[centroid] (c2) at (3, 0.67) {};
+\end{tikzpicture}

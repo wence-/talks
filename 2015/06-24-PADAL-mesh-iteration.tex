@@ -1,0 +1,147 @@
+\documentclass[presentation]{beamer}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{fixltx2e}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{float}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{textcomp}
+\usepackage{marvosym}
+\usepackage[integrals]{wasysym}
+\usepackage{amssymb}
+\usepackage{hyperref}
+\tolerance=1000
+\usepackage{minted}
+\usepackage{amsmath}
+\usepackage{tikz}
+\usepgflibrary{shapes.geometric}
+\usetikzlibrary{calc}
+\usetikzlibrary{positioning}
+\usetikzlibrary{intersections,decorations.pathreplacing,shapes,arrows}
+\usetikzlibrary{plotmarks}
+\usepackage{amsmath,amssymb}
+\usepackage{mathtools}
+\DeclareMathOperator{\tr}{tr}
+\usepackage{pgfplots}
+\institute{Departments of Computing and Mathematics, Imperial College London}
+\renewcommand{\vec}{\mathbf}
+\usetheme{IC}
+\author{Lawrence Mitchell}
+\date{24 June 2015}
+\title{Abstracting mesh iteration?}
+\begin{document}
+
+\maketitle
+
+
+\begin{frame}
+  \frametitle{Motivation}
+  \begin{itemize}
+\item Numerical solution of PDEs often requires iteration over
+    meshes
+  \item Can this be expressed without application code ``knowing'' about
+    the mesh structure?
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Commonalities}
+  \begin{itemize}
+  \item Restricted to finite element methods, all evaluation
+    looks similar
+  \end{itemize}
+\begin{block}<1 | only@1>{Residual evaluation}
+\begin{minted}[fontsize=\scriptsize]{python}
+# u the input fields (e.g. current guess)
+def form_residual(u):
+    u_l <- u # global to ghosted
+    for each element in mesh:
+        u_e <- u_l[element] # gather through element map
+        for each qp in element:
+            basis_fns <- eval_basis_funs(qp)
+            J <- compute_geometry(element, qp)
+            f_qp <- user_evaluation(qp, basis_fns, u_e)
+            # insert into element residual
+            f_e <- transform_to_physical(f_qp, J)
+        f_l <- f_e # scatter through element map
+    f <- f_l # ghosted to global
+\end{minted}
+\end{block}
+\begin{block}<2| only@2>{Residual evaluation}
+\begin{minted}[fontsize=\scriptsize]{python}
+            f_qp <- user_evaluation(qp, basis_fns, u_e)
+\end{minted}
+\end{block}
+\begin{itemize}[<2 | only@2>]
+\item Variability in innermost loop
+\item but relatively simple
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{Who controls what?}
+  \begin{block}<1-2 | only@1-2>{Type I: traditional FE libraries (e.g. deal.II, DUNE)}
+    \begin{itemize}
+    \item Library provides iteration constructs
+    \item user provides \emph{full element loop}
+    \end{itemize}
+  \end{block}
+  \begin{itemize}[<1-2 | only@2>]
+  \item Full flexibility, can fuse across elements, cancel geometric
+    transformations, etc...
+  \item Can apply vectorization (and compiler may do good job,
+    everything in one compilation unit)
+  \item but, code commits to an implementation
+  \end{itemize}
+  \begin{block}<only@3-4>{Type II: FEniCS-like}
+    \begin{itemize}
+    \item Library iterates over mesh entities
+    \item user provides \emph{element kernel}
+    \end{itemize}
+  \end{block}
+  \begin{itemize}[<only@4>]
+  \item code doesn't commit to an inter-element implementation
+  \item can vectorize inside elements, difficult across elements
+  \item but, (if using code-gen) ``nastiness'' in real codes difficult to
+    handle
+  \end{itemize}
+  \begin{block}<only@5-6>{Type III: MOOSE-like}
+    \begin{itemize}
+    \item Library iterates over elements and quad points
+    \item user provides \emph{pointwise function}
+    \end{itemize}
+  \end{block}
+  \begin{itemize}[<only@6>]
+  \item code doesn't commit to iteration at all
+  \item but, can't exploit wider structure without provision of
+    additional info
+  \item unlikely to vectorize across quad points
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Issues}
+  \begin{itemize}
+  \item Optimisation probably won’t cross library/user-code divide
+  \item Low order, inlining and fusing/vectorising probably important
+  \item Suggests JIT-compilation of combination of library iteration
+    and user code
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Questions/Thoughts}
+  \begin{itemize}
+  \item I think library, not user, should own (at least) the element loop
+    (and probably quad loop)
+  \item but then how do we exploit structure in the problem to get
+    low-complexity algorithms?
+  \item Is JIT-compilation the way to go? Can it be made easy?
+  \item Vectorisation is still too hard, what can we do about it?
+  \end{itemize}
+\end{frame}
+\end{document}

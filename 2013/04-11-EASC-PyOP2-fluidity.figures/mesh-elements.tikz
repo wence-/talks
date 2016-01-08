@@ -1,0 +1,11 @@
+\begin{tikzpicture}[
+  mesh/.style={gray, line width=2, fill=blue},
+  vertex/.style={circle, black, fill}]
+
+\draw[mesh] (0,0) -- ++(60:3) -- +(-60:3) -- cycle;
+\draw[mesh] (3,0) -- ++(60:3) -- +(-180:3) -- cycle;
+\node[vertex] (v1) at (0,0) {};
+\node[vertex] (v2) at (60:3) {};
+\node[vertex] (v3) at (0:3) {};
+\node[vertex] (v4) at ($(0:3) + (60:3)$) {};
+\end{tikzpicture}

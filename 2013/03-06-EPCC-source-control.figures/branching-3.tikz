@@ -1,0 +1,49 @@
+\begin{tikzpicture}
+
+\tikzstyle{commit}=[draw, circle, inner sep=0pt,
+                    minimum width=5pt]
+
+\tikzstyle{master}=[fill=green]
+\tikzstyle{featureB}=[fill=blue]
+\tikzstyle{featureA}=[fill=orange]
+\tikzstyle{branch}=[draw, rectangle]
+\tikzstyle{tag}=[draw, diamond]
+\tikzstyle{merge}=[diamond,inner sep=0pt, minimum size=5pt]
+\node[commit, master] (A) {};
+\node[commit, master] (B) [right of=A] {};
+\node[commit, master] (C) [right of=B] {};
+
+\draw[<-, >=stealth] (A) -- (B);
+\draw[<-, >=stealth] (B) -- (C);
+
+
+\node[commit, featureB] (C'') [below right of=C] {};
+\node[commit, featureB] (D'') [right of=C''] {};
+\node[commit, featureB] (E'') [right of=D''] {};
+
+\draw[<-, >=stealth] (C) -- (C'');
+\draw[<-, >=stealth] (C'') -- (D'');
+\draw[<-, >=stealth] (D'') -- (E'');
+
+\node[commit,featureA] (C') [above of=C] {};
+\node[commit,featureA] (B') [left of=C'] {};
+\node[commit,featureA] (A') [left of=B'] {};
+\node (Z) [left of=A'] {};
+\draw[<-, >=stealth] (B') -- (C');
+\draw[<-, >=stealth] (A') -- (B');
+\draw[dashed] (Z) -- (A');
+\node[commit,master,merge] (mergeA) [right of=C] {};
+\draw[<-, >=stealth] (C') -- (mergeA);
+\draw[<-, >=stealth] (C) -- (mergeA);
+
+\node[branch] (master) [above of=mergeA] {master};
+\node[branch] (featureB) [below of=E''] {feature B};
+\node[branch] (featureA) [above of=C'] {feature A};
+
+\node[tag] (v1) [below left of=C''] {v1};
+\draw[<-, >=stealth] (mergeA) -- (master);
+\draw[<-, >=stealth] (C') -- (featureA);
+\draw[<-, >=stealth] (E'') -- (featureB);
+\draw[<-, >=stealth] (C) -- (v1);
+
+\end{tikzpicture}
