@@ -1,3 +1,5 @@
+Firedrake: automating the finite element method by composing abstractions
+
 The complexity inherent in the application of advanced numerics on
 modern hardware to coupled physical systems presents a critical
 barrier to simulation development.  To overcome this, we must create
