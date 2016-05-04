@@ -1,0 +1,157 @@
+\documentclass[presentation]{beamer}
+
+\usepackage{tikz}
+\usepackage{appendixnumberbeamer}
+\usepackage{amsmath}
+\usetheme{metropolis}
+
+\renewcommand{\vec}[1]{\ensuremath{\boldsymbol{#1}}}
+\newcommand{\ddt}[1]{\frac{\partial #1}{\partial t}}
+\newcommand{\zhat}{\hat{\vec{z}}}
+\newcommand{\W}{\ensuremath{\mathbb{W}}}
+
+\DeclareMathOperator{\Grad}{grad}
+\DeclareMathOperator{\Div}{div}
+\author{Lawrence Mitchell\inst{1} \and Eike M\"uller\inst{2}}
+\institute{\inst{1}Departments of Computing and Mathematics, Imperial College London 
+  \and
+  \inst{2}Department of Mathematical Sciences, University of Bath}
+\title{Multigrid for numerical weather prediction}
+\subtitle{A subtitle}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+
+\begin{frame}
+  \frametitle{Weather prediction}
+  
+  For scalability, most weather centres are moving to
+  \emph{non-orthogonal} meshes of the sphere
+
+  Rules out, for numerics reasons, traditional staggered finite
+  difference discretisations
+
+  Extension to non-orthogonal, \emph{compatible finite elements} \cite{Cotter:2012a}
+\end{frame}
+
+\begin{frame}
+  \frametitle{3D compatible FE}
+  Commuting diagram
+
+  \begin{equation*}
+  \W_0 \stackrel{\nabla}{\longrightarrow} \W_1 \stackrel{\nabla\times}{\longrightarrow} \W_2 \stackrel{\nabla\cdot}{\longrightarrow} \W_3,
+\end{equation*}
+
+  Tensor products
+\end{frame}
+
+\section{Model problem}
+
+\begin{frame}
+  \frametitle{Idealised test case}
+  Linearised gravity wave
+
+  \begin{align*}
+    \label{eq:1}
+   \ddt{\vec{u}} &= \nabla p + b \zhat, \\
+   \ddt{p} &= -c^2 \nabla\cdot \vec{u}, \\
+   \ddt{b} &= -N^2\vec{u}\cdot\zhat. \\
+    \vec{u}\cdot \hat{\vec{n}} &= 0 \quad \textsf{on boundary}
+  \end{align*}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Discrete system for updates}
+Eliminate buoyancy pointwise (holds strongly in absence of mountains)
+
+$\delta \vec{u}\in \W_2^0$, $\delta b\in\W_b$ and
+$\delta p\in\W_3$
+\begin{align*}
+  \langle\vec{w},\delta\vec{u}\rangle
+  - \frac{\Delta t}{2}\langle\nabla\cdot\vec{w},\delta p\rangle
+  - \frac{\Delta t}{2}\langle\vec{w},\delta b\zhat\rangle
+  &= \Delta t \langle\nabla\cdot\vec{w},p_0\rangle
+  + \Delta t \langle\vec{w},b_0\zhat\rangle
+   &\forall \vec{w}\in\W_2^0
+ \\
+  \langle\phi,\delta p\rangle
+  +\frac{\Delta t}{2}c^2\langle\phi,\nabla\cdot\delta\vec{u}\rangle
+  &= -\Delta tc^2\langle\phi,\nabla\cdot\vec{u}_0\rangle
+   &\forall \phi\in\W_3
+  \\
+  \langle\gamma,\delta b\rangle
+  + \frac{\Delta t }{2}N^2\langle\gamma,\delta\vec{u}\cdot\zhat\rangle
+  &= -\Delta t N^2\langle\gamma,\vec{u}_0\cdot\zhat\rangle
+   &\forall \gamma\in\W_b
+\end{align*}
+\end{frame}
+
+\begin{frame}
+  \frametitle{A preconditioner}
+  After eliminating $b$ we obtain a block $2\times2$ elliptic problem
+\begin{equation}
+  A\begin{pmatrix}\vec{U}\\[1ex]\vec{P}\end{pmatrix}
+  \equiv
+  \begin{pmatrix}
+   \tilde{M}_2 & -\frac{\Delta t}{2}D^T  \\[1ex]
+   \frac{\Delta t}{2}c^2 D & M_3
+  \end{pmatrix}
+  \begin{pmatrix}\vec{U}\\[1ex]\vec{P}\end{pmatrix}
+ =
+\begin{pmatrix}M_2\tilde{\vec{R}}_u\\[1ex]M_3\vec{R}_p\end{pmatrix}
+\end{equation}
+\begin{equation}
+  \label{eq:2}
+\begin{matrix}
+\tilde{M}_2 = M_2^h \oplus (1+ \omega_N^2) M_2^z, \quad \omega_N \equiv \frac{\Delta t}{2}N
+\\[1ex]
+\tilde{\vec{R}}_u = \vec{R}_u+\frac{\Delta t}{2}M_2^{-1}Q\vec{R}_b.
+\end{matrix}
+\end{equation}
+\end{frame}
+\begin{frame}
+  \frametitle{Choices}
+  Block diagonal \emph{Riesz-map}.  $(I - \Grad\Div)^{-1}, I$
+
+  Schur complement $I, S^{-1}$
+
+  Former has an infinite dimensional null space (so standard multigrid
+  doesn't work).
+
+  Latter requires that we can invert $S = D - C^T A^{-1} C$ which is
+  dense if formed.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Schur complements}
+  Due to anisotropy in the domain, dominant couplings are in the
+  vertical direction.  It is these which we need to treat well.
+  Effectively we need a line smoother in $S_z$.
+
+  
+\end{frame}
+
+\section{Implementation}
+
+\begin{frame}
+  \frametitle{Implementation}
+  Firedrake: hierarchy of extruded meshes
+
+  Banded matrix algebra and line smoothers with pyop2 -- foo
+\end{frame}
+
+\section{Results}
+
+\begin{frame}
+  \frametitle{Weak scaling}
+  
+\end{frame}
+\appendix
+\begin{frame}[allowframebreaks]
+  \frametitle{References}
+  \bibliography{references}
+  \bibliographystyle{abbrv}
+\end{frame}
+\end{document}
