@@ -10,14 +10,15 @@
 \newcommand{\zhat}{\hat{\vec{z}}}
 \newcommand{\W}{\ensuremath{\mathbb{W}}}
 
-\DeclareMathOperator{\Grad}{grad}
-\DeclareMathOperator{\Div}{div}
+\DeclareMathOperator{\grad}{grad}
+\let\div\relax
+\DeclareMathOperator{\div}{div}
+
 \author{Lawrence Mitchell\inst{1} \and Eike M\"uller\inst{2}}
 \institute{\inst{1}Departments of Computing and Mathematics, Imperial College London 
   \and
   \inst{2}Department of Mathematical Sciences, University of Bath}
 \title{Multigrid for numerical weather prediction}
-\subtitle{A subtitle}
 
 \begin{document}
 \maketitle
@@ -113,7 +114,7 @@ $\delta p\in\W_3$
 \end{frame}
 \begin{frame}
   \frametitle{Choices}
-  Block diagonal \emph{Riesz-map}.  $(I - \Grad\Div)^{-1}, I$
+  Block diagonal \emph{Riesz-map}.  $(I - \grad\div)^{-1}, I$
 
   Schur complement $I, S^{-1}$
 
