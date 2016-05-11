@@ -4,6 +4,9 @@
 \usetikzlibrary{positioning,calc}
 \usetikzlibrary{shapes.geometric}
 \usetikzlibrary{shapes,arrows}
+\usepackage{pgfplots}
+\usepackage{pgfplotstable}
+\usetikzlibrary{pgfplots.groupplots}
 \usepackage{appendixnumberbeamer}
 \usepackage{amsmath}
 \usetheme{metropolis}
@@ -30,7 +33,9 @@
             doi=true,
             isbn=false,
             style=authoryear,
-            firstinits=true]{biblatex}
+            firstinits=true,
+            uniquename=init,
+            backend=biber]{biblatex}
 
 \setbeamertemplate{bibliography item}{}
 \renewcommand{\bibfont}{\footnotesize}
@@ -50,6 +55,8 @@
 \clearfield{number}%
 }
 
+\usepackage{minted}
+
 \begin{document}
 \maketitle
 
@@ -57,8 +64,9 @@
 
 \begin{frame}
   \frametitle{Motivation}
-  Parallel scalability concerns mean forecasting centres moving from orthogonal
-  lat-lon to non-orthogonal meshes.
+  Weather forecasting centres moving from orthogonal
+  lat-lon to non-orthogonal meshes (e.g.~cubed sphere, or icosahedral
+  sphere).
   \begin{center}
     \begin{tikzpicture}
       \node (A) {\includegraphics[width=2cm]{sphere-latlon}}; \node
@@ -66,24 +74,22 @@
       \draw[-latex, very thick] (A)--(B);
     \end{tikzpicture}
   \end{center}
-  Rules out the traditional staggered finite difference approaches.
+  Can no longer use traditional staggered finite differences.
   
-  Instead, we use \emph{compatible finite elements} \parencite{Cotter:2012a}
+  \emph{compatible finite elements} \parencite{Cotter:2012a} a
+  plausible soltion.
 \end{frame}
 
 \begin{frame}
   \frametitle{Compatible FE}
-  Choose a set of discrete spaces that match the properties of the
+  Choose discrete spaces that match the properties of the
   continuous equations.  
 
   \begin{equation*}
     \W_0 \stackrel{\grad}{\longrightarrow}  \W_1  \stackrel{\curl}{\longrightarrow}  \W_2  \stackrel{\div}{\longrightarrow}  \W_3
   \end{equation*}
 
-  Preserve vector calculus identities $\curl\grad = 0$,
-  $\div\curl = 0$.
-
-  Tensor product spaces on wedges
+  We use tensor product spaces on wedges
 
   \begin{center}
     \begin{tikzpicture}[scale=0.25]
@@ -108,12 +114,13 @@
 
 \begin{frame}
   \frametitle{Computational challenges}
-  Implicit timestepping schemes result in an elliptic problem for
-  pressure correction.
+  Dynamical core (fluids solver) needs to handle fast acoustic waves
+  implicitly (to avoid terrible CFL constraint).  Results in an
+  elliptic problem for pressure correction.
 
   Need a solver that is \emph{scalable} and \emph{fast}
 
-  Large aspect ratio of domains is challenging for black box solvers.
+  Large aspect ratio of the domain is challenging for black box solvers.
 \end{frame}
 
 \section{Formulation}
@@ -131,7 +138,7 @@
       \end{align*}
     \end{column}
     \begin{column}{0.6\textwidth}
-      Domain $\Omega = S^2(R) \times [0, H]$.\\
+      Domain $S^2(R) \times [0, H]$.\\
       Enforce $\vec{u}\cdot \hat{\vec{n}} = 0$ at top and bottom.\\
       $R\approx 6000\textsf{km}$, $H\approx 80\textsf{km}$.
     \end{column}
@@ -140,7 +147,9 @@
 
 \begin{frame}
   \frametitle{Discretised system}
-  After discretising in space and time we obtain a linear operator
+  After discretising in space and time we obtain a linear operator for
+  $u \subset H(\div)$, $p \subset L^2$, $b$ scalar, collocated with
+  vertical part of $u$ space.
 \begin{equation*}
 \begin{pmatrix}
   M_v & 
@@ -150,9 +159,6 @@
   \frac{\Delta t}{2}N^2Q^T & 0 & M_b
 \end{pmatrix}
 \end{equation*}
-with $M_{v,p,b}$ the velocity, pressure and buoyancy mass matrices
-respectively, $D$ the weak derivative, and $Q$ the coupling between
-velocity and buoyancy.
 \end{frame}
 
 \begin{frame}
@@ -174,7 +180,7 @@ equation.
 \begin{frame}[t]
   \frametitle{Options}
   \begin{columns}
-    \begin{column}{0.5\textwidth}
+    \begin{column}{0.52\textwidth}
       \begin{block}{Riesz map}
         Block diagonal preconditioner using the appropriate function
         space inner products
@@ -190,50 +196,192 @@ equation.
       \item $H(\div)$ multigrid \parencite{Arnold:2000} is challenging
       \end{itemize}
     \end{column}
-    \begin{column}{0.5\textwidth}
+    \begin{column}{0.52\textwidth}
       \begin{block}{Schur complement}
         Block elimination and back substitution
         \begin{equation*}
           \begin{pmatrix}
             M_v^{-1} & 0 \\
-            0 & S^{-1}\\
+            0 & (M_p + \omega_c^2 D M_v^{-1} D^T)^{-1}\\
           \end{pmatrix}
         \end{equation*}
-        where $S = M_p + \omega_c^2 D M_v^{-1} D^T$
       \end{block}
       \begin{itemize}
-      \item $S$ is \emph{dense}, but elliptic
-      \item invert using iterative method
+      \item $H = M_p +  \omega_c^2 D M_v^{-1} D^T$ is \emph{dense}, but elliptic
       \item need preconditioner, $\tilde{S}$.
+      \item Can use similar methods as a \emph{distributive} smoother.
       \end{itemize}
     \end{column}
   \end{columns}
 \end{frame}
 
-\begin{frame}
+\begin{frame}[allowframebreaks]
   \frametitle{Approximating $S$}
-  
+  \begin{itemize}
+  \item Strong coupling in vertical direction, need to treat this
+    exactly.  
+  \item Use a multigrid cycle with horizontal coarsening and
+    vertical line relaxation.
+  \item Exploit tensor-product structure to split horizontal and
+    vertical components
+  \end{itemize}
+\framebreak
+
+\begin{block}{Steps to $\tilde{S}$}
+  \begin{itemize}
+  \item Split horizontal and vertical $M_v^{-1} =
+    (M_v^h)^{-1}\oplus (M_v^z)^{-1}$ (also $D
+      = D^h \oplus D^z$)
+  \item Diagonal approximation $M_v^{-1} \approx M_{v,\text{inv}} = \delta_{ij} / (M_v)_{ii}$
+  \item Ignore horizontal coupling, error $\mathcal{O}((\Delta z/
+    \Delta x)^2)$
+  \end{itemize}
+\end{block}
+\begin{equation*}
+  \tilde{S} = M_p + \omega_c^2 \text{bdiag}\big[D^h M_{v,\text{inv}}^h
+  (D^h)^T\big] \oplus \frac{\omega_c^2}{1 + \omega_N^2} D^z
+    M_{v,\text{inv}}^z (D^z)^T
+\end{equation*}
+\end{frame}
+
+\begin{frame}[fragile, allowframebreaks]
+  \frametitle{Implementation}
+  Multigrid V-cycle using exact inverse of $\tilde{S}$ as smoother.
+  Utilise column innermost numbering to perform fast banded matrix
+  inverse
+  \begin{center}
+    \begin{tikzpicture}
+      \node (A) {\includegraphics[height=2.5cm]{bandedmatrix}};
+      \node (C) [right=of A.north east, anchor=north west] {\includegraphics[width=3.5cm]{columndofs}};
+      \node (B) [below=0.1cm of C] {\includegraphics[height=0.6cm]{linearstorage}};
+      \node (D) [above=0.1cm of A.north east, anchor=south] {\includegraphics[width=5cm]{MeshHierarchy}};
+    \end{tikzpicture}    
+  \end{center}
+
+\framebreak
+
+Banded matrix algebra implemented as short PyOP2 kernels
+
+\begin{minted}[fontsize=\tiny]{python}
+# C-kernel code for Matrix-vector product v = A.u in one vertical column
+kernel_code = '''void ax(double **A, double **u, double **v) {
+  for (int i=0;i<n_row;++i) {                                   
+    v[0][i] = 0.0;                                                     
+    int j_m = (int) ceil((alpha*i-gamma_p)/beta);   
+    int j_p = (int) floor((alpha*i+gamma_m)/beta);  
+    for (int j=std::max(0,j_m);j<std::min(n_col,j_p+1);++j)
+      v[0][i] += A[0][bandwidth*i+(j-j_m)] * u[j];
+  }'''
+# Execute PyOP2 kernel over grid
+kernel = op2.Kernel(kernel_code,'ax',cpp=True)
+op2.par_loop(kernel,hostmesh.cell_set, A(op2.READ,Vcell.cell_node_map()),
+             u.dat(op2.READ,u.cell_node_map()),
+             v.dat(op2.WRITE,u.cell_node_map()))
+\end{minted}
 \end{frame}
 \section{Results}
 
-\begin{frame}[allowframebreaks]
+\begin{frame}
   \frametitle{Algorithmic performance}
-  Convergence history
 
-  CFL variation + time
+  \begin{center}
+    \begin{tikzpicture}
+      \begin{semilogyaxis}[title={Convergence with $\text{CFL} = 8$, low-order},
+        xlabel={Iterations}, ylabel={Relative residual},
+        legend entries={Custom MG, Single level, Algebraic (PETSc) MG}]
+        \addplot+[only marks] table [x=iterations, y=residual]
+        {\jobname.figures/mf-lo.dat};
 
-  Mesh independence
+        \addplot+[only marks] table [x=iterations, y=residual]
+        {\jobname.figures/single-level-lo.dat};
+
+        \addplot+[only marks] table [x=iterations, y=residual]
+        {\jobname.figures/petsc-lo.dat};
+      \end{semilogyaxis}
+    \end{tikzpicture}
+  \end{center}
 
 \end{frame}
 
 \begin{frame}
-  \frametitle{}
-  
+  \frametitle{Algorithmic performance}
+
+  \begin{center}
+    \begin{tikzpicture}
+      \begin{semilogyaxis}[title={Convergence with $\text{CFL} = 8$, high-order},
+        xlabel={Iterations}, ylabel={Relative residual},
+        legend entries={Custom MG, Single level, Algebraic (PETSc) MG}]
+        \addplot+[only marks] table [x=iterations, y=residual]
+        {\jobname.figures/mf-ho.dat};
+
+        \addplot+[only marks] table [x=iterations, y=residual]
+        {\jobname.figures/single-level-ho.dat};
+
+        \addplot+[only marks] table [x=iterations, y=residual]
+        {\jobname.figures/petsc-ho.dat};
+      \end{semilogyaxis}
+    \end{tikzpicture}
+  \end{center}
+
+  % CFL variation + time
+
+  % Mesh independence
+
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{Varying CFL}
+  \begin{center}
+  \begin{tikzpicture}[scale=0.65]
+    \begin{groupplot}[group style={group size=2 by 1, horizontal sep=2cm}],
+      \nextgroupplot[xmode=log,xlabel=CFL ($\Delta t/\Delta x$),
+      ylabel=V cycles,
+      log basis x=2,
+      legend entries={Custom MG (LO), Custom MG (HO),
+        PETSc MG (LO), PETSc MG (HO)},
+      legend style={legend to name=grouplegend, legend columns=2}]
+      \addplot+[line width=2pt, solid, blue, mark=*, mark options={fill=blue}] table [x=CFL, y=its] {\jobname.figures/mf-lo-cfl.dat};
+      \addplot+[line width=2pt, dashed, blue, mark=*, mark options={fill=blue}] table [x=CFL, y=its] {\jobname.figures/mf-ho-cfl.dat};
+      \addplot+[line width=2pt, solid, brown, mark=square*, mark options={fill=brown}] table [x=CFL, y=its] {\jobname.figures/petsc-lo-cfl.dat};
+      \addplot+[line width=2pt, dashed, brown, mark=square*, mark options={fill=brown}] table [x=CFL, y=its] {\jobname.figures/petsc-ho-cfl.dat};
+      \nextgroupplot[xmode=log,xlabel=CFL ($\Delta t/\Delta x$),
+      ylabel=Time (s),
+      log basis x=2]
+      \addplot+[line width=2pt, solid, blue, mark=*, mark options={fill=blue}] table [x=CFL, y=Time] {\jobname.figures/mf-lo-cfl.dat};
+      \addplot+[line width=2pt, dashed, blue, mark=*, mark options={fill=blue}] table [x=CFL, y=Time] {\jobname.figures/mf-ho-cfl.dat};
+      \addplot+[line width=2pt, solid, brown, mark=square*, mark options={fill=brown}] table [x=CFL, y=Time] {\jobname.figures/petsc-lo-cfl.dat};
+      \addplot+[line width=2pt, dashed, brown, mark=square*, mark options={fill=brown}] table [x=CFL, y=Time] {\jobname.figures/petsc-ho-cfl.dat};
+    \end{groupplot}
+    \node at ($(group c1r1)!0.5!(group c2r1) + (0,-5cm)$) {\ref{grouplegend}}; 
+  \end{tikzpicture}
+  \end{center}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Scaling}
-  Weak scaling plots (time)
+  \frametitle{Weak scaling}
+  \begin{tikzpicture}[scale=0.65]
+    \begin{groupplot}[group style={group size=2 by 1, horizontal sep=2cm}],
+      \nextgroupplot[xmode=log,xlabel=Num processes,
+      ylabel=Time (s),
+      axis y line*=left,
+      title={Low order},
+      xtick={1, 6, 24, 96, 384, 1536},
+      xticklabels={$1$, $6$, $24$, $96$, $384$, $1536$},
+      legend entries={Custom MG, PETSc MG},
+      legend style={legend to name=grouplegend, legend columns=2}]
+      \addplot+[line width=2pt, blue, mark=*, mark options={fill=blue}] table [x=Np, y=Time] {\jobname.figures/mf-weak-lo.dat};
+      \addplot+[line width=2pt, brown, mark=square, mark options={fill=brown}] table [x=Np, y=Time] {\jobname.figures/petsc-weak-lo.dat};
+
+      \nextgroupplot[xmode=log,xlabel=Num processes,
+      ylabel=Time (s),
+      title={High order},
+      xtick={1, 6, 24, 96, 384, 1536, 6144},
+      xticklabels={$1$, $6$, $24$, $96$, $384$, $1536$, $6144$}]
+      \addplot+[line width=2pt, blue, mark=*, mark options={fill=blue}] table [x=Np, y=Time] {\jobname.figures/mf-weak-ho.dat};
+      \addplot+[line width=2pt, brown, mark=square, mark options={fill=brown}] table [x=Np, y=Time] {\jobname.figures/petsc-weak-ho.dat};
+    \end{groupplot}
+    \node at ($(group c1r1)!0.5!(group c2r1) + (0,-5cm)$) {\ref{grouplegend}}; 
+  \end{tikzpicture}
 \end{frame}
 
 
