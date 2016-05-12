@@ -168,8 +168,8 @@
 
 \begin{frame}
   \frametitle{Preconditioning}
-  $b$ can be eliminated pointwise exactly for flat earth,
-  approximately (in preconditioner) for mountainous earth.
+  Eliminate buoyancy pointwise in preconditioner.  Exact for flat earth,
+  approximate when mountainous.
 
   Obtain a velocity-pressure system
 \begin{equation*}
@@ -179,8 +179,6 @@
 \end{pmatrix}
 \end{equation*}
 
-This is a discretisation of a sign-positive $H(\div)-L^2$ Helmholtz
-equation.
 \end{frame}
 
 \begin{frame}[t]
@@ -188,7 +186,7 @@ equation.
   \begin{columns}
     \begin{column}{0.52\textwidth}
       \begin{block}{Block diagonal}
-        Using the appropriate function space inner products
+        Using the appropriate function space inner products \parencite{Mardal:2011,Kirby:2010}
         \begin{equation*}
           \begin{pmatrix}
             (I - \grad \div)^{-1} & 0 \\
@@ -297,7 +295,7 @@ op2.par_loop(kernel, hostmesh.cell_set,
 \section{Results}
 
 \begin{frame}
-  \frametitle{Three solvers to invert $S$}
+  \frametitle{Compare three solvers to invert $S$}
   GMRES + full schur complement factorisation tolerance $10^{-5}$
 
   \begin{block}{Custom MG}
@@ -310,7 +308,7 @@ op2.par_loop(kernel, hostmesh.cell_set,
   \end{block}
 
   \begin{block}{PETSc MG}
-    BoomerAMG with ILU smoother on $\tilde{S} = M_p +  \omega_c^2 D M_{v,\text{inv}} D^T$
+    BoomerAMG with ILU smoother on $\tilde{S} = M_p + \omega_c^2 D M_{v,\text{inv}} D^T$
   \end{block}
 \end{frame}
 \begin{frame}
