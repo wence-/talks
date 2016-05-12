@@ -7,6 +7,7 @@
 \usepackage{pgfplots}
 \usepackage{pgfplotstable}
 \usetikzlibrary{pgfplots.groupplots}
+\pgfplotsset{compat=1.12}
 \usepackage{appendixnumberbeamer}
 \usepackage{amsmath}
 \usetheme{metropolis}
@@ -29,6 +30,10 @@
 
 \graphicspath{{./\jobname.figures/}}
 
+\newcommand{\arxivlink}[2]{%
+  \href{http://www.arxiv.org/abs/#1}%
+  {{\small\texttt{arXiv:\,#1\,[#2]}}}%
+}
 \usepackage[url=false,
             doi=true,
             isbn=false,
@@ -76,8 +81,8 @@
   \end{center}
   Can no longer use traditional staggered finite differences.
   
-  \emph{compatible finite elements} \parencite{Cotter:2012a} a
-  plausible soltion.
+  \emph{Compatible finite elements} \parencite{Cotter:2012a} a
+  plausible solution.
 \end{frame}
 
 \begin{frame}
@@ -115,10 +120,11 @@
 \begin{frame}
   \frametitle{Computational challenges}
   Dynamical core (fluids solver) needs to handle fast acoustic waves
-  implicitly (to avoid terrible CFL constraint).  Results in an
-  elliptic problem for pressure correction.
+  implicitl.  Results in an elliptic problem for pressure correction.
 
-  Need a solver that is \emph{scalable} and \emph{fast}
+  Need a solver that is \emph{scalable} and \emph{fast}.
+
+  5km global resolution around $2 \cdot 10^9$ dofs.
 
   Large aspect ratio of the domain is challenging for black box solvers.
 \end{frame}
@@ -127,11 +133,10 @@
 
 \begin{frame}
   \frametitle{Linearised gravity wave}
-  Linear system for velocity $\vec{u}$, pressure $p$ and buoyancy $b$.
+  Linear system for velocity $\vec{u}$, pressure $p$, and buoyancy $b$.
   \begin{columns}
     \begin{column}{0.4\textwidth}
       \begin{align*}
-        \label{eq:1}
         \ddt{\vec{u}} &= \nabla p + b \zhat, \\
         \ddt{p} &= -c^2 \nabla\cdot \vec{u}, \\
         \ddt{b} &= -N^2\vec{u}\cdot\zhat.\\
@@ -163,9 +168,10 @@
 
 \begin{frame}
   \frametitle{Preconditioning}
-  Without mountains, buoyancy can be eliminated pointwise, with
-  mountains the pointwise elimination is good in a preconditioner.  We
-  focus on the velocity-pressure system
+  $b$ can be eliminated pointwise exactly for flat earth,
+  approximately (in preconditioner) for mountainous earth.
+
+  Obtain a velocity-pressure system
 \begin{equation*}
 \begin{pmatrix}
   M_v & -\frac{\Delta t}{2}D^T\\
@@ -181,9 +187,8 @@ equation.
   \frametitle{Options}
   \begin{columns}
     \begin{column}{0.52\textwidth}
-      \begin{block}{Riesz map}
-        Block diagonal preconditioner using the appropriate function
-        space inner products
+      \begin{block}{Block diagonal}
+        Using the appropriate function space inner products
         \begin{equation*}
           \begin{pmatrix}
             (I - \grad \div)^{-1} & 0 \\
@@ -207,8 +212,7 @@ equation.
         \end{equation*}
       \end{block}
       \begin{itemize}
-      \item $H = M_p +  \omega_c^2 D M_v^{-1} D^T$ is \emph{dense}, but elliptic
-      \item need preconditioner, $\tilde{S}$.
+      \item $S = M_p +  \omega_c^2 D M_v^{-1} D^T$ is \emph{dense}, but elliptic
       \item Can use similar methods as a \emph{distributive} smoother.
       \end{itemize}
     \end{column}
@@ -219,29 +223,29 @@ equation.
   \frametitle{Approximating $S$}
   \begin{itemize}
   \item Strong coupling in vertical direction, need to treat this
-    exactly.  
+    exactly.
   \item Use a multigrid cycle with horizontal coarsening and
     vertical line relaxation.
   \item Exploit tensor-product structure to split horizontal and
-    vertical components
+    vertical components.
   \end{itemize}
-\framebreak
+  \framebreak
 
-\begin{block}{Steps to $\tilde{S}$}
   \begin{itemize}
   \item Split horizontal and vertical $M_v^{-1} =
     (M_v^h)^{-1}\oplus (M_v^z)^{-1}$ (also $D
-      = D^h \oplus D^z$)
+    = D^h \oplus D^z$)
   \item Diagonal approximation $M_v^{-1} \approx M_{v,\text{inv}} = \delta_{ij} / (M_v)_{ii}$
   \item Ignore horizontal coupling, error $\mathcal{O}((\Delta z/
     \Delta x)^2)$
   \end{itemize}
-\end{block}
-\begin{equation*}
-  \tilde{S} = M_p + \omega_c^2 \text{bdiag}\big[D^h M_{v,\text{inv}}^h
-  (D^h)^T\big] \oplus \frac{\omega_c^2}{1 + \omega_N^2} D^z
-    M_{v,\text{inv}}^z (D^z)^T
-\end{equation*}
+  \begin{block}{Final approximation}
+    \begin{equation*}
+      \tilde{S} = M_p + \omega_c^2 \text{bdiag}\big[D^h M_{v,\text{inv}}^h
+      (D^h)^T\big] \oplus \frac{\omega_c^2}{1 + \omega_N^2} D^z
+      M_{v,\text{inv}}^z (D^z)^T
+    \end{equation*}
+  \end{block}
 \end{frame}
 
 \begin{frame}[fragile, allowframebreaks]
@@ -265,64 +269,106 @@ Banded matrix algebra implemented as short PyOP2 kernels
 \begin{minted}[fontsize=\tiny]{python}
 # C-kernel code for Matrix-vector product v = A.u in one vertical column
 kernel_code = '''void ax(double **A, double **u, double **v) {
-  for (int i=0;i<n_row;++i) {                                   
+  for (int i = 0; i < n_row; ++i) {                                   
     v[0][i] = 0.0;                                                     
-    int j_m = (int) ceil((alpha*i-gamma_p)/beta);   
-    int j_p = (int) floor((alpha*i+gamma_m)/beta);  
-    for (int j=std::max(0,j_m);j<std::min(n_col,j_p+1);++j)
-      v[0][i] += A[0][bandwidth*i+(j-j_m)] * u[j];
+    int j_m = (int)ceil((alpha*i - gamma_p)/beta);   
+    int j_p = (int)floor((alpha*i + gamma_m)/beta);  
+    for (int j = std::max(0, j_m); j < std::min(n_col, j_p+1); ++j)
+      v[0][i] += A[0][bandwidth*i + (j - j_m)] * u[j];
   }'''
 # Execute PyOP2 kernel over grid
-kernel = op2.Kernel(kernel_code,'ax',cpp=True)
-op2.par_loop(kernel,hostmesh.cell_set, A(op2.READ,Vcell.cell_node_map()),
-             u.dat(op2.READ,u.cell_node_map()),
-             v.dat(op2.WRITE,u.cell_node_map()))
+kernel = op2.Kernel(kernel_code, 'ax', cpp=True)
+op2.par_loop(kernel, hostmesh.cell_set, 
+             A(op2.READ, Vcell.cell_node_map()),
+             u.dat(op2.READ, u.cell_node_map()),
+             v.dat(op2.WRITE, u.cell_node_map()))
 \end{minted}
+
+\framebreak
+
+\begin{itemize}
+\item Use PETSc to solve block system with fieldsplit preconditioner.
+\item Preconditioner for $S$ a \verb|PCSHELL| implementing custom
+  multigrid.
+\item Allows comparison with purely algebraic approach.
+\end{itemize}
 \end{frame}
+
 \section{Results}
 
 \begin{frame}
+  \frametitle{Three solvers to invert $S$}
+  GMRES + full schur complement factorisation tolerance $10^{-5}$
+
+  \begin{block}{Custom MG}
+    Bespoke multigrid, 5 levels.  1 smoother sweep per level.  2
+    smoother iterations on coarsest level.
+  \end{block}
+
+  \begin{block}{Single level}
+    Two smoother iterations just on fine level (standard approach in UM).
+  \end{block}
+
+  \begin{block}{PETSc MG}
+    BoomerAMG with ILU smoother on $\tilde{S} = M_p +  \omega_c^2 D M_{v,\text{inv}} D^T$
+  \end{block}
+\end{frame}
+\begin{frame}
   \frametitle{Algorithmic performance}
 
-  \begin{center}
-    \begin{tikzpicture}
-      \begin{semilogyaxis}[title={Convergence with $\text{CFL} = 8$, low-order},
-        xlabel={Iterations}, ylabel={Relative residual},
-        legend entries={Custom MG, Single level, Algebraic (PETSc) MG}]
-        \addplot+[only marks] table [x=iterations, y=residual]
-        {\jobname.figures/mf-lo.dat};
+  $u \in RT0$, $p \in DG0$
+  \begin{columns}
+    \begin{column}{0.75\textwidth}
+      \begin{tikzpicture}
+        \begin{semilogyaxis}[title={Convergence with $\text{CFL} = 8$,
+            low-order}, title style={align=left}, xlabel={Iterations},
+          ylabel={Relative residual}, legend entries={Custom MG ($5.36$s),
+            Single level ($13.9$s), PETSc MG ($5.98$s)}]
+          \addplot+[only marks] table [x=iterations, y=residual]
+          {\jobname.figures/mf-lo.dat};
 
-        \addplot+[only marks] table [x=iterations, y=residual]
-        {\jobname.figures/single-level-lo.dat};
+          \addplot+[only marks] table [x=iterations, y=residual]
+          {\jobname.figures/single-level-lo.dat};
 
-        \addplot+[only marks] table [x=iterations, y=residual]
-        {\jobname.figures/petsc-lo.dat};
-      \end{semilogyaxis}
-    \end{tikzpicture}
-  \end{center}
-
+          \addplot+[only marks] table [x=iterations, y=residual]
+          {\jobname.figures/petsc-lo.dat};
+        \end{semilogyaxis}
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.25\textwidth}
+      $18.4\cdot 10^6$ total unknowns.
+    \end{column}
+  \end{columns}
 \end{frame}
 
 \begin{frame}
   \frametitle{Algorithmic performance}
 
-  \begin{center}
-    \begin{tikzpicture}
-      \begin{semilogyaxis}[title={Convergence with $\text{CFL} = 8$, high-order},
-        xlabel={Iterations}, ylabel={Relative residual},
-        legend entries={Custom MG, Single level, Algebraic (PETSc) MG}]
-        \addplot+[only marks] table [x=iterations, y=residual]
-        {\jobname.figures/mf-ho.dat};
+  $u \in \texttt{HDiv}(\text(BDFM1) \otimes P2)$, $p \in DG1$
+  \begin{columns}
+    \begin{column}{0.75\textwidth}
+      \begin{tikzpicture}
+        \begin{semilogyaxis}[title={Convergence with $\text{CFL} = 8$,
+            high-order}, title style={align=left},
+          xlabel={Iterations}, ylabel={Relative
+            residual}, legend entries={Custom MG ($11.1$s), Single
+            level ($22.7$s),
+            PETSc MG ($12.2$s)}]
+          \addplot+[only marks] table [x=iterations, y=residual]
+          {\jobname.figures/mf-ho.dat};
 
-        \addplot+[only marks] table [x=iterations, y=residual]
-        {\jobname.figures/single-level-ho.dat};
+          \addplot+[only marks] table [x=iterations, y=residual]
+          {\jobname.figures/single-level-ho.dat};
 
-        \addplot+[only marks] table [x=iterations, y=residual]
-        {\jobname.figures/petsc-ho.dat};
-      \end{semilogyaxis}
-    \end{tikzpicture}
-  \end{center}
-
+          \addplot+[only marks] table [x=iterations, y=residual]
+          {\jobname.figures/petsc-ho.dat};
+        \end{semilogyaxis}
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.25\textwidth}
+      $7.9\cdot 10^6$ total unknowns.
+    \end{column}
+  \end{columns}
   % CFL variation + time
 
   % Mesh independence
@@ -361,63 +407,91 @@ op2.par_loop(kernel,hostmesh.cell_set, A(op2.READ,Vcell.cell_node_map()),
   \frametitle{Weak scaling}
   \begin{tikzpicture}[scale=0.65]
     \begin{groupplot}[group style={group size=2 by 1, horizontal sep=2cm}],
-      \nextgroupplot[xmode=log,xlabel=Num processes,
+
+      \nextgroupplot[xmode=log,
+      xlabel=Num processes,
       ylabel=Time (s),
-      axis y line*=left,
-      title={Low order},
+      align=center,
+      title={Low order\\(Total DoFs)},
+      title style={yshift=2ex},
       xtick={1, 6, 24, 96, 384, 1536},
-      xticklabels={$1$, $6$, $24$, $96$, $384$, $1536$},
+      xticklabels from table={\jobname.figures/mf-weak-lo.dat}{Np},
+      extra x ticks={1, 6, 24, 96, 384, 1536},
+      extra x tick style={ticklabel pos=right,
+        tick label style={font=\small}},
+      extra x tick labels={1.1e6,
+                           4.6e6,
+                           1.8e7,
+                           7.3e7,
+                           3e8,
+                           1e9},
       legend entries={Custom MG, PETSc MG},
-      legend style={legend to name=grouplegend, legend columns=2}]
+      legend style={legend to name=grouplegend2, legend columns=2}]
       \addplot+[line width=2pt, blue, mark=*, mark options={fill=blue}] table [x=Np, y=Time] {\jobname.figures/mf-weak-lo.dat};
       \addplot+[line width=2pt, brown, mark=square, mark options={fill=brown}] table [x=Np, y=Time] {\jobname.figures/petsc-weak-lo.dat};
 
       \nextgroupplot[xmode=log,xlabel=Num processes,
-      ylabel=Time (s),
-      title={High order},
+      title={High order\\(Total DoFs)},
+      align=center,
+      title style={yshift=2ex},
       xtick={1, 6, 24, 96, 384, 1536, 6144},
-      xticklabels={$1$, $6$, $24$, $96$, $384$, $1536$, $6144$}]
+      xticklabels from table={\jobname.figures/mf-weak-ho.dat}{Np},
+      extra x ticks={1, 6, 24, 96, 384, 1536, 6144},
+      extra x tick style={ticklabel pos=right,
+        tick label style={font=\small}},
+      extra x tick labels={5e5,
+                           2e6,
+                           8e6,
+                           3e7,
+                           1e8,
+                           5e8,
+                           2e9}]
       \addplot+[line width=2pt, blue, mark=*, mark options={fill=blue}] table [x=Np, y=Time] {\jobname.figures/mf-weak-ho.dat};
       \addplot+[line width=2pt, brown, mark=square, mark options={fill=brown}] table [x=Np, y=Time] {\jobname.figures/petsc-weak-ho.dat};
     \end{groupplot}
-    \node at ($(group c1r1)!0.5!(group c2r1) + (0,-5cm)$) {\ref{grouplegend}}; 
+    \node at ($(group c1r1)!0.5!(group c2r1) + (0,-5cm)$) {\ref{grouplegend2}}; 
   \end{tikzpicture}
 \end{frame}
 
+\begin{frame}
+  \frametitle{Could we go faster?}
+  Sparse matvec is memory bandwidth limited.  We count bytes moved
+  assuming a perfect cache.  Achievable memory bandwidth for $a_i =
+  \alpha b_i + c_i$ (STREAM triad) $74$GB/s.
 
-\section{Concluding}
+  \begin{block}{Measured bandwidth GB/s}
+    \begin{center}
+      \begin{tabular}{lrrrr}
+        & \multicolumn{2}{c}{Low order} & \multicolumn{2}{c}{High order}\\
+        Level & $\tilde{S}$ & $\tilde{S}^{-1}$ & $\tilde{S}$ & $\tilde{S}^{-1}$\\
+        0  &   2.52 &   1.55 &    0.70 &   0.47\\
+        1  &   6.65 &   4.50 &    2.30 &   1.60\\
+        2  &  14.50 &   4.00 &    7.23 &   5.29\\
+        3  &  28.09 &  29.29 &    4.69 &   8.99\\
+        4  &  39.30 &  40.78 &   45.92 &  12.36\\
+      \end{tabular}
+    \end{center}
+  \end{block}
+\end{frame}
 
 \begin{frame}
   \frametitle{Conclusions}
-  Not so bad
 
-  Programming this stuff is still painful
-
-  Hybridisation?
-
-  Auxiliary space \parencite{Hiptmair:2007} or $H(\div)$ multigrid?
+  \begin{itemize}
+  \item Scalable solver
+  \item Performance within factor 2 of peak
+  \item Other approaches?
+    \begin{itemize}
+    \item $H(\div)$ multigrid \parencite{Arnold:2000}
+    \item Distributive smoothing (Uzawa or similar)
+    \item Auxiliary space \parencite{Hiptmair:2007}
+    \end{itemize}
+  \item For more, see \arxivlink{1605.00492}{cs.MS}
+  \end{itemize}
 \end{frame}
 
-\begin{frame}[standout]
-  
-  Thanks!
-  
-\end{frame}
-% \begin{frame}
-%   \frametitle{Implementation}
-%   Firedrake: hierarchy of extruded meshes
-
-%   Banded matrix algebra and line smoothers with pyop2 -- foo
-% \end{frame}
-
-% \section{Results}
-
-% \begin{frame}
-%   \frametitle{Weak scaling}
-  
-% \end{frame}
 \appendix
-\begin{frame}[t, allowframebreaks]
+\begin{frame}
   \frametitle{References}
   \printbibliography[heading=none]
 \end{frame}
