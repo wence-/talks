@@ -94,58 +94,63 @@
     \W_0 \stackrel{\grad}{\longrightarrow}  \W_1  \stackrel{\curl}{\longrightarrow}  \W_2  \stackrel{\div}{\longrightarrow}  \W_3
   \end{equation*}
 
-  We use tensor product spaces on wedges
-
-  \begin{center}
-    \begin{tikzpicture}[scale=0.25]
-      \node[thick, isosceles triangle, isosceles triangle apex
-      angle=60, draw] (A) {};
+  \begin{block}{Tensor product spaces on wedges}
+    \begin{center}
+      \begin{tikzpicture}[scale=0.25]
+        \node[thick, isosceles triangle, isosceles triangle apex
+        angle=60, draw] (A) {};
     
-      \node (B) [right=0.05cm of A] {$\otimes$};
+        \node (B) [right=0.05cm of A] {$\otimes$};
     
-      \node (C) [right=0.05cm of B, thick, rectangle, minimum
-      width=0pt, inner sep=0pt, draw, minimum height=0.5cm] {};
+        \node (C) [right=0.05cm of B, thick, rectangle, minimum
+        width=0pt, inner sep=0pt, draw, minimum height=0.5cm] {};
 
-      \draw[-latex, very thick] (C)++(0.5cm,0) -- +(2cm, 0);
-      \begin{scope}[shift={($(C) + (3cm, -2cm)$)}]
-        \draw[thick] (0,0) rectangle (4,4); \draw[thick] (0,0) --
-        (1,1); \draw[thick] (4,0) -- (1,1); \draw[thick] (0,4) --
-        (1,5); \draw[thick] (4,4) -- (1,5); \draw[thick] (1,1) --
-        (1,5);
-      \end{scope}
-    \end{tikzpicture}
-  \end{center}
+        \draw[-latex, very thick] (C)++(0.5cm,0) -- +(2cm, 0);
+        \begin{scope}[shift={($(C) + (3cm, -2cm)$)}]
+          \draw[thick] (0,0) rectangle (4,4); \draw[thick] (0,0) --
+          (1,1); \draw[thick] (4,0) -- (1,1); \draw[thick] (0,4) --
+          (1,5); \draw[thick] (4,4) -- (1,5); \draw[thick] (1,1) --
+          (1,5);
+        \end{scope}
+      \end{tikzpicture}
+    \end{center}
+  \end{block}
 \end{frame}
 
 \begin{frame}
   \frametitle{Computational challenges}
-  Dynamical core (fluids solver) needs to handle fast acoustic waves
-  implicitl.  Results in an elliptic problem for pressure correction.
+  Dynamical core needs to handle fast acoustic waves
+  implicitly.
 
   Need a solver that is \emph{scalable} and \emph{fast}.
 
   5km global resolution around $2 \cdot 10^9$ dofs.
 
-  Large aspect ratio of the domain is challenging for black box solvers.
+  Large aspect ratio of the domain is challenging for black box
+  solvers.
 \end{frame}
 
 \section{Formulation}
 
 \begin{frame}
   \frametitle{Linearised gravity wave}
-  Linear system for velocity $\vec{u}$, pressure $p$, and buoyancy $b$.
+  Linear system for velocity $\vec{v}$, pressure $p$, and buoyancy $b$.
+\vspace{2em}
+
   \begin{columns}
     \begin{column}{0.4\textwidth}
       \begin{align*}
-        \ddt{\vec{u}} &= \nabla p + b \zhat, \\
-        \ddt{p} &= -c^2 \nabla\cdot \vec{u}, \\
-        \ddt{b} &= -N^2\vec{u}\cdot\zhat.\\
+        \ddt{\vec{v}} &= \nabla p + b \zhat, \\
+        \ddt{p} &= -c^2 \nabla\cdot \vec{v}, \\
+        \ddt{b} &= -N^2\vec{v}\cdot\zhat.\\
       \end{align*}
     \end{column}
     \begin{column}{0.6\textwidth}
-      Domain $S^2(R) \times [0, H]$.\\
-      Enforce $\vec{u}\cdot \hat{\vec{n}} = 0$ at top and bottom.\\
-      $R\approx 6000\textsf{km}$, $H\approx 80\textsf{km}$.
+      Enforce $\vec{v}\cdot \hat{\vec{n}} = 0$ at top and bottom.\\
+      $R\approx 6000\textsf{km}$, $H\approx 80\textsf{km}$. \\
+      \begin{center}
+        \includegraphics[width=3cm]{earth}
+      \end{center}
     \end{column}
   \end{columns}
 \end{frame}
@@ -153,8 +158,8 @@
 \begin{frame}
   \frametitle{Discretised system}
   After discretising in space and time we obtain a linear operator for
-  $u \in H(\div)$, $p \in L^2$, $b$ scalar, collocated with
-  vertical part of $u$ space.
+  $\vec{v} \in H(\div)$, $p \in L^2$, $b$ scalar, collocated with
+  vertical part of $\vec{v}$ space.
 \begin{equation*}
 \begin{pmatrix}
   M_v & 
@@ -314,7 +319,7 @@ op2.par_loop(kernel, hostmesh.cell_set,
 \begin{frame}
   \frametitle{Algorithmic performance}
 
-  $u \in RT0$, $p \in DG0$
+  $\vec{v} \in RT0$, $p \in DG0$
   \begin{columns}
     \begin{column}{0.75\textwidth}
       \begin{tikzpicture}
@@ -342,7 +347,7 @@ op2.par_loop(kernel, hostmesh.cell_set,
 \begin{frame}
   \frametitle{Algorithmic performance}
 
-  $u \in \texttt{HDiv}(\text(BDFM1) \otimes P2)$, $p \in DG1$
+  $\vec{v} \in \texttt{HDiv}(\text(BDFM1) \otimes P2)$, $p \in DG1$
   \begin{columns}
     \begin{column}{0.75\textwidth}
       \begin{tikzpicture}
@@ -454,8 +459,9 @@ op2.par_loop(kernel, hostmesh.cell_set,
 \begin{frame}
   \frametitle{Could we go faster?}
   Sparse matvec is memory bandwidth limited.  We count bytes moved
-  assuming a perfect cache.  Achievable memory bandwidth for $a_i =
-  \alpha b_i + c_i$ (STREAM triad) $74$GB/s.
+  assuming a perfect cache.  
+
+  Achievable memory bandwidth for $a_i = \alpha b_i + c_i$ (STREAM triad) $74$GB/s.
 
   \begin{block}{Measured bandwidth GB/s}
     \begin{center}
