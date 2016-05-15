@@ -3,6 +3,7 @@
 \usepackage{tikz}
 \usetikzlibrary{positioning,calc}
 \usetikzlibrary{shapes.geometric}
+\usetikzlibrary{backgrounds}% only to show the bounding box
 \usetikzlibrary{shapes,arrows}
 \usepackage{pgfplots}
 \usepackage{pgfplotstable}
@@ -10,8 +11,29 @@
 \pgfplotsset{compat=1.12}
 \usepackage{appendixnumberbeamer}
 \usepackage{amsmath}
+\date{20th May 2016}
 \usetheme{metropolis}
 
+\pgfplotscreateplotcyclelist{decent cycle}{%
+  {blue, mark=*, mark options={fill=blue},
+    mark size=2pt},
+  {cyan, mark=square*, mark options={fill=cyan},
+    mark size=2pt},
+  {magenta, mark=triangle*, mark options={fill=magenta},
+    mark size=3pt},
+  {blue, mark=*, mark options={fill=blue},
+    mark size=2pt},
+  {cyan, mark=square*, mark options={fill=cyan},
+    mark size=2pt},
+  {magenta, mark=triangle*, mark options={fill=magenta},
+    mark size=3pt},
+}
+
+\pgfplotsset{
+  decent/.style={
+    cycle list name=decent cycle,
+  }
+}
 \renewcommand{\vec}[1]{\ensuremath{\boldsymbol{#1}}}
 \newcommand{\ddt}[1]{\frac{\partial #1}{\partial t}}
 \newcommand{\zhat}{\hat{\vec{z}}}
@@ -21,9 +43,9 @@
 \let\div\relax
 \DeclareMathOperator{\div}{div}
 \DeclareMathOperator{\curl}{curl}
-
+\newcommand{\vsubset}[1]{\rotatebox[origin=c]{90}{\ensuremath{\subset}}}
 \author{Lawrence Mitchell\inst{1} \and Eike M\"uller\inst{2}}
-\institute{\inst{1}Departments of Computing and Mathematics, Imperial College London 
+\institute{\inst{1}Departments of Computing and Mathematics, Imperial College London
   \and
   \inst{2}Department of Mathematical Sciences, University of Bath}
 \title{Multigrid for numerical weather prediction}
@@ -80,18 +102,25 @@
     \end{tikzpicture}
   \end{center}
   Can no longer use traditional staggered finite differences.
-  
-  \emph{Compatible finite elements} \parencite{Cotter:2012a} a
-  plausible solution.
+
+  \emph{Compatible finite elements} (FEEC) a plausible
+  solution \parencite{Cotter:2012a}.
 \end{frame}
 
 \begin{frame}
   \frametitle{Compatible FE}
   Choose discrete spaces that match the properties of the
-  continuous equations.  
+  continuous equations.
 
   \begin{equation*}
-    \W_0 \stackrel{\grad}{\longrightarrow}  \W_1  \stackrel{\curl}{\longrightarrow}  \W_2  \stackrel{\div}{\longrightarrow}  \W_3
+    \begin{matrix}
+      H^1 & & H(\curl) & & H(\div) & & L^2\\
+      \vsubset{} & & \vsubset{} & & \vsubset{} & & \vsubset{} \\
+      \W_0 & \stackrel{\grad}{\longrightarrow} &
+      \W_1 & \stackrel{\curl}{\longrightarrow} &
+      \W_2 & \stackrel{\div}{\longrightarrow} &
+      \W_3
+    \end{matrix}
   \end{equation*}
 
   \begin{block}{Tensor product spaces on wedges}
@@ -99,9 +128,9 @@
       \begin{tikzpicture}[scale=0.25]
         \node[thick, isosceles triangle, isosceles triangle apex
         angle=60, draw] (A) {};
-    
+
         \node (B) [right=0.05cm of A] {$\otimes$};
-    
+
         \node (C) [right=0.05cm of B, thick, rectangle, minimum
         width=0pt, inner sep=0pt, draw, minimum height=0.5cm] {};
 
@@ -124,7 +153,7 @@
 
   Need a solver that is \emph{scalable} and \emph{fast}.
 
-  5km global resolution around $2 \cdot 10^9$ dofs.
+  $5$km horizontal, 100 vertical layers, around $2 \cdot 10^9$ dofs.
 
   Large aspect ratio of the domain is challenging for black box
   solvers.
@@ -162,8 +191,8 @@
   vertical part of $\vec{v}$ space.
 \begin{equation*}
 \begin{pmatrix}
-  M_v & 
-    -\frac{\Delta t}{2}D^T & 
+  M_v &
+    -\frac{\Delta t}{2}D^T &
     -\frac{\Delta t}{2}Q\\[1ex]
   \frac{\Delta t}{2}c^2D & M_p & 0\\[1ex]
   \frac{\Delta t}{2}N^2Q^T & 0 & M_b
@@ -173,7 +202,7 @@
 
 \begin{frame}
   \frametitle{Preconditioning}
-  Eliminate buoyancy pointwise in preconditioner.  Exact for flat earth,
+  Eliminate buoyancy pointwise in preconditioner.  Exact for spherical earth,
   approximate when mountainous.
 
   Obtain a velocity-pressure system
@@ -262,26 +291,27 @@
       \node (C) [right=of A.north east, anchor=north west] {\includegraphics[width=3.5cm]{columndofs}};
       \node (B) [below=0.1cm of C] {\includegraphics[height=0.6cm]{linearstorage}};
       \node (D) [above=0.1cm of A.north east, anchor=south] {\includegraphics[width=5cm]{MeshHierarchy}};
-    \end{tikzpicture}    
+    \end{tikzpicture}
   \end{center}
 
 \framebreak
 
-Banded matrix algebra implemented as short PyOP2 kernels
+Banded matrix algebra implemented as short PyOP2 kernels (Firedrake's
+\emph{escape hatch})
 
 \begin{minted}[fontsize=\tiny]{python}
 # C-kernel code for Matrix-vector product v = A.u in one vertical column
 kernel_code = '''void ax(double **A, double **u, double **v) {
-  for (int i = 0; i < n_row; ++i) {                                   
-    v[0][i] = 0.0;                                                     
-    int j_m = (int)ceil((alpha*i - gamma_p)/beta);   
-    int j_p = (int)floor((alpha*i + gamma_m)/beta);  
+  for (int i = 0; i < n_row; ++i) {
+    v[0][i] = 0.0;
+    int j_m = (int)ceil((alpha*i - gamma_p)/beta);
+    int j_p = (int)floor((alpha*i + gamma_m)/beta);
     for (int j = std::max(0, j_m); j < std::min(n_col, j_p+1); ++j)
       v[0][i] += A[0][bandwidth*i + (j - j_m)] * u[j];
   }'''
 # Execute PyOP2 kernel over grid
 kernel = op2.Kernel(kernel_code, 'ax', cpp=True)
-op2.par_loop(kernel, hostmesh.cell_set, 
+op2.par_loop(kernel, hostmesh.cell_set,
              A(op2.READ, Vcell.cell_node_map()),
              u.dat(op2.READ, u.cell_node_map()),
              v.dat(op2.WRITE, u.cell_node_map()))
@@ -301,15 +331,16 @@ op2.par_loop(kernel, hostmesh.cell_set,
 
 \begin{frame}
   \frametitle{Compare three solvers to invert $S$}
-  GMRES + full schur complement factorisation tolerance $10^{-5}$
-
-  \begin{block}{Custom MG}
-    Bespoke multigrid, 5 levels.  1 smoother sweep per level.  2
-    smoother iterations on coarsest level.
-  \end{block}
+  GMRES(30) + full schur complement factorisation tolerance $10^{-5}$.
 
   \begin{block}{Single level}
-    Two smoother iterations just on fine level (standard approach in UM).
+    Two smoother iterations just on fine level (standard approach in
+    Met Office Unified Model).
+  \end{block}
+
+  \begin{block}{Custom MG}
+    Bespoke multigrid, 5 levels.  1 smoother sweep per level.  2 smoother
+    iterations on coarsest level.
   \end{block}
 
   \begin{block}{PETSc MG}
@@ -318,20 +349,29 @@ op2.par_loop(kernel, hostmesh.cell_set,
 \end{frame}
 \begin{frame}
   \frametitle{Algorithmic performance}
-
-  $\vec{v} \in RT0$, $p \in DG0$
   \begin{columns}
     \begin{column}{0.75\textwidth}
       \begin{tikzpicture}
-        \begin{semilogyaxis}[title={Convergence with $\text{CFL} = 8$,
-            low-order}, title style={align=left}, xlabel={Iterations},
-          ylabel={Relative residual}, legend entries={Custom MG ($5.36$s),
-            Single level ($13.9$s), PETSc MG ($5.98$s)}]
-          \addplot+[only marks] table [x=iterations, y=residual]
-          {\jobname.figures/mf-lo.dat};
+        \begin{semilogyaxis}[
+          decent,
+          title={Convergence with $\text{CFL} = 8$,
+            low-order\\
+            $\vec{v} \in \text{RT}0$, $p \in \text{DG}0$},
+          title style={align=center},
+          xlabel={Iterations},
+          ylabel={Relative residual},
+          legend entries={
+            Single level ($13.9$s),
+            Custom MG ($5.36$s),
+            PETSc MG ($5.98$s)
+          }
+          ]
 
           \addplot+[only marks] table [x=iterations, y=residual]
           {\jobname.figures/single-level-lo.dat};
+
+          \addplot+[only marks] table [x=iterations, y=residual]
+          {\jobname.figures/mf-lo.dat};
 
           \addplot+[only marks] table [x=iterations, y=residual]
           {\jobname.figures/petsc-lo.dat};
@@ -339,29 +379,35 @@ op2.par_loop(kernel, hostmesh.cell_set,
       \end{tikzpicture}
     \end{column}
     \begin{column}{0.25\textwidth}
-      $18.4\cdot 10^6$ total unknowns.
+      $18.4\cdot 10^6$ total unknowns.\\
+      24 cores.
     \end{column}
   \end{columns}
 \end{frame}
 
 \begin{frame}
   \frametitle{Algorithmic performance}
-
-  $\vec{v} \in \texttt{HDiv}(\text(BDFM1) \otimes P2)$, $p \in DG1$
   \begin{columns}
     \begin{column}{0.75\textwidth}
       \begin{tikzpicture}
-        \begin{semilogyaxis}[title={Convergence with $\text{CFL} = 8$,
-            high-order}, title style={align=left},
-          xlabel={Iterations}, ylabel={Relative
-            residual}, legend entries={Custom MG ($11.1$s), Single
-            level ($22.7$s),
-            PETSc MG ($12.2$s)}]
-          \addplot+[only marks] table [x=iterations, y=residual]
-          {\jobname.figures/mf-ho.dat};
+        \begin{semilogyaxis}[
+          decent,
+          title={Convergence with $\text{CFL} = 8$, high-order\\
+            $\vec{v} \in \texttt{HDiv}(\text{BDFM1} \otimes \text{P}2)$, $p \in \text{DG}1$},
+          title style={align=center},
+          xlabel={Iterations},
+          ylabel={Relative residual},
+          legend entries={
+            Single level ($22.7$s),
+            Custom MG ($11.1$s),
+            PETSc MG ($12.2$s)}
+          ]
 
           \addplot+[only marks] table [x=iterations, y=residual]
           {\jobname.figures/single-level-ho.dat};
+
+          \addplot+[only marks] table [x=iterations, y=residual]
+          {\jobname.figures/mf-ho.dat};
 
           \addplot+[only marks] table [x=iterations, y=residual]
           {\jobname.figures/petsc-ho.dat};
@@ -369,54 +415,85 @@ op2.par_loop(kernel, hostmesh.cell_set,
       \end{tikzpicture}
     \end{column}
     \begin{column}{0.25\textwidth}
-      $7.9\cdot 10^6$ total unknowns.
+      $7.9\cdot 10^6$ total unknowns.\\
+      24 cores.
     \end{column}
   \end{columns}
-  % CFL variation + time
-
-  % Mesh independence
-
 \end{frame}
 
 \begin{frame}[t]
   \frametitle{Varying CFL}
-  \begin{center}
   \begin{tikzpicture}[scale=0.65]
-    \begin{groupplot}[group style={group size=2 by 1, horizontal sep=2cm}],
-      \nextgroupplot[xmode=log,xlabel=CFL ($\Delta t/\Delta x$),
-      ylabel=V cycles,
+    \begin{groupplot}[
+      group style={
+        group size=2 by 1,
+        horizontal sep=2cm}
+      ],
+
+      \nextgroupplot[
+      decent,
+      xmode=log,
+      xlabel={CFL ($\Delta t/\Delta x$)},
+      ylabel=Iterations,
       log basis x=2,
-      legend entries={Custom MG (LO), Custom MG (HO),
-        PETSc MG (LO), PETSc MG (HO)},
-      legend style={legend to name=grouplegend, legend columns=2}]
-      \addplot+[line width=2pt, solid, blue, mark=*, mark options={fill=blue}] table [x=CFL, y=its] {\jobname.figures/mf-lo-cfl.dat};
-      \addplot+[line width=2pt, dashed, blue, mark=*, mark options={fill=blue}] table [x=CFL, y=its] {\jobname.figures/mf-ho-cfl.dat};
-      \addplot+[line width=2pt, solid, brown, mark=square*, mark options={fill=brown}] table [x=CFL, y=its] {\jobname.figures/petsc-lo-cfl.dat};
-      \addplot+[line width=2pt, dashed, brown, mark=square*, mark options={fill=brown}] table [x=CFL, y=its] {\jobname.figures/petsc-ho-cfl.dat};
-      \nextgroupplot[xmode=log,xlabel=CFL ($\Delta t/\Delta x$),
+      ymax=100,
+      legend entries={
+        Single level (LO),
+        Custom MG (LO),
+        PETSc MG (LO),
+        Single level (HO),
+        Custom MG (HO),
+        PETSc MG (HO)},
+      legend style={legend to name=grouplegend, legend columns=3}
+      ]
+
+      \addplot+[line width=2pt, solid] table [x=CFL, y=its] {\jobname.figures/single-lo-cfl.dat};
+      \addplot+[line width=2pt, solid] table [x=CFL, y=its] {\jobname.figures/mf-lo-cfl.dat};
+      \addplot+[line width=2pt, solid] table [x=CFL, y=its] {\jobname.figures/petsc-lo-cfl.dat};
+
+      \addplot+[line width=2pt, dashed] table [x=CFL, y=its] {\jobname.figures/single-ho-cfl.dat};
+      \addplot+[line width=2pt, dashed] table [x=CFL, y=its] {\jobname.figures/mf-ho-cfl.dat};
+      \addplot+[line width=2pt, dashed] table [x=CFL, y=its] {\jobname.figures/petsc-ho-cfl.dat};
+
+      \nextgroupplot[
+      decent,
+      xmode=log,
+      xlabel={CFL ($\Delta t/\Delta x$)},
       ylabel=Time (s),
-      log basis x=2]
-      \addplot+[line width=2pt, solid, blue, mark=*, mark options={fill=blue}] table [x=CFL, y=Time] {\jobname.figures/mf-lo-cfl.dat};
-      \addplot+[line width=2pt, dashed, blue, mark=*, mark options={fill=blue}] table [x=CFL, y=Time] {\jobname.figures/mf-ho-cfl.dat};
-      \addplot+[line width=2pt, solid, brown, mark=square*, mark options={fill=brown}] table [x=CFL, y=Time] {\jobname.figures/petsc-lo-cfl.dat};
-      \addplot+[line width=2pt, dashed, brown, mark=square*, mark options={fill=brown}] table [x=CFL, y=Time] {\jobname.figures/petsc-ho-cfl.dat};
+      ymax=30,
+      log basis x=2
+      ]
+      \addplot+[line width=2pt, solid] table [x=CFL, y=Time] {\jobname.figures/single-lo-cfl.dat};
+
+      \addplot+[line width=2pt, solid] table [x=CFL, y=Time] {\jobname.figures/mf-lo-cfl.dat};
+      \addplot+[line width=2pt, solid] table [x=CFL, y=Time] {\jobname.figures/petsc-lo-cfl.dat};
+
+      \addplot+[line width=2pt, dashed] table [x=CFL, y=Time] {\jobname.figures/single-ho-cfl.dat};
+      \addplot+[line width=2pt, dashed] table [x=CFL, y=Time] {\jobname.figures/mf-ho-cfl.dat};
+      \addplot+[line width=2pt, dashed] table [x=CFL, y=Time] {\jobname.figures/petsc-ho-cfl.dat};
     \end{groupplot}
-    \node at ($(group c1r1)!0.5!(group c2r1) + (0,-5cm)$) {\ref{grouplegend}}; 
+    \node at ($(group c1r1)!0.5!(group c2r1) + (0,-6cm)$) {\ref{grouplegend}};
   \end{tikzpicture}
-  \end{center}
 \end{frame}
 
 \begin{frame}
   \frametitle{Weak scaling}
   \begin{tikzpicture}[scale=0.65]
-    \begin{groupplot}[group style={group size=2 by 1, horizontal sep=2cm}],
+    \begin{groupplot}[
+      group style={
+        group size=2 by 1,
+        horizontal sep=2cm}
+      ],
 
-      \nextgroupplot[xmode=log,
+      \nextgroupplot[
+      decent,
+      xmode=log,
       xlabel=Num processes,
       ylabel=Time (s),
       align=center,
       title={Low order\\(Total DoFs)},
       title style={yshift=2ex},
+      ymin=0,
       xtick={1, 6, 24, 96, 384, 1536},
       xticklabels from table={\jobname.figures/mf-weak-lo.dat}{Np},
       extra x ticks={1, 6, 24, 96, 384, 1536},
@@ -429,15 +506,20 @@ op2.par_loop(kernel, hostmesh.cell_set,
                            3e8,
                            1e9},
       legend entries={Custom MG, PETSc MG},
-      legend style={legend to name=grouplegend2, legend columns=2}]
-      \addplot+[line width=2pt, blue, mark=*, mark options={fill=blue}] table [x=Np, y=Time] {\jobname.figures/mf-weak-lo.dat};
-      \addplot+[line width=2pt, brown, mark=square, mark options={fill=brown}] table [x=Np, y=Time] {\jobname.figures/petsc-weak-lo.dat};
+      legend style={legend to name=grouplegend2, legend columns=2}
+      ]
 
-      \nextgroupplot[xmode=log,xlabel=Num processes,
+      \addplot+[line width=2pt] table [x=Np, y=Time] {\jobname.figures/mf-weak-lo.dat};
+      \addplot+[line width=2pt] table [x=Np, y=Time] {\jobname.figures/petsc-weak-lo.dat};
+
+      \nextgroupplot[
+      decent,
+      xmode=log,xlabel=Num processes,
       title={High order\\(Total DoFs)},
       align=center,
       title style={yshift=2ex},
       xtick={1, 6, 24, 96, 384, 1536, 6144},
+      ymin=0,
       xticklabels from table={\jobname.figures/mf-weak-ho.dat}{Np},
       extra x ticks={1, 6, 24, 96, 384, 1536, 6144},
       extra x tick style={ticklabel pos=right,
@@ -448,18 +530,20 @@ op2.par_loop(kernel, hostmesh.cell_set,
                            3e7,
                            1e8,
                            5e8,
-                           2e9}]
-      \addplot+[line width=2pt, blue, mark=*, mark options={fill=blue}] table [x=Np, y=Time] {\jobname.figures/mf-weak-ho.dat};
-      \addplot+[line width=2pt, brown, mark=square, mark options={fill=brown}] table [x=Np, y=Time] {\jobname.figures/petsc-weak-ho.dat};
+                           2e9}
+      ]
+
+      \addplot+[line width=2pt] table [x=Np, y=Time] {\jobname.figures/mf-weak-ho.dat};
+      \addplot+[line width=2pt] table [x=Np, y=Time] {\jobname.figures/petsc-weak-ho.dat};
     \end{groupplot}
-    \node at ($(group c1r1)!0.5!(group c2r1) + (0,-5cm)$) {\ref{grouplegend2}}; 
+    \node at ($(group c1r1)!0.5!(group c2r1) + (0,-5cm)$) {\ref{grouplegend2}};
   \end{tikzpicture}
 \end{frame}
 
 \begin{frame}
   \frametitle{Could we go faster?}
   Sparse matvec is memory bandwidth limited.  We count bytes moved
-  assuming a perfect cache.  
+  assuming a perfect cache.
 
   Achievable memory bandwidth for $a_i = \alpha b_i + c_i$ (STREAM triad) $74$GB/s.
 
@@ -484,6 +568,11 @@ op2.par_loop(kernel, hostmesh.cell_set,
   \begin{itemize}
   \item Scalable solver
   \item Performance within factor 2 of peak
+    \begin{itemize}
+    \item Probably 2x available with strong scaling
+    \item More with judicious low-level optimisation (operational
+      codes)
+    \end{itemize}
   \item Other approaches?
     \begin{itemize}
     \item $H(\div)$ multigrid \parencite{Arnold:2000}
