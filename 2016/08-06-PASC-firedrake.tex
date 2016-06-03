@@ -44,15 +44,22 @@
 \DeclareMathOperator{\div}{div}
 \DeclareMathOperator{\curl}{curl}
 \newcommand{\vsubset}[1]{\rotatebox[origin=c]{90}{\ensuremath{\subset}}}
+\newcommand{\inner}[2]{\ensuremath{\langle #1, #2 \rangle}}
 \author{Lawrence Mitchell\inst{1}}
-\institute{\inst{1}Departments of Computing and Mathematics, Imperial
-  College London}
+\institute{
+\inst{1}Departments of Computing and Mathematics, Imperial College
+London
+}
 
 \graphicspath{{./\jobname.figures/}}
 
 \newcommand{\arxivlink}[2]{%
   \href{http://www.arxiv.org/abs/#1}%
   {{\small\texttt{arXiv:\,#1\,[#2]}}}%
+}
+\newcommand{\doilink}[1]{%
+  \href{http://dx.doi.org/#1}%
+  {{\small\texttt{doi:\,#1}{}}}%
 }
 \usepackage[url=false,
             doi=true,
@@ -87,102 +94,231 @@
 
 \begin{document}
 \maketitle
-\begin{frame}
-  \frametitle{Firedrake team}
-  David Ham, Mikl\'os Homolya, Fabio Luporini, Gheorghe-Teodor Bercea,
-  Paul Kelly (Imperial College London)\\
-  Andrew McRae (University of Bath)\\
-  Florian Rathgeber (ECMWF).
 
-  \url{www.firedrakeproject.org}\\
-  \url{github.com/firedrakeproject/firedrake}
+\section{Introduction}
+
+\begin{frame}
+  \frametitle{Firedrake development team}
+  \begin{itemize}
+  \item[IC] David A.~Ham, Mikl\'os Homolya, Fabio Luporini, Gheorghe-Teodor
+    Bercea, Paul H.~J.~Kelly
+  \item[Bath] Andrew T.~T.~McRae
+  \item[ECMWF] Florian Rathgeber
+  \end{itemize}
+  \begin{center}
+    \url{www.firedrakeproject.org}
+  \end{center}
 \end{frame}
 
+\begin{frame}[fragile]
+  \frametitle{How do \emph{you} solve the Poisson equation?}
+  \begin{columns}
+    \begin{column}{0.65\textwidth}
+\begin{minted}[fontsize=\tiny]{python}
+from firedrake import *
+mesh = UnitSquareMesh(100, 100)
+V = FunctionSpace(mesh, "RT", 2)
+Q = FunctionSpace(mesh, "DG", 1)
+W = V*Q
+u, p = TrialFunctions(W)
+v, q = TestFunctions(W)
+
+a = dot(u, v)*dx + div(v)*p*dx + div(u)*q*dx
+L = -Constant(1)*v*dx
+u = Function(W)
+solve(a == L, u, solver_parameters={
+    "ksp_type": "gmres", 
+    "ksp_rtol": 1e-8,
+    "pc_type": "fieldsplit",
+    "pc_fieldsplit_type": "schur",
+    "pc_fieldsplit_schur_fact_type": "full",
+    "pc_fieldsplit_schur_precondition": "selfp",
+    "fieldsplit_0_ksp_type": "preonly",
+    "fieldsplit_0_pc_type": "ilu",
+    "fieldsplit_1_ksp_type": "preonly",
+    "fieldsplit_1_pc_type": "hypre"
+})
+\end{minted}
+    \end{column}
+    \hspace{-4em}
+    \begin{column}{0.5\textwidth}
+      Find $u\in V\times Q\subset H(\div)\times L^2$ s.t.
+      \begin{align*}
+        \inner{u}{v} + \inner{\div v}{p} &= 0 \quad\forall\, v \in V\\
+        \inner{\div u}{q} &= -\inner{1}{q}\quad\forall\, q \in Q.
+      \end{align*}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+
 \begin{frame}
-  \frametitle{Automated finite elements?}
   How do we develop models?
 
   \begin{itemize}
   \item Choose equations
   \item Pick method/discretisation
-  \item Decide on implementation language, target architecture?
+  \item Decide on implementation language, target architecture
   \item Write code to implement method
   \end{itemize}
 \end{frame}
 
-\begin{frame}
-  \frametitle{Traditional implementation}
-
-Numerics intertwined with implementation
-
-Difficult to programmatically apply optimisations
-
-Mathematical structure often lost
-\end{frame}
-
-\begin{frame}
-  \frametitle{Generative programming}
-  Capture appropriate abstraction.
-
-  Synthesise low-level code with special-purpose compilers
-\end{frame}
-
-\begin{frame}
-  \frametitle{An example}
-  
-  \begin{block}{The Monge-Amp\`ere equation}
-    \begin{align*}
-      \sigma &= D^2 u,\\
-      \det(I + \sigma) &= f.
-    \end{align*}
-    Weak formulation, find $(u, \sigma) \in V \times \Sigma$ s.t.
-    \begin{align*}
-   \int_\Omega \tau:(\sigma + D^2u)\,\text{d}x
-   - \int_{\partial\Omega} \tau_{12}n_2u_x + \tau_{21}n_1u_y\,\text{d}s
-     =0, \quad \forall \tau \in \Sigma\\
-   \int_\Omega v\det(I + \sigma)\,\text{d}x = \int_\Omega
-   fv\,\text{d}x \quad \forall v \in V.
-    \end{align*}
-  \end{block}
-\end{frame}
 \begin{frame}[fragile]
-  \frametitle{Implementation}
+  \frametitle{FEM pseudocode}
+
+  \begin{onlyenv}<1>
 \begin{minted}[fontsize=\tiny]{python}
-from firedrake import *
-mesh = UnitSquareMesh(100, 100, quadrilateral=True)
-V = FunctionSpace(mesh, "CG", 2)
-Sigma = TensorFunctionSpace(mesh, "CG", 2)
-W = V*Sigma
-f = Function(V)
-v, tau = TestFunctions(W)
-w = Function(W)
-u, sigma = split(w)
-n = FacetNormal(mesh)
-I = Identity(mesh.geometric_dimension())
-
-F = (inner(sigma, tau)*dx - (det(I + sigma) - f)*v*dx +
-     inner(div(tau), grad(u))*dx -
-     (tau[0, 1]*n[1]*u.dx(0) + tau[1, 0]*n[0]*u.dx(1))*ds)
-
-solve(F == 0, w, ...)
+# x the input fields (e.g. current guess)
+def form_residual(x):
+    x_l <- x # global to ghosted
+    for each element in mesh:
+        x_e <- x_l[element] # gather through element map
+        for each qp in element:
+            basis_fns <- eval_basis_funs(qp)
+            J <- compute_geometry(element, qp)
+            f_qp <- user_evaluation(qp, basis_fns, x_e)
+            # insert into element residual
+            f_e <- transform_to_physical(f_qp, J)
+        f_l <- f_e # scatter through element map
+    f <- f_l # ghosted to global
 \end{minted}
+  \end{onlyenv}
+
+  \begin{onlyenv}<2>
+\begin{minted}[fontsize=\tiny]{python}
+            f_qp <- user_evaluation(qp, basis_fns, x_e)
+\end{minted}
+    \begin{itemize}
+    \item Problem-specific variability in \emph{innermost} loop
+    \item Efficient implementation may need to:
+      \begin{itemize}
+      \item vectorize across elements,
+      \item vectorize within an element,
+      \item exchange loop order,
+      \item hoist loop-invariant code,
+      \item exploit structure in basis functions.
+      \item Choices \emph{will} almost certainly be architecture-dependent.
+      \end{itemize}
+    \end{itemize}
+  \end{onlyenv}
 \end{frame}
 
 \begin{frame}[standout]
   Say \emph{what}, not \emph{how}.
 \end{frame}
+
 \begin{frame}
   \includegraphics[width=\textwidth]{firedrake-stack}
 \end{frame}
 
+\section{Local kernels}
+
 \begin{frame}
-  \frametitle{Form compilation}
+  \frametitle{FE compiler}
+  Symbolic UFL expression defines \emph{local} (element-wise)
+  operation.
+
+  Compilation to executable code is a three-stage process.
+  \begin{enumerate}
+  \item Remove FE-specific parts in symbolic expression (insert basis
+    function evaluation...)
+  \item Build loop nest from tensor-algebra expressions
+  \item Optimise resulting loop nest and spit out C/intrinsics
+  \end{enumerate}
+  \begin{center}
+    \url{github.com/firedrakeproject/tsfc}
+  \end{center}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{COFFEE}
+  
   No single optimal scheduling of loop nests that occur in finite
   element integration.  Depends on degree, form complexity, basis
   function structure.
 
-  \cite{Luporini:2016} \arxivlink{1604.05872}{cs.MS}
+  By generating code and passing to a special-purpose optimising
+  compiler, we are able to achieve significant reductions in operation
+  counts.  Mostly through judicious use of loop-invariant code motion
+  and CSE.
+
+%   empirical:
+  
+% \begin{minted}[fontsize=\tiny]{python}
+% for i in ...:
+%    for j in ...:
+%       for k in ...:
+%           A[j, k] += f(i, k)*g(i, j) + ...
+% \end{minted}
+
+% General purpose compilers will hoist \verb~g(i, j)~, but not \verb~f(i, k)~.
+  \begin{center}
+    \url{github.com/coneoproject/COFFEE}\\
+    \cite{Luporini:2015} \doilink{10.1145/2687415}
+    \cite{Luporini:2016} \arxivlink{1604.05872}{cs.MS}\\
+  \end{center}
 \end{frame}
+\section{Global iteration}
+
+\begin{frame}[fragile]
+  \frametitle{PyOP2}
+  A library for expressing data parallel iterations
+\begin{description}
+\item[{\emph{Sets}}] iterable entities
+\item[{\emph{Dats}}] abstract managed arrays (data defined on a set)
+\item[{\emph{Maps}}] relationships between elements of sets
+\item[{\emph{Kernels}}] the "local" computation
+\item[{\emph{par\_loop}}] Data parallel iteration over a set
+\end{description}
+Arguments to parallel loop indicate how to gather/scatter global
+data using \emph{access descriptors}
+
+\begin{minted}[fontsize=\tiny]{python}
+par\_loop(kernel, iterset, data1(map1, READ), data2(map2, WRITE))
+\end{minted}
+\begin{center}
+  \url{github.com/OP2/PyOP2}\\
+  \cite{Rathgeber:2012} \doilink{10.1109/SC.Companion.2012.134}
+\end{center}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Optimising mesh iteration}
+  We all know we \emph{ought} to do loop tiling
+  \begin{itemize}
+  \item Better data reuse/locality
+  \item Can hide communication latency
+  \end{itemize}
+  But it's very invasive to an application (especially an unstructured
+  one).
+
+  PyOP2 approach makes it possible to provide loop tiling in a
+  semi-automated way within the library.
+
+  Application code does ``whatever'', PyOP2 sees a sequence of
+  parallel loops with data dependencies.  Can tile over multiple
+  loops.
+\end{frame}
+
+
+\section{Symbolic computation}
+
+\begin{frame}
+  \frametitle{Maintaining symbolic information}
+  Firedrake uses UFL \cite{Alnaes:2014} to specify problems
+
+  Can perform AD at a high level, resulting in efficient code for
+  adjoints, etc...
+
+  Can produce matrix-free with low-order preconditioners
+  ``automatically''.  Symbolic reasoning and composition of solvers,
+  rather than just algebraic manipulation (all that is available with
+  assembled matrices).
+  Allows symbolically, rather than just algebraically, expressing
+  complex solvers (WIP, with Rob Kirby (Baylor)).
+\end{frame}
+
+
 
 \begin{frame}
   \frametitle{Mesh iteration}
@@ -201,8 +337,26 @@ solve(F == 0, w, ...)
   \frametitle{Solvers}
   
 \end{frame}
-\appendix
+
 \begin{frame}
+  \frametitle{Applications of Firedrake}
+  \begin{itemize}
+  \item Colin Cotter (Imperial College).  3D mimetic finite element
+    dynamical core for NWP
+  \item Onno Bokhove (University of Leeds). Freak waves,
+    fluid-structure interactions (boats in waves).
+  \item Justin Chang (University of Houston).  Positivity preserving
+    methods for advection-diffusion-reaction geochemical systems
+  \item Tuomas K\"arn\"a (Oregon Health and Science). 3D coastal and
+    estuarine ocean modelling
+  \item Andrew McRae, Chris Budd (University of Bath).  $r-$adaptivity
+    on the sphere.
+  \item Francis Poulin (University of Waterloo).  Stability of jets
+    and vortices in the ocean.
+  \end{itemize}
+\end{frame}
+\appendix
+\begin{frame}[allowframebreaks]
   \frametitle{References}
   \printbibliography[heading=none]
 \end{frame}
