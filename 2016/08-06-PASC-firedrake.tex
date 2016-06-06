@@ -70,7 +70,7 @@ London
             backend=biber]{biblatex}
 
 \setbeamertemplate{bibliography item}{}
-\renewcommand{\bibfont}{\footnotesize}
+\renewcommand{\bibfont}{\scriptsize}
 \addbibresource{references.bib}
 
 \setlength{\bibitemsep}{1ex}
@@ -95,8 +95,6 @@ London
 \begin{document}
 \maketitle
 
-\section{Introduction}
-
 \begin{frame}
   \frametitle{Firedrake development team}
   \begin{itemize}
@@ -106,9 +104,12 @@ London
   \item[ECMWF] Florian Rathgeber
   \end{itemize}
   \begin{center}
-    \url{www.firedrakeproject.org}
+    \uncover<2->{\url{www.firedrakeproject.org}}\\
+    \uncover<3->{\cite{Rathgeber:2015} \arxivlink{1501.01809}{cs.MS}}
   \end{center}
 \end{frame}
+
+\section{The right abstraction level}
 
 \begin{frame}[fragile]
   \frametitle{How do \emph{you} solve the Poisson equation?}
@@ -153,21 +154,42 @@ solve(a == L, u, solver_parameters={
 
 
 \begin{frame}
-  How do we develop models?
+  \frametitle{Developing models}
 
   \begin{itemize}
   \item Choose equations
   \item Pick method/discretisation
   \item Decide on implementation language, target architecture
-  \item Write code to implement method
+  \item Write code
   \item ...
-  \item Change things, fix bits up.
+  \item Write more code
+  \item ...
+  \item Profit?
   \end{itemize}
 \end{frame}
 
+\begin{frame}
+  \frametitle{Experimentation should be easy}
+  How much code do you need to change to
+  \begin{itemize}
+  \item Change preconditioner (e.g.~ILU to AMG)?
+  \item Drop terms in the preconditioning operator?
+  \item Use a completely different operator to precondition?
+  \item Do quasi-Newton with an approximate Jacobian?
+  \item Apply operators matrix-free?
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}[standout]
+  \only<1>{Can we offer easy experimentation without compromising performance?}
+  \only<2>{Can we offer easy experimentation without compromising
+    performance \emph{too much}?}
+\end{frame}
+
+
 \begin{frame}[fragile]
   \frametitle{FEM pseudocode}
-
   \begin{onlyenv}<1>
 \begin{minted}[fontsize=\tiny]{python}
 # x the input fields (e.g. current guess)
@@ -227,11 +249,10 @@ def form_residual(x):
 
   A \emph{form compiler} translates this to low-level executable code
   for evaluating the integral on an element.
-
 \end{frame}
 
 \begin{frame}[fragile]
-  \frametitle{A simple example}
+  \frametitle{An example}
   \begin{columns}
     \begin{column}{0.5\textwidth}
 \begin{minted}[fontsize=\tiny]{python}
@@ -270,147 +291,147 @@ void integral(double A[6][6],
     \end{column}
   \end{columns}
 \end{frame}
-\begin{frame}[fragile]
-  \frametitle{... and a complex one}
-  \begin{onlyenv}<1>
-\begin{minted}[fontsize=\tiny]{python}
-mesh = UnitTriangleMesh()
-V = VectorFunctionSpace(mesh, "CG", 2)
-P = VectorFunctionSpace(mesh, "CG", 2)
-v = TestFunction(V)
-du = TrialFunction(V)  # Incremental displacement
-u = Function(V)        # Displacement from previous iteration
-B = Function(V)        # Body force per unit mass
-# Kinematics
-I = Identity(v.cell().topological_dimension())
-F=I+grad(u)
-C = F.T*F
-E = (C - I)/2
-E = variable(E)
-# Material constants
-mu = Constant(1.0)
-lmbda = Constant(0.001)
-# Strain energy function (material model) 
-psi = lmbda/2*(tr(E)**2) + mu*tr(E*E)
-S = diff(psi, E)       # Second Piola-Kirchhoff stress tensor
-PK = F*S               # First Piola-Kirchoff stress tensor
-# Variational problem
-a = derivative((inner(PK, grad(v)) - inner(B, v))*dx, u, du)
-\end{minted}
-  \end{onlyenv}
-  \begin{onlyenv}<2>
-{\fontsize{3pt}{4pt}\selectfont
-\begin{columns}
-\begin{column}{0.5\textwidth}
-\begin{minted}{c}
-void integral(double A[12][12], const double *restrict coords[6],
-              const double *restrict w_0[12],
-              const double w_1[1],
-              const double w_2[1])
-{
-  double t0 = (-1 * coords[0][0]);
-  double t1 = (t0 + (1 * coords[1][0]));
-  double t2 = (-1 * coords[3][0]);
-  double t3 = (t2 + (1 * coords[5][0]));
-  double t4 = (t0 + (1 * coords[2][0]));
-  double t5 = (t2 + (1 * coords[4][0]));
-  double t6 = ((t1 * t3) + (-1 * t4 * t5));
-  double t7 = fabs(t6);
-  static const double t8[6]  = {...};
-  double t9 = (w_2[0] / 2);
-  double t10 = (1 * 1);
-  double t11 = (2 * t10);
-  double t12 = (-1 * 1);
-  double t13 = (t1 / t6);
-  double t14 = ((-1 * t4) / t6);
-  double t15 = ((-1 * t5) / t6);
-  double t16 = (t3 / t6);
-  static const double t17[6][12] = {...};
-  static const double  t18[6][12]  = {...};
-  static const double  t19[6][12]  = {...};
-  static const double  t20[6][12]  = {...};
-  for (int  ip  = 0; ip < 6; ip += 1) {
-    double  t59[12] ;
-    double  t60[12] ;
-    double  t65[12] ;
-    double  t66[12] ;
-    double  t24  = 0.0;
-    double  t23  = 0.0;
-    double  t22  = 0.0;
-    double  t21  = 0.0;
-    for (int  i_0  = 0; i_0 < 12; i_0 += 1) {
-      t21 += t20[ip][i_0] * w_0[i_0][0];
-      t22 += t19[ip][i_0] * w_0[i_0][0];
-      t23 += t18[ip][i_0] * w_0[i_0][0];
-      t24 += t17[ip][i_0] * w_0[i_0][0];
-    }
-    double  t25  = (1 + (t16 * t24) + (t15 * t23));
-    double  t26  = ((t14 * t24) + (t13 * t23));
-    double  t27  = ((t16 * t22) + (t15 * t21));
-    double  t28  = (1 + (t14 * t22) + (t13 * t21));
-    double  t29  = (t10 * (((t25 * t26) + (t27 * t28)) / 2));
-    double  t30  = ((t29 + t29) * w_1[0]);
-    double  t31  = ((t12 + (t25 * t25) + (t27 * t27)) / 2);
-    double  t32  = ((t12 + (t26 * t26) + (t28 * t28)) / 2);
-    double  t33  = (t11 * (t31 + t32) * t9);
-    double  t34  = (t10 * t31);
-\end{minted}
-\end{column}
-\begin{column}{0.5\textwidth}
-\begin{minted}{c}
-    double  t35  = (t33 + ((t34 + t34) * w_1[0]));
-    double  t36  = (t10 * t32);
-    double  t37  = (t33 + ((t36 + t36) * w_1[0]));
-    double  t38  = (t10 * (((t26 * t25) + (t28 * t27)) / 2));
-    double  t39  = ((t38 + t38) * w_1[0]);
-    for (int  k  = 0; k < 12; k += 1) {
-      double  t40  = ((t16 * t19[ip][k]) + (t15 * t20[ip][k]));
-      double  t41  = ((t14 * t17[ip][k]) + (t13 * t18[ip][k]));
-      double  t42  = (t41 * t25);
-      double  t43  = ((t16 * t17[ip][k]) + (t15 * t18[ip][k]));
-      double  t44  = (t43 * t26);
-      double  t45  = ((t14 * t19[ip][k]) + (t13 * t20[ip][k]));
-      double  t46  = (t45 * t27);
-      double  t47  = (t40 * t28);
-      double  t48  = (t10 * ((t42 + t44 + t46 + t47) / 2));
-      double  t49  = ((t48 + t48) * w_1[0]);
-      double  t50  = (t43 * t25);
-      double  t51  = (t40 * t27);
-      double  t52  = ((t50 + t50 + t51 + t51) / 2);
-      double  t53  = (t41 * t26);
-      double  t54  = (t45 * t28);
-      double  t55  = ((t53 + t53 + t54 + t54) / 2);
-      double  t56  = (t11 * (t52 + t55) * t9);
-      double  t57  = (t10 * t55);
-      double  t58  = (t56 + ((t57 + t57) * w_1[0]));
-      t59[k] = (t40 * t39) + (t49 * t27) + (t45 * t37) + (t58 * t28);
-      t60[k] = (t43 * t39) + (t49 * t25) + (t41 * t37) + (t58 * t26);
-      double  t61  = (t10 * t52);
-      double  t62  = (t56 + ((t61 + t61) * w_1[0]));
-      double  t63  = (t10 * ((t44 + t42 + t47 + t46) / 2));
-      double  t64  = ((t63 + t63) * w_1[0]);
-      t65[k] = (t40 * t35) + (t62 * t27) + (t45 * t30) + (t64 * t28);
-      t66[k] = (t43 * t35) + (t62 * t25) + (t41 * t30) + (t64 * t26);
-    }
-    double  t67  = (t8[ip] * t7);
-    for (int  j  = 0; j < 12; j += 1) {
-      double  t68  = ((t14 * t19[ip][j]) + (t13 * t20[ip][j]));
-      double  t69  = ((t14 * t17[ip][j]) + (t13 * t18[ip][j]));
-      double  t70  = ((t16 * t19[ip][j]) + (t15 * t20[ip][j]));
-      double  t71  = ((t16 * t17[ip][j]) + (t15 * t18[ip][j]));
-      for (int  k  = 0; k < 12; k += 1) {
-        A[j][k] += t67 * ((t66[k] * t71) + (t65[k] * t70) +
-                          (t60[k] * t69) + (t59[k] * t68));
-      }
-    }
-  }
-}
-\end{minted}
-\end{column}
-\end{columns}
-}
-  \end{onlyenv}
-\end{frame}
+% \begin{frame}[fragile]
+%   \frametitle{... and a complex one}
+%   \begin{onlyenv}<1>
+% \begin{minted}[fontsize=\tiny]{python}
+% mesh = UnitTriangleMesh()
+% V = VectorFunctionSpace(mesh, "CG", 2)
+% P = VectorFunctionSpace(mesh, "CG", 2)
+% v = TestFunction(V)
+% du = TrialFunction(V)  # Incremental displacement
+% u = Function(V)        # Displacement from previous iteration
+% B = Function(V)        # Body force per unit mass
+% # Kinematics
+% I = Identity(v.cell().topological_dimension())
+% F=I+grad(u)
+% C = F.T*F
+% E = (C - I)/2
+% E = variable(E)
+% # Material constants
+% mu = Constant(1.0)
+% lmbda = Constant(0.001)
+% # Strain energy function (material model) 
+% psi = lmbda/2*(tr(E)**2) + mu*tr(E*E)
+% S = diff(psi, E)       # Second Piola-Kirchhoff stress tensor
+% PK = F*S               # First Piola-Kirchoff stress tensor
+% # Variational problem
+% a = derivative((inner(PK, grad(v)) - inner(B, v))*dx, u, du)
+% \end{minted}
+%   \end{onlyenv}
+%   \begin{onlyenv}<2>
+% {\fontsize{3pt}{4pt}\selectfont
+% \begin{columns}
+% \begin{column}{0.5\textwidth}
+% \begin{minted}{c}
+% void integral(double A[12][12], const double *restrict coords[6],
+%               const double *restrict w_0[12],
+%               const double w_1[1],
+%               const double w_2[1])
+% {
+%   double t0 = (-1 * coords[0][0]);
+%   double t1 = (t0 + (1 * coords[1][0]));
+%   double t2 = (-1 * coords[3][0]);
+%   double t3 = (t2 + (1 * coords[5][0]));
+%   double t4 = (t0 + (1 * coords[2][0]));
+%   double t5 = (t2 + (1 * coords[4][0]));
+%   double t6 = ((t1 * t3) + (-1 * t4 * t5));
+%   double t7 = fabs(t6);
+%   static const double t8[6]  = {...};
+%   double t9 = (w_2[0] / 2);
+%   double t10 = (1 * 1);
+%   double t11 = (2 * t10);
+%   double t12 = (-1 * 1);
+%   double t13 = (t1 / t6);
+%   double t14 = ((-1 * t4) / t6);
+%   double t15 = ((-1 * t5) / t6);
+%   double t16 = (t3 / t6);
+%   static const double t17[6][12] = {...};
+%   static const double  t18[6][12]  = {...};
+%   static const double  t19[6][12]  = {...};
+%   static const double  t20[6][12]  = {...};
+%   for (int  ip  = 0; ip < 6; ip += 1) {
+%     double  t59[12] ;
+%     double  t60[12] ;
+%     double  t65[12] ;
+%     double  t66[12] ;
+%     double  t24  = 0.0;
+%     double  t23  = 0.0;
+%     double  t22  = 0.0;
+%     double  t21  = 0.0;
+%     for (int  i_0  = 0; i_0 < 12; i_0 += 1) {
+%       t21 += t20[ip][i_0] * w_0[i_0][0];
+%       t22 += t19[ip][i_0] * w_0[i_0][0];
+%       t23 += t18[ip][i_0] * w_0[i_0][0];
+%       t24 += t17[ip][i_0] * w_0[i_0][0];
+%     }
+%     double  t25  = (1 + (t16 * t24) + (t15 * t23));
+%     double  t26  = ((t14 * t24) + (t13 * t23));
+%     double  t27  = ((t16 * t22) + (t15 * t21));
+%     double  t28  = (1 + (t14 * t22) + (t13 * t21));
+%     double  t29  = (t10 * (((t25 * t26) + (t27 * t28)) / 2));
+%     double  t30  = ((t29 + t29) * w_1[0]);
+%     double  t31  = ((t12 + (t25 * t25) + (t27 * t27)) / 2);
+%     double  t32  = ((t12 + (t26 * t26) + (t28 * t28)) / 2);
+%     double  t33  = (t11 * (t31 + t32) * t9);
+%     double  t34  = (t10 * t31);
+% \end{minted}
+% \end{column}
+% \begin{column}{0.5\textwidth}
+% \begin{minted}{c}
+%     double  t35  = (t33 + ((t34 + t34) * w_1[0]));
+%     double  t36  = (t10 * t32);
+%     double  t37  = (t33 + ((t36 + t36) * w_1[0]));
+%     double  t38  = (t10 * (((t26 * t25) + (t28 * t27)) / 2));
+%     double  t39  = ((t38 + t38) * w_1[0]);
+%     for (int  k  = 0; k < 12; k += 1) {
+%       double  t40  = ((t16 * t19[ip][k]) + (t15 * t20[ip][k]));
+%       double  t41  = ((t14 * t17[ip][k]) + (t13 * t18[ip][k]));
+%       double  t42  = (t41 * t25);
+%       double  t43  = ((t16 * t17[ip][k]) + (t15 * t18[ip][k]));
+%       double  t44  = (t43 * t26);
+%       double  t45  = ((t14 * t19[ip][k]) + (t13 * t20[ip][k]));
+%       double  t46  = (t45 * t27);
+%       double  t47  = (t40 * t28);
+%       double  t48  = (t10 * ((t42 + t44 + t46 + t47) / 2));
+%       double  t49  = ((t48 + t48) * w_1[0]);
+%       double  t50  = (t43 * t25);
+%       double  t51  = (t40 * t27);
+%       double  t52  = ((t50 + t50 + t51 + t51) / 2);
+%       double  t53  = (t41 * t26);
+%       double  t54  = (t45 * t28);
+%       double  t55  = ((t53 + t53 + t54 + t54) / 2);
+%       double  t56  = (t11 * (t52 + t55) * t9);
+%       double  t57  = (t10 * t55);
+%       double  t58  = (t56 + ((t57 + t57) * w_1[0]));
+%       t59[k] = (t40 * t39) + (t49 * t27) + (t45 * t37) + (t58 * t28);
+%       t60[k] = (t43 * t39) + (t49 * t25) + (t41 * t37) + (t58 * t26);
+%       double  t61  = (t10 * t52);
+%       double  t62  = (t56 + ((t61 + t61) * w_1[0]));
+%       double  t63  = (t10 * ((t44 + t42 + t47 + t46) / 2));
+%       double  t64  = ((t63 + t63) * w_1[0]);
+%       t65[k] = (t40 * t35) + (t62 * t27) + (t45 * t30) + (t64 * t28);
+%       t66[k] = (t43 * t35) + (t62 * t25) + (t41 * t30) + (t64 * t26);
+%     }
+%     double  t67  = (t8[ip] * t7);
+%     for (int  j  = 0; j < 12; j += 1) {
+%       double  t68  = ((t14 * t19[ip][j]) + (t13 * t20[ip][j]));
+%       double  t69  = ((t14 * t17[ip][j]) + (t13 * t18[ip][j]));
+%       double  t70  = ((t16 * t19[ip][j]) + (t15 * t20[ip][j]));
+%       double  t71  = ((t16 * t17[ip][j]) + (t15 * t18[ip][j]));
+%       for (int  k  = 0; k < 12; k += 1) {
+%         A[j][k] += t67 * ((t66[k] * t71) + (t65[k] * t70) +
+%                           (t60[k] * t69) + (t59[k] * t68));
+%       }
+%     }
+%   }
+% }
+% \end{minted}
+% \end{column}
+% \end{columns}
+% }
+%   \end{onlyenv}
+% \end{frame}
 
 \begin{frame}
   \frametitle{Two-stage form compilation}
@@ -421,7 +442,9 @@ void integral(double A[12][12], const double *restrict coords[6],
   \item Apply optimisation passes to minimise operation count, make
     code amenable to vectorising compilers.
   \end{enumerate}
-
+  \uncover<+->{\centering
+    \url{github.com/firedrakeproject/tsfc}
+  }
 \end{frame}
 \begin{frame}
   \frametitle{Lowering FE}
@@ -445,50 +468,61 @@ void integral(double A[12][12], const double *restrict coords[6],
 \begin{frame}[fragile]
   \frametitle{Optimisation of finite element kernels}
   
-  \begin{problem}
+  \begin{problem}<+->
     Modern optimising compilers do a bad job on finite element
     kernels.
   \end{problem}
-  \begin{exampleblock}{Code motion (or not)}
-\begin{minted}[fontsize=\tiny]{c}
+  \begin{exampleblock}<+->{Code motion (or not?)}
+\begin{minted}[fontsize=\scriptsize]{c}
 for (i = 0; i < L; i++ )
    for (j = 0; j < M; j++)
       for (k = 0; k < N; k++)
          A[j][k] += f(i, j)*g(i, k)
 \end{minted}
   \end{exampleblock}
-  \begin{corollary}
+  \begin{corollary}<+->
     We need to spoon-feed the compiler already optimised code.
   \end{corollary}
 \end{frame}
-\begin{frame}
+\begin{frame}[allowframebreaks]
   \frametitle{COFFEE}
-  The cause of, and solution to, all of life's problems.
-  No single optimal scheduling of loop nests that occur in finite
-  element integration.  Depends on degree, form complexity, basis
-  function structure.
 
-  By generating code and passing to a special-purpose optimising
-  compiler, we are able to achieve significant reductions in operation
-  counts.  Mostly through judicious use of loop-invariant code motion
-  and CSE.
+  No single optimal schedule for evaluation of every finite element
+  kernel.  Variability in
+  \begin{itemize}
+  \item polynomial degree,
+  \item number of fields,
+  \item kernel complexity,
+  \item working set size,
+  \item structure in the basis functions,
+  \item structure in the quadrature points,
+  \item ...
+  \end{itemize}
+  We \emph{explore} (some of) this space using a special-purpose
+  compiler.
 
-%   empirical:
-  
-% \begin{minted}[fontsize=\tiny]{python}
-% for i in ...:
-%    for j in ...:
-%       for k in ...:
-%           A[j, k] += f(i, k)*g(i, j) + ...
-% \end{minted}
+\pagebreak
 
-% General purpose compilers will hoist \verb~g(i, j)~, but not \verb~f(i, k)~.
-  \begin{center}
-    \url{github.com/coneoproject/COFFEE}\\
-    \cite{Luporini:2015} \doilink{10.1145/2687415}
-    \cite{Luporini:2016} \arxivlink{1604.05872}{cs.MS}\\
-  \end{center}
+\begin{block}{Flop reduction}
+  Exploit \emph{linearity} in test functions to perform factorisation,
+  code motion and CSE.  
+
+Cost model: don't introduce mesh-sized
+  temporaries.\\
+  \cite{Luporini:2016} \arxivlink{1604.05872}{cs.MS}
+\end{block}
+
+\begin{block}{Vectorisation}
+  Align and pad data structures, then use intrinsics or rely on
+  compiler.  Experience, gcc-4.X \emph{really} doesn't want to
+  vectorise short loops!\\
+  \cite{Luporini:2015} \doilink{10.1145/2687415}
+\end{block}
+\begin{center}
+  \url{github.com/coneoproject/COFFEE}
+\end{center}
 \end{frame}
+
 \section{Global iteration}
 
 \begin{frame}[fragile]
@@ -498,94 +532,173 @@ for (i = 0; i < L; i++ )
 \item[{\emph{Sets}}] iterable entities
 \item[{\emph{Dats}}] abstract managed arrays (data defined on a set)
 \item[{\emph{Maps}}] relationships between elements of sets
-\item[{\emph{Kernels}}] the "local" computation
+\item[{\emph{Kernels}}] local computation
 \item[{\emph{par\_loop}}] Data parallel iteration over a set
 \end{description}
 Arguments to parallel loop indicate how to gather/scatter global
 data using \emph{access descriptors}
 
-\begin{minted}[fontsize=\tiny]{python}
-par\_loop(kernel, iterset, data1(map1, READ), data2(map2, WRITE))
+\begin{minted}[fontsize=\scriptsize]{python}
+par_loop(kernel, iterset, data1(map1, READ), data2(map2, WRITE))
 \end{minted}
-\begin{center}
-  \url{github.com/OP2/PyOP2}\\
-  \cite{Rathgeber:2012} \doilink{10.1109/SC.Companion.2012.134}
-\end{center}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Optimising mesh iteration}
-  We all know we \emph{ought} to do loop tiling
+  \frametitle{Key ideas}
+  \begin{block}{Local computation}
+    Kernels do not know about global data layout.
+    \begin{itemize}
+    \item Kernel defines contract on local, packed, ordering.
+    \item Global-to-local reordering/packing appears in map.
+    \end{itemize}
+  \end{block}
+  \begin{block}{``Implicit'' iteration}
+    Application code does not specify explicit iteration order.
+    \begin{itemize}
+    \item Define data structures, then just ``iterate''
+    \item Can't write Gauss-Seidel (for example)
+    \item Lazy evaluation
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}[allowframebreaks]
+  \frametitle{Tensions in model development}
+
+  \begin{block}{Performance}
+    \begin{itemize}
+    \item Keep data in cache as long as possible.  
+    \item Manually fuse kernels.
+    \item Loop tiling for latency hiding.
+    \item ...
+    \item Individual components hard to test
+    \item Space of optimisations suffers from combinatorial
+      explosion.
+    \end{itemize}
+  \end{block}
+
+\pagebreak
+  \begin{block}{Maintainability}
+    \begin{itemize}
+    \item Keep kernels separate
+    \item ``Straight-line'' code
+    \item ...
+    \item Testable
+    \item Performance of individual kernels may be good, but can throw
+      away \emph{a lot}
+    \end{itemize}
+  \end{block}
+
+\end{frame}
+\begin{frame}
+  \begin{exampleblock}{Lazy evaluation}
+    \begin{itemize}
+    \item \verb~par\_loop~ only executed ``when you look at the
+      data''.
+    \item PyOP2 sees sequence of loops, can reason about them for
+      \begin{itemize}
+      \item Loop fusion
+      \item Loop tiling
+      \item Communication coalescing
+      \end{itemize}
+    \end{itemize}
+  \end{exampleblock}
+
+  Application code does not change.  ``What, not how''.
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Another example: extruded meshes}
+  In many geophysical applications, meshes are topologically \emph{structured} in
+  the (short) vertical direction.
+
+  Can produce vertically structured dof-numbering, avoiding most of
+  the indirection penalty.
+
+  Only need to annotate data structures with this extra information.
+\begin{minted}[fontsize=\tiny]{python}
+s = Set(100) # Unstructured set
+e = ExtrudedSet(s, layers=...) # Semi-structured set
+d = DataSet(...)
+# values encode indirections on base set
+# offsets say how to move in the structured direction
+map = Map(e, d, values, offsets=[...])
+
+par_loop(kernel, e, data(map, WRITE), ...)
+\end{minted}
+\end{frame}
+
+\begin{frame}
+  \begin{center}
+    \includegraphics[height=0.8\textheight]{extruded-performance}
+
+    \cite{Bercea:2016} \arxivlink{1604.05937}{cs.MS}
+  \end{center}
+\end{frame}
+
+
+\section{Did we succeed?}
+
+\begin{frame}
+  \frametitle{Firedrake performance}
+  \begin{columns}
+    \begin{column}{0.7\textwidth}
+      \begin{block}{Thetis}
+        \begin{itemize}
+        \item 3D unstructured coastal ocean model in Firedrake
+        \item Lock exchange test case
+          \begin{description}
+          \item[Thetis] P1DG-P1DG, triangular wedges.  $13s/s$.
+          \item[SLIM] hand-coded/optimised (same discretisation),
+            $6s/s$
+          \end{description}
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}[t]{0.3\textwidth}
+      \includegraphics[width=2.5cm]{thetis_logo}
+    \end{column}
+  \end{columns}
+  \begin{center}
+    \url{github.com/thetisproject/thetis}    
+  \end{center}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Abstraction degradation}
+  Exposing PyOP2 provides means of writing mesh iterations that are
+  not ``assemble a variational form''.
+
+  \begin{exampleblock}{Custom multigrid}
+    \begin{itemize}
+    \item Anisotropy in atmospheric model needs to be treated
+      specially in solver.
+    \item Multigrid smoothers written as custom kernels.
+    \item UFL used for operators where possible (same kernel, insertion
+      into different data structures).
+    \item Achieves $> 50\%$ STREAM peak.
+    \item \cite{Mitchell:2016} \arxivlink{1605.00492}{cs.MS}
+    \end{itemize}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Coming (soon)}
   \begin{itemize}
-  \item Better data reuse/locality
-  \item Can hide communication latency
-  \end{itemize}
-  But it's very invasive to an application (especially an unstructured
-  one).
-
-  PyOP2 approach makes it possible to provide loop tiling in a
-  semi-automated way within the library.
-
-  Application code does ``whatever'', PyOP2 sees a sequence of
-  parallel loops with data dependencies.  Can tile over multiple
-  loops.
-\end{frame}
-
-
-\section{Symbolic computation}
-
-\begin{frame}
-  \frametitle{Maintaining symbolic information}
-  Firedrake uses UFL \cite{Alnaes:2014} to specify problems
-
-  Can perform AD at a high level, resulting in efficient code for
-  adjoints, etc...
-
-  Can produce matrix-free with low-order preconditioners
-  ``automatically''.  Symbolic reasoning and composition of solvers,
-  rather than just algebraic manipulation (all that is available with
-  assembled matrices).
-  Allows symbolically, rather than just algebraically, expressing
-  complex solvers (WIP, with Rob Kirby (Baylor)).
-\end{frame}
-
-
-
-\begin{frame}
-  \frametitle{Mesh iteration}
-  Mesh-based solvers execute \emph{local} operation over mesh
-  gathering data with some \emph{stencil}.
-
-  PyOP2 captures these iterations and manages the execution.
-
-  Most naive implementation just does ``the iteration you would have
-  written''.
-
-  But, we can do more.  In particular, unstructured mesh loop-tiling.
-\end{frame}
-
-\begin{frame}
-  \frametitle{Solvers}
-  
-\end{frame}
-
-\begin{frame}
-  \frametitle{Applications of Firedrake}
-  \begin{itemize}
-  \item Colin Cotter (Imperial College).  3D mimetic finite element
-    dynamical core for NWP
-  \item Onno Bokhove (University of Leeds). Freak waves,
-    fluid-structure interactions (boats in waves).
-  \item Justin Chang (University of Houston).  Positivity preserving
-    methods for advection-diffusion-reaction geochemical systems
-  \item Tuomas K\"arn\"a (Oregon Health and Science). 3D coastal and
-    estuarine ocean modelling
-  \item Andrew McRae, Chris Budd (University of Bath).  $r-$adaptivity
-    on the sphere.
-  \item Francis Poulin (University of Waterloo).  Stability of jets
-    and vortices in the ocean.
+  \item Efficient high order evaluation (via tensor-products and/or
+    Bernstein polynomials)
+  \item Matrix-free operators and preconditioning
+  \item Symbolic (not just algebraic) composition for multiphysics
+    preconditioning
+  \item Mesh adaptivity
+  \item ...
   \end{itemize}
 \end{frame}
+
+\begin{frame}[standout]
+  Questions?
+\end{frame}
+
 \appendix
 \begin{frame}[allowframebreaks]
   \frametitle{References}
