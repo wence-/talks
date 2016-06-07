@@ -162,7 +162,7 @@ solve(a == L, u, solver_parameters={
   \item Decide on implementation language, target architecture
   \item Write code
   \item ...
-  \item Write more code
+  \item Optimise
   \item ...
   \item Profit?
   \end{itemize}
@@ -220,12 +220,11 @@ def form_residual(x):
       \begin{itemize}
       \item vectorize across elements,
       \item vectorize within an element,
-      \item exchange loop order,
+      \item exchange loop orders,
       \item hoist loop-invariant code,
       \item exploit structure in basis functions,
       \item pre-evaluate geometry at quad points.
-      \item Best choice will be architecture and
-        problem/discretisation dependent.
+      \item ...
       \end{itemize}
     \end{itemize}
   \end{onlyenv}
@@ -640,7 +639,72 @@ par_loop(kernel, e, data(map, WRITE), ...)
 \section{Did we succeed?}
 
 \begin{frame}
-  \frametitle{Firedrake performance}
+  \frametitle{Experimentation}
+  
+  With model set up, experimentation is easy
+
+  \begin{itemize}
+  \item Change preconditioner: c. 1 line
+  \item Drop terms: c. 1-4 lines
+  \item Different operator: c. 1-10 lines
+  \item quasi-Newton: c. 1-10 lines
+  \item Matrix-free: XXX
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Maintainability}
+  \begin{columns}
+    \begin{column}[t]{0.5\textwidth}
+      \begin{block}{Core Firedrake}
+        \begin{table}
+          \centering
+          \begin{tabular}{lc}
+            Component & LOC \\
+            \hline
+            Firedrake & 9000 \\
+            PyOP2     & 5000 \\
+            TSFC      & 2700 \\
+            COFFEE    & 4500 \\
+            \hline
+            Total     & 21200
+          \end{tabular}
+        \end{table}
+      \end{block}
+    \end{column}
+    \begin{column}[t]{0.5\textwidth}
+      \begin{block}{Shared with FEniCS}
+        \begin{table}
+          \centering
+          \begin{tabular}{lc}
+            Component & LOC \\
+            \hline
+            FIAT & 4000 \\
+            UFL     & 13000 \\
+            \hline
+            Total & 17000
+          \end{tabular}
+        \end{table}        
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+\begin{frame}[allowframebreaks]
+  \frametitle{Performance}
+
+  \begin{block}{Multigrid for NWP}
+    \begin{itemize}
+    \item Horizontal coarsening with vertical line relaxation to treat
+      strong anisotropy.
+    \item UFL used for operators, plus custom PyOP2 kernels for banded
+      matrix algebra
+    \item Bandwidth limited, achieve $> 55\%$ STREAM triad.
+    \item \cite{Mitchell:2016} \arxivlink{1605.00492}{cs.MS}
+    \end{itemize}
+  \end{block}
+
+\pagebreak
+
   \begin{columns}
     \begin{column}{0.7\textwidth}
       \begin{block}{Thetis}
@@ -664,21 +728,25 @@ par_loop(kernel, e, data(map, WRITE), ...)
   \end{center}
 \end{frame}
 
-\begin{frame}
+\begin{frame}[fragile]
   \frametitle{Abstraction degradation}
   Exposing PyOP2 provides means of writing mesh iterations that are
   not ``assemble a variational form''.
 
-  \begin{exampleblock}{Custom multigrid}
-    \begin{itemize}
-    \item Anisotropy in atmospheric model needs to be treated
-      specially in solver.
-    \item Multigrid smoothers written as custom kernels.
-    \item UFL used for operators where possible (same kernel, insertion
-      into different data structures).
-    \item Achieves $> 50\%$ STREAM peak.
-    \item \cite{Mitchell:2016} \arxivlink{1605.00492}{cs.MS}
-    \end{itemize}
+  \begin{exampleblock}{Slope limiters}
+    Vertex-based limiters need max/min over incident cells
+\begin{minted}[fontsize=\tiny]{python}
+par_loop("""
+    for (int i=0; i<qmax.dofs; i++) {
+        qmax[i][0] = fmax(qmax[i][0], centroids[0][0]);
+        qmin[i][0] = fmin(qmin[i][0], centroids[0][0]);
+    }
+    """,
+       dx,
+       {'qmax': (max_field, RW),
+        'qmin': (min_field, RW),
+        'centroids': (centroids, READ)})
+\end{minted}
   \end{exampleblock}
 \end{frame}
 
