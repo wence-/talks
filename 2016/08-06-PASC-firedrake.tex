@@ -432,37 +432,39 @@ void integral(double A[6][6],
 %   \end{onlyenv}
 % \end{frame}
 
-\begin{frame}
-  \frametitle{Two-stage form compilation}
-  \begin{enumerate}[<+->]
-  \item Lower finite element expressions to tensor-algebra
-  \item Lower tensor algebra to unscheduled loop nest of scalar
-    expressions.
-  \item Apply optimisation passes to minimise operation count, make
-    code amenable to vectorising compilers.
-  \end{enumerate}
-  \uncover<+->{\centering
-    \url{github.com/firedrakeproject/tsfc}
-  }
-\end{frame}
-\begin{frame}
-  \frametitle{Lowering FE}
-  \begin{equation*}
-    c_q = \sum_r \mathcal{E}_{q, r} c_r
-  \end{equation*}
-  $\mathcal{E}_{q, r}$ provided by FIAT as tabulation of 2D array.
-  \begin{block}<2->{Structure in $\mathcal{E}$}
-    \begin{equation*}
-      \mathcal{E}_{q,r} = \mathcal{E}_{(q_x,r_x),(q_y, r_y)}
-    \end{equation*}
-    But $\mathcal{E}$ factorises
-    \begin{equation*}
-      \mathcal{E}_{q, r} = \mathcal{E}^x_{q_x, r_x}
-      \mathcal{E}^y_{q_y, r_y}
-    \end{equation*}
-    WIP: exploiting structure for automated sum-factorisation.
-  \end{block}
-\end{frame}
+% \begin{frame}
+%   \frametitle{Two-stage form compilation}
+%   \begin{enumerate}[<+->]
+%   \item Lower finite element expressions to tensor-algebra
+%   \item Lower tensor algebra to unscheduled loop nest of scalar
+%     expressions.
+%   \item Apply optimisation passes to minimise operation count, make
+%     code amenable to vectorising compilers.
+%   \end{enumerate}
+%   \uncover<+->{\centering
+%     \url{github.com/firedrakeproject/tsfc}
+%   }
+% \end{frame}
+% \begin{frame}
+%   \frametitle{Lowering FE}
+%   Given, $c_r$, basis coefficients on a cell\\
+%   Want $c_q$, coefficient evaluated at quad points.
+%   \begin{equation*}
+%     c_q = \sum_r \mathcal{E}_{q, r} c_r
+%   \end{equation*}
+%   $\mathcal{E}_{q, r}$ provided by FIAT as tabulation of 2D array.
+%   \begin{block}<2->{Structure in $\mathcal{E}$}
+%     \begin{equation*}
+%       \mathcal{E}_{q,r} = \mathcal{E}_{(q_x,r_x),(q_y, r_y)}
+%     \end{equation*}
+%     $\mathcal{E}$ factorises
+%     \begin{equation*}
+%       \mathcal{E}_{q, r} = \mathcal{E}^x_{q_x, r_x}
+%       \mathcal{E}^y_{q_y, r_y}
+%     \end{equation*}
+%     WIP: exploiting structure for automated sum-factorisation.
+%   \end{block}
+% \end{frame}
 
 \begin{frame}[fragile]
   \frametitle{Optimisation of finite element kernels}
@@ -583,14 +585,14 @@ par_loop(kernel, iterset, data1(map1, READ), data2(map2, WRITE))
     \item ``Straight-line'' code
     \item ...
     \item Testable
-    \item Performance of individual kernels may be good, but can throw
-      away \emph{a lot}
+    \item Even if performance of individual kernels is good, can lose
+      \emph{a lot}
     \end{itemize}
   \end{block}
 
 \end{frame}
 \begin{frame}
-  \begin{exampleblock}{Lazy evaluation}
+  \frametitle{Lazy evaluation}
     \begin{itemize}
     \item \verb~par\_loop~ only executed ``when you look at the
       data''.
@@ -600,10 +602,8 @@ par_loop(kernel, iterset, data1(map1, READ), data2(map2, WRITE))
       \item Loop tiling
       \item Communication coalescing
       \end{itemize}
+    \item Application code does not change.  ``What, not how''.
     \end{itemize}
-  \end{exampleblock}
-
-  Application code does not change.  ``What, not how''.
 \end{frame}
 
 \begin{frame}[fragile]
@@ -692,12 +692,24 @@ par_loop(kernel, e, data(map, WRITE), ...)
 \begin{frame}[allowframebreaks]
   \frametitle{Performance}
 
+  \begin{block}{Kernel performance}
+    \begin{itemize}
+    \item COFFEE produces kernels that are better (operation count)
+      than existing automated form compilers
+    \item Provably optimal in some cases
+    \item Also provides good vectorised performance, up to 70\% peak
+      for in-cache computation.
+    \end{itemize}
+  \end{block}
+
+\pagebreak
+
   \begin{block}{Multigrid for NWP}
     \begin{itemize}
     \item Horizontal coarsening with vertical line relaxation to treat
       strong anisotropy.
     \item UFL used for operators, plus custom PyOP2 kernels for banded
-      matrix algebra
+      matrix algebra, ``escaping the abstraction''
     \item Bandwidth limited, achieve $> 55\%$ STREAM triad.
     \item \cite{Mitchell:2016} \arxivlink{1605.00492}{cs.MS}
     \end{itemize}
