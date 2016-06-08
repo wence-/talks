@@ -432,39 +432,39 @@ void integral(double A[6][6],
 %   \end{onlyenv}
 % \end{frame}
 
-% \begin{frame}
-%   \frametitle{Two-stage form compilation}
-%   \begin{enumerate}[<+->]
-%   \item Lower finite element expressions to tensor-algebra
-%   \item Lower tensor algebra to unscheduled loop nest of scalar
-%     expressions.
-%   \item Apply optimisation passes to minimise operation count, make
-%     code amenable to vectorising compilers.
-%   \end{enumerate}
-%   \uncover<+->{\centering
-%     \url{github.com/firedrakeproject/tsfc}
-%   }
-% \end{frame}
-% \begin{frame}
-%   \frametitle{Lowering FE}
-%   Given, $c_r$, basis coefficients on a cell\\
-%   Want $c_q$, coefficient evaluated at quad points.
-%   \begin{equation*}
-%     c_q = \sum_r \mathcal{E}_{q, r} c_r
-%   \end{equation*}
-%   $\mathcal{E}_{q, r}$ provided by FIAT as tabulation of 2D array.
-%   \begin{block}<2->{Structure in $\mathcal{E}$}
-%     \begin{equation*}
-%       \mathcal{E}_{q,r} = \mathcal{E}_{(q_x,r_x),(q_y, r_y)}
-%     \end{equation*}
-%     $\mathcal{E}$ factorises
-%     \begin{equation*}
-%       \mathcal{E}_{q, r} = \mathcal{E}^x_{q_x, r_x}
-%       \mathcal{E}^y_{q_y, r_y}
-%     \end{equation*}
-%     WIP: exploiting structure for automated sum-factorisation.
-%   \end{block}
-% \end{frame}
+\begin{frame}
+  \frametitle{Two-stage form compilation}
+  \begin{enumerate}[<+->]
+  \item Lower finite element expressions to tensor-algebra
+  \item Lower tensor algebra to unscheduled loop nest of scalar
+    expressions.
+  \item Apply optimisation passes to minimise operation count, make
+    code amenable to vectorising compilers.
+  \end{enumerate}
+  \uncover<+->{\centering
+    \url{github.com/firedrakeproject/tsfc}
+  }
+\end{frame}
+\begin{frame}
+  \frametitle{Lowering FE}
+  Given, $c_r$, basis coefficients on a cell\\
+  Want $c_q$, coefficient evaluated at quad points.
+  \begin{equation*}
+    c_q = \sum_r \mathcal{E}_{q, r} c_r
+  \end{equation*}
+  $\mathcal{E}_{q, r}$ provided by FIAT as tabulation of 2D array.
+  \begin{block}<2->{Structure in $\mathcal{E}$}
+    \begin{equation*}
+      \mathcal{E}_{q,r} = \mathcal{E}_{(q_x,r_x),(q_y, r_y)}
+    \end{equation*}
+    $\mathcal{E}$ factorises
+    \begin{equation*}
+      \mathcal{E}_{q, r} = \mathcal{E}^x_{q_x, r_x}
+      \mathcal{E}^y_{q_y, r_y}
+    \end{equation*}
+    WIP: exploiting structure for automated sum-factorisation.
+  \end{block}
+\end{frame}
 
 \begin{frame}[fragile]
   \frametitle{Optimisation of finite element kernels}
@@ -504,6 +504,13 @@ for (i = 0; i < L; i++ )
 
 \pagebreak
 
+\begin{block}{Vectorisation}
+  Align and pad data structures, then use intrinsics or rely on
+  compiler.  Experience, gcc-4.X \emph{really} doesn't want to
+  vectorise short loops!\\
+  \cite{Luporini:2015} \doilink{10.1145/2687415}
+\end{block}
+
 \begin{block}{Flop reduction}
   Exploit \emph{linearity} in test functions to perform factorisation,
   code motion and CSE.  
@@ -513,12 +520,6 @@ Cost model: don't introduce mesh-sized
   \cite{Luporini:2016} \arxivlink{1604.05872}{cs.MS}
 \end{block}
 
-\begin{block}{Vectorisation}
-  Align and pad data structures, then use intrinsics or rely on
-  compiler.  Experience, gcc-4.X \emph{really} doesn't want to
-  vectorise short loops!\\
-  \cite{Luporini:2015} \doilink{10.1145/2687415}
-\end{block}
 \begin{center}
   \url{github.com/coneoproject/COFFEE}
 \end{center}
@@ -702,18 +703,18 @@ par_loop(kernel, e, data(map, WRITE), ...)
     \end{itemize}
   \end{block}
 
-\pagebreak
+% \pagebreak
 
-  \begin{block}{Multigrid for NWP}
-    \begin{itemize}
-    \item Horizontal coarsening with vertical line relaxation to treat
-      strong anisotropy.
-    \item UFL used for operators, plus custom PyOP2 kernels for banded
-      matrix algebra, ``escaping the abstraction''
-    \item Bandwidth limited, achieve $> 55\%$ STREAM triad.
-    \item \cite{Mitchell:2016} \arxivlink{1605.00492}{cs.MS}
-    \end{itemize}
-  \end{block}
+%   \begin{block}{Multigrid for NWP}
+%     \begin{itemize}
+%     \item Horizontal coarsening with vertical line relaxation to treat
+%       strong anisotropy.
+%     \item UFL used for operators, plus custom PyOP2 kernels for banded
+%       matrix algebra, ``escaping the abstraction''
+%     \item Bandwidth limited, achieve $> 55\%$ STREAM triad.
+%     \item \cite{Mitchell:2016} \arxivlink{1605.00492}{cs.MS}
+%     \end{itemize}
+%   \end{block}
 
 \pagebreak
 
@@ -775,6 +776,17 @@ par_loop("""
   \end{itemize}
 \end{frame}
 
+\begin{frame}
+  \frametitle{Summary}
+  \begin{itemize}
+  \item Firedrake provides a layered set of abstractions for finite
+    element
+  \item Computational performance is good, often $>50\%$ achievable
+    peak.
+  \item Hero-coding necessary if you want the last 10-20\%
+  \item ...but at what (person) cost.
+  \end{itemize}
+\end{frame}
 \begin{frame}[standout]
   Questions?
 \end{frame}
