@@ -70,7 +70,7 @@ London
             backend=biber]{biblatex}
 
 \setbeamertemplate{bibliography item}{}
-\renewcommand{\bibfont}{\scriptsize}
+\renewcommand{\bibfont}{\footnotesize}
 \addbibresource{references.bib}
 
 \setlength{\bibitemsep}{1ex}
@@ -94,6 +94,18 @@ London
 
 \begin{document}
 \maketitle
+
+\begin{frame}[standout]
+\url{http://www.climate-lab-book.ac.uk/2014/end-of-the-rainbow/}
+
+\begin{center}
+  \begin{tikzpicture}
+    \node (A) {\includegraphics[width=\textwidth]{rainbow}};
+
+    \draw[line width=4pt, color=red] (A.south west) -- (A.north east);
+  \end{tikzpicture}
+\end{center}
+\end{frame}
 
 \begin{frame}
   \frametitle{Firedrake team}
@@ -188,7 +200,7 @@ solve(a == L, u, solver_parameters={
 \end{frame}
 
 \begin{frame}[standout]
-  Can we offer easy experimentation without compromising
+  Can one offer easy experimentation without compromising
   performance?
 \end{frame}
 
@@ -201,57 +213,6 @@ solve(a == L, u, solver_parameters={
 \end{frame}
 
 \section{Local kernels}
-
-\begin{frame}
-  \frametitle{Compiling variational forms}
-
-  We use UFL \parencite{Alnaes:2014} from the FEniCS project for
-  specifying variational problems.
-
-  A \emph{form compiler} translates this to low-level executable code
-  for evaluating the integral on an element.
-\end{frame}
-
-\begin{frame}[fragile]
-  \frametitle{An example}
-  \begin{columns}
-    \begin{column}{0.5\textwidth}
-\begin{minted}[fontsize=\tiny]{python}
-mesh = UnitTriangleMesh()
-V = FunctionSpace(mesh, "CG", 2)
-u = TrialFunction(V)
-v = TestFunction(V)
-a = u*v*dx
-\end{minted}
-    \end{column}
-\hspace{-3em}
-    \begin{column}{0.65\textwidth}
-\begin{minted}[fontsize=\tiny,mathescape]{c}
-void integral(double A[6][6], 
-    const double *restrict coords[6])
-{
-  double t0 = (-1 * coords[0][0]);
-  double t1 = (-1 * coords[3][0]);
-  /* $t2 \leftarrow |\det J|$ */
-  double t2 = fabs(((t0 + (1 * coords[1][0])) *
-                     (t1 + (1 * coords[5][0]))) +
-                    (-1 * (t0 + (1 * coords[2][0])) *
-                     (t1 + (1 * coords[4][0]))));
-  static const double t3[6]     = {...};
-  static const double t4[6][6]  = {...};
-  for (int ip = 0; ip < 6; ip += 1) {
-    double t5 = (t3[ip] * t2);
-    for (int j = 0; j < 6; j += 1) {
-      for (int k = 0; k < 6; k += 1) {
-        A[j][k] += t5 * t4[ip][j] * t4[ip][k];
-      }
-    }
-  }
-}
-\end{minted}
-    \end{column}
-  \end{columns}
-\end{frame}
 
 \begin{frame}[fragile]
   \frametitle{Optimisation of finite element kernels}
@@ -489,9 +450,9 @@ par_loop(kernel, iterset, data1(map1, READ), data2(map2, WRITE))
         \item 5000 LOC, c.~1 person year
         \item Lock exchange test case
           \begin{description}
-          \item[Thetis] P1DG-P1DG, triangular wedges.  $24s/s$.
+          \item[Thetis] P1DG-P1DG, triangular wedges.  $24\, s/s$.
           \item[SLIM] hand-coded/optimised (same numerics),
-            $6s/s$
+            $6\, s/s$
           \end{description}
         \end{itemize}
       \end{block}
@@ -544,7 +505,7 @@ par_loop("""
 \end{frame}
 
 \appendix
-\begin{frame}
+\begin{frame}[t]
   \frametitle{References}
   \printbibliography[heading=none]
 \end{frame}
