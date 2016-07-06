@@ -93,19 +93,28 @@ London
   abstractions}
 
 \begin{document}
-\maketitle
-
+\bgroup
+\setbeamertemplate{background}{}
 \begin{frame}[standout]
-\url{http://www.climate-lab-book.ac.uk/2014/end-of-the-rainbow/}
+
+\only<1>{\hspace*{-2em}\includegraphics[width=\paperwidth]{rainbow-city}}
+
+\only<2>{\url{http://www.climate-lab-book.ac.uk/2014/end-of-the-rainbow/}}
 
 \begin{center}
-  \begin{tikzpicture}
-    \node (A) {\includegraphics[width=\textwidth]{rainbow}};
+  \begin{onlyenv}<2>
+    \begin{tikzpicture}
+      \node (A) {\includegraphics[width=\textwidth]{rainbow}};
 
-    \draw[line width=4pt, color=red] (A.south west) -- (A.north east);
-  \end{tikzpicture}
+      \draw[line width=4pt, color=red] (A.south west) -- (A.north
+      east);
+    \end{tikzpicture}
+  \end{onlyenv}
 \end{center}
 \end{frame}
+\egroup
+
+\maketitle
 
 \begin{frame}
   \frametitle{Firedrake team}
@@ -113,18 +122,18 @@ London
   \item[IC] David A.~Ham, Mikl\'os Homolya, Fabio Luporini, Gheorghe-Teodor
     Bercea, Paul H.~J.~Kelly
   \item[Bath] Andrew T.~T.~McRae
-  \item[ECMWF] Florian Rathgeber
+  \item[\color{gray}ECMWF] \color{gray}Florian Rathgeber
   \end{itemize}
   \begin{center}
-    \uncover<2->{\url{www.firedrakeproject.org}}\\
-    \uncover<3->{\cite{Rathgeber:2015} \arxivlink{1501.01809}{cs.MS}}
+    \url{www.firedrakeproject.org}\\
+    \cite{Rathgeber:2015} \arxivlink{1501.01809}{cs.MS}
   \end{center}
 \end{frame}
 
 \section{The right abstraction level}
 
 \begin{frame}[fragile]
-  \frametitle{How do \emph{you} solve the Poisson equation?}
+  \frametitle{A specification of finite element problems}
   \begin{columns}
     \begin{column}{0.65\textwidth}
 \begin{minted}[fontsize=\tiny]{python}
@@ -185,6 +194,22 @@ solve(a == L, u, solver_parameters={
   \end{block}
 \end{frame}
 
+\begin{frame}[fragile]
+  \frametitle{Composability of libraries that manipulate PDE solvers}
+  \begin{block}{\url{www.dolfin-adjoint.org}}
+    Automated derivation of the discrete adjoint from forward models
+    written using FEniCS.
+
+\begin{minted}[fontsize=\scriptsize]{sh}
+$ cloc dolfin-adjoint/
+Language  files   blank   comment   code
+Python       52    2228       878   6939
+$ cloc dolfin-adjoint/compatibility.py
+Python        1      36         9    135
+\end{minted}
+  \end{block}
+\end{frame}
+
 \begin{frame}
   \frametitle{Ease of experimentation}
   How much code do you need to change to
@@ -197,11 +222,6 @@ solve(a == L, u, solver_parameters={
   \end{itemize}
 
   Same ``easy to use'' code must run fast at scale.
-\end{frame}
-
-\begin{frame}[standout]
-  Can one offer easy experimentation without compromising
-  performance?
 \end{frame}
 
 \begin{frame}[standout]
@@ -241,8 +261,9 @@ for (i = 0; i < L; i++ )
   \begin{itemize}
   \item<2-> A numerical analyst?
   \item<3-> A geodynamicist?
-  \item<4-> A computational scientist?
-  \item<5-> A computer scientist?
+  \item<4-> A computational chemist?
+  \item<5-> A computational scientist?
+  \item<6-> A computer scientist?
   \end{itemize}
 \end{frame}
 
@@ -466,28 +487,6 @@ par_loop(kernel, iterset, data1(map1, READ), data2(map2, WRITE))
   \end{center}
 \end{frame}
 
-\begin{frame}[fragile]
-  \frametitle{Abstraction degradation}
-  Exposing PyOP2 provides means of writing mesh iterations that are
-  not ``assemble a variational form''.
-
-  \begin{exampleblock}{Slope limiters}
-    Vertex-based limiters need max/min over incident cells
-\begin{minted}[fontsize=\tiny]{python}
-par_loop("""
-    for (int i=0; i<qmax.dofs; i++) {
-        qmax[i][0] = fmax(qmax[i][0], centroids[0][0]);
-        qmin[i][0] = fmin(qmin[i][0], centroids[0][0]);
-    }
-    """,
-       dx,
-       {'qmax': (max_field, RW),
-        'qmin': (min_field, RW),
-        'centroids': (centroids, READ)})
-\end{minted}
-  \end{exampleblock}
-\end{frame}
-
 \begin{frame}
   \frametitle{Summary}
   \begin{itemize}
@@ -499,6 +498,9 @@ par_loop("""
   \item Hero-coding necessary if you want the last 10-20\%
   \item ...but at what (person) cost?
   \end{itemize}
+\end{frame}
+\begin{frame}[standout]
+  Want to work on FEM at Imperial?  We are hiring.
 \end{frame}
 \begin{frame}[standout]
   Questions?
