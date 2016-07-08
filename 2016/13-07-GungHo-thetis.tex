@@ -1,0 +1,530 @@
+\documentclass{beamer}
+
+
+\usepackage{tikz}
+\usetikzlibrary{positioning,calc}
+\usetikzlibrary{shapes.geometric}
+\usetikzlibrary{backgrounds}% only to show the bounding box
+\usetikzlibrary{shapes,arrows}
+\usepackage{pgfplots}
+\usepackage{pgfplotstable}
+\usetikzlibrary{pgfplots.groupplots}
+\pgfplotsset{compat=1.12}
+\usepackage{appendixnumberbeamer}
+\usepackage{amsmath}
+\date{8th June 2016}
+\usetheme{metropolis}
+
+\definecolor{river_color}{RGB}{65, 105, 225}
+\definecolor{ocean_color}{RGB}{220, 20, 60}
+\definecolor{plume_color}{RGB}{218, 165, 32}
+
+\title[]{Three dimensional baroclinic ocean model}
+\author[Tuomas K\"{a}rn\"{a}]{
+Tuomas K\"{a}rn\"{a}\inst{1},
+Ant\'{o}nio M. Baptista\inst{1},
+Stephan Kramer\inst{2},
+\underline{Lawrence Mitchell}\inst{2},
+David Ham\inst{2}
+}
+
+
+\institute[CMOP]{
+\inst{1}
+Oregon Health \& Science University\\
+\inst{2}
+Imperial College London
+}
+
+\date{13th July 2016}
+
+%\titlegraphic{
+%  \includegraphics[height=29pt]{figures/logos/nsflogo}
+%  \includegraphics[height=30pt]{figures/logos/cmoplogo}
+%  \includegraphics[height=30pt]{thetis_logo_white}
+%   \includegraphics[width=180px]{logo_IMUM_mesh_04_800px}
+%}
+
+\begin{document}
+
+\maketitle
+
+% TODO get global ocean model figure, and example model
+% TODO get ROMS example figure
+
+\frame{
+\frametitle{Why do we need a new coastal ocean model?}
+\begin{itemize}
+ \item Sophisticated structured grid ocean models exists for global and regional applications
+ \item Coastal applications require unstructured grids
+ \item Unstructured grid models tend to be \emph{expensive} and \emph{diffusive}
+\end{itemize}
+\vspace{10pt}
+\begin{columns}
+ \column{0.32\textwidth}
+ \textbf{Global}
+ \begin{center}
+ \includegraphics[width=0.95\textwidth]{global_grid_nash_remo}
+ \end{center}
+ \column{0.32\textwidth}
+ \textbf{Regional}
+ \begin{center}
+ \includegraphics[width=0.95\textwidth]{curvilinear_grid_cape_cod_bays_usgs}
+ \end{center}
+ \column{0.32\textwidth}
+ \textbf{Coastal/estuary}
+ \begin{center}
+ \includegraphics[width=\textwidth]{mesh_db31_coast-to-estuary_plain}
+ \end{center}
+\end{columns}
+}
+
+
+\frame{
+\frametitle{Columbia River estuary application}
+\small
+\begin{columns}
+ \column{0.5\textwidth}
+  \vspace{-10pt}
+  \begin{itemize}
+   \item Complex topography
+   \item Energetic tides
+   \item Strong river discharge
+   \item Strong density gradients
+   \item Baroclinic effects very important
+%   \item Complex topography
+%   \item Wide range scales
+%   \begin{itemize}
+%     \item Coast: 1 yr, 100 km
+%     \item Estuary: 1 min, 100 m
+%   \end{itemize}
+%   \item Advection dominated
+%   \item Energetic tides
+%   \begin{itemize}
+%     \item Currents ~3 m/s
+%   \end{itemize}
+%   \item Strong density gradients
+%   \begin{itemize}
+%     \item from 0 to 32 psu in
+%     \item[] 100 m (horizontal)
+%     \item[] 1 m (vertical)
+%   \end{itemize}
+%   \item Baroclinic effects very important
+  \end{itemize}
+  \vspace*{20pt}
+  $\rightarrow\ $ Current model (SELFE) is too diffusive
+ \column{0.6\textwidth}
+%  \vspace*{-35pt}
+ \begin{center}
+ \hspace*{-20pt}
+   \raisebox{5pt}{\includegraphics[width=0.25\textwidth]{map_CRE_small}}
+   \hspace{2pt}
+   \includegraphics[width=0.78\textwidth]{SELFE_CRE_salt_contours_0211}
+  \\
+ \vspace{10pt}
+ \includegraphics[width=\textwidth]{auvcmp_run027_AUV48_salt_leg09_small_2}
+ \end{center}
+\end{columns}
+}
+
+
+\frame{
+\vspace*{-25pt}
+\begin{columns}
+ \column{0.3\textwidth}
+  \begin{center}
+  \includegraphics[width=0.8\textwidth]{thetis_logo_white}
+  \end{center}
+ \column{0.7\textwidth}
+ Unstructured grid coastal ocean model\\[5pt]
+ {\small
+ \url{https://github.com/thetisproject/thetis}
+ }
+\end{columns}
+\vspace{10pt}
+\small
+\begin{columns}
+\column{0.9\textwidth}
+\begin{itemize}
+ \item Solves 3D Navies-Stokes equations
+ \item Hydrostatic and Boussinesq approximations
+ \item Implemented on \raisebox{-7pt}{\includegraphics[height=15pt]{firedrake_logo}}
+\end{itemize}
+\end{columns}
+}
+
+\frame{
+\frametitle{Idealized river plume test: Thetis is less diffusive}
+\vspace*{-8pt}
+\begin{center}
+% Idealized river plume test case\\
+\includegraphics[width=0.75\textwidth]{rhinerofi_thetis_salt_comp_frame_0209.png}\\
+\includegraphics[width=0.75\textwidth]{rhinerofi_selfe_salt_comp_frame_0209.png}
+\end{center}
+}
+
+\frame{
+\frametitle{Why Firedrake?}
+\begin{columns}
+ \column{0.3\textwidth}
+ \includegraphics[width=\textwidth]{mesh_3d_bath}
+ \column{0.7\textwidth}
+ \includegraphics[width=\textwidth]{frame_ale2_0040}
+\end{columns}
+\vspace{10pt}
+\begin{itemize}
+ \item Mesh is extruded in the vertical direction
+ \item Large element aspect ratio
+ \item Vertical/horizontal dynamics are treated separately
+ \item[] $\Rightarrow$ Non-affine finite elements $\Rightarrow$ TSFC form compiler
+%  \item Large element aspect ratio:
+%  \begin{itemize}
+%   \item horizontal / vertical length scale $ \approx 100 \ldots 1000$
+%   % \item Depth 1 ... 100 m
+%   % \item Horizontal scale 100 ... 10 000 m
+%  \end{itemize}
+%  \item Horizontal and vertical dynamics treated separately
+%  \item Mesh extruded in the vertical direction
+%  \item[] $\Rightarrow$ Non-affine finite elements $\Rightarrow$ TSFC form compiler
+\end{itemize}
+}
+
+\frame{
+\frametitle{Governing equations (I)}
+\small
+\textbf{Horizontal momentum equation} ($\bu$)
+\begin{align}
+\begin{split}
+% \pD{\bu}{t}
+\pd{\bu}{t} + \bnabla_h \cdot (\bu\bu)
++ \pd{\left(w\bu \right)}{z} +& \\
+f\bm{e}_z\wedge\bu + g\bnabla_h \eta + g\bnabla_h r
+ &=
+\bnabla_h \cdot \left( \nu_h \bnabla_h \bu \right) + \pd{}{z}\left( \nu  \pd{\bu}{z}\right),
+\label{eq:momentum3d}
+\end{split}
+% \text{with}\ r &= \frac{1}{\rho_0} \int_{z}^\eta \rho' d\zeta, \nonumber %\label{eq:baroclinicHead}
+\end{align}
+
+\visible<2>{
+\textbf{Continuity equation} ($w$, diagnostic)
+\begin{align}
+\bnabla_h \cdot \bu  + \pd{w}{z} = 0,  \label{eq:continuity3d}
+\end{align}
+}
+}
+
+\frame{
+\frametitle{Governing equations (II)}
+\small
+Separate 2D equations for splitting 2D/3D dynamics (mode-splitting)\\[20pt]
+\textbf{2D Depth Averaged Shallow Water equations} ($\eta$, $\bbaru$)
+\begin{align}
+\pd{\eta}{t} + \bnabla_h \cdot \left( (\eta + h) \bbaru \right) &= 0,  \label{eq:freesurface2d} \\
+ \pd{\bbaru}{t} + \bbaru \cdot \bnabla_h\bbaru + f\bm{e}_z\wedge \bbaru
++ g \bnabla_h \eta + g \frac{1}{H}\int_{-h}^\eta \bnabla_h r dz &=  \bar{\bm{A}}_H \label{eq:momentum2d}
+\end{align}
+}
+
+\frame{
+\frametitle{Governing equations (III)}
+\small
+\textbf{Tracer equation} ($T$, $S$, temperature, salinity)
+\begin{align}
+\begin{split}
+\pd{T}{t} + \bnabla_h \cdot (\bu T) + \pd{\left(wT \right)}{z} =
+ \bnabla_h \cdot \left( \mu_h \bnabla_h T \right) + \pd{}{z}\left( \mu  \pd{T}{z}\right),  \label{eq:T}
+\end{split}
+\end{align}
+\textbf{Equation of state} ($\rho'$ , diagnostic)
+\begin{align*}
+\rho' = \rho'(T, S)
+\end{align*}
+\textbf{Internal pressure gradient}  ($\bnabla_h r$ , diagnostic)
+\begin{align*}
+\bnabla_h r &= \frac{1}{\rho_0} \bnabla_h  \int_{z}^\eta  \rho' d\zeta, \nonumber %\label{eq:baroclinicHead}
+\end{align*}
+}
+
+\frame{
+\frametitle{Governing equations (IV)}
+\small
+\textbf{Generic Length scale turbulence closure model} ($\nu, \mu$)
+\begin{align}
+  \pd{k}{t} + \bnabla_h \cdot (\bu k) + \pd{(w k)}{z} &= \pd{}{z}\left(\frac{\nu}{\sigma_k} \pd{k}{z}\right) + P + B - \varepsilon\\
+  \pd{\Psi}{t} + \bnabla_h \cdot (\bu \Psi) + \pd{(w k)}{z} &= \pd{}{z}\left(\frac{\nu}{\sigma_\Psi} \pd{\Psi}{z}\right) + \frac{\Psi}{k}(c_1 P + c_3 B - c_2 \varepsilon) \\
+  \nu &= c_\nu \sqrt{k} L, \nonumber \\
+  \mu &= c_{\mu} \sqrt{k} L, \nonumber \\
+  L &= \left(c_\mu^0\right)^{-p/n} k^{-m/n} \Psi^{1/n} \nonumber
+\end{align}
+}
+
+
+\frame{
+\frametitle{Discretization}
+\textbf{Element families}
+\begin{itemize}
+ \item P1DG
+ \begin{itemize}
+  \item 2D element pair: P1DG-P1DG
+  \item 3D velocity, tracers: P1DG$\times$P1DG
+  % \item Tracers: P1DG$\times$P1DG
+  \item Turbulent quantities: P0$\times$P0
+ \end{itemize}
+ \item Mimetic pair RT1-P1DG, ...
+\end{itemize}
+
+\visible<2>{
+\textbf{Time integration}
+\begin{itemize}
+ \item Implicit terms
+ \begin{itemize}
+  \item Surface gravity waves: $\Theta$ scheme
+  \item Vertical diffusion: Backward Euler
+ \end{itemize}
+ \item Explicit terms
+ \begin{itemize}
+  \item Strong Stability Preserving Runge-Kutta SSPRK(3,3)
+ \end{itemize}
+ \item Tracer advection
+ \begin{itemize}
+  \item SSPRK scheme + slope limiters = positivity preserving scheme
+ \end{itemize}
+\end{itemize}
+}
+}
+
+% \frame{
+% \frametitle{DG-DG element pair}
+% \small
+% \begin{columns}
+% \column{0.45\textwidth}
+%   \textbf{Elements for $n=1$}\\[5pt]
+%   \textbf{2D}
+%   \begin{itemize}
+%     \item 2D velocity: P1DG
+%     \item 2D elevation: P1DG
+%   \end{itemize}
+% \uncover<2>{
+%   \textbf{3D}
+%   \begin{itemize}
+%     \item horizontal velocity: \mbox{P1DG x P1DG}
+%     \item vertical velocity: \mbox{P1DG x P1DG}
+%     \item tracers: P1DG x P1DG
+%     \item turb. variables: P0 x P0
+%   \end{itemize}
+% }
+% \column{0.47\textwidth}
+%   \includegraphics[height=32pt]{triangle_p1} \raisebox{5pt}{$U, V$}\hspace{18pt}
+%   \raisebox{0pt}{\includegraphics[height=32pt]{triangle_p1}} \raisebox{13pt}{$\eta$}\\[10pt]
+%   \vspace{20pt}
+% \visible<2>{
+%   \includegraphics[height=50pt]{prism_p1} $u,v$\hspace{8pt}
+%   \includegraphics[height=50pt]{prism_p1} $w$\\[5pt]
+%   \hspace{3pt}\includegraphics[height=50pt]{prism_p1} $T,S$
+%   \hspace{8pt}\includegraphics[height=50pt]{prism_p0} $k,\Psi$
+% }
+% \end{columns}
+% }
+
+% \frame{
+% \frametitle{RT-DG element pair}
+% \small
+% \begin{columns}
+% \column{0.45\textwidth}
+%   \textbf{Elements for $n=1$}\\[5pt]
+%   \textbf{2D}
+%   \begin{itemize}
+%     \item 2D velocity: RT1
+%     \item 2D elevation: P1DG
+%   \end{itemize}
+% \uncover<2>{
+%   \textbf{3D}
+%   \begin{itemize}
+%     \item horizontal velocity: \mbox{RT1 x P1DG $\in \mathcal{H}(\text{div})$}
+%     \item vertical velocity: \mbox{P1DG x P2 $\in \mathcal{H}(\text{div})$}
+%     \item tracers: P1DG x P1DG
+%   \end{itemize}
+% }
+% \column{0.47\textwidth}
+%   \includegraphics[height=40pt]{triangle_RT2} \raisebox{5pt}{$U, V$}\hspace{-8pt}
+%   \raisebox{25pt}{$\xrightarrow{\text{div}(\cdot)}$}\hspace{5pt}
+%   \raisebox{8pt}{\includegraphics[height=32pt]{triangle_p1}} \raisebox{13pt}{$\eta$}\\[10pt]
+%   \vspace{20pt}
+% \visible<2>{
+%   \includegraphics[height=50pt]{mimetic_prism_uv_RT-DG} $u,v$\hspace{8pt}
+%   \includegraphics[height=50pt]{mimetic_prism_w_DG-CG} $w$\\[5pt]
+%   \hspace{20pt}$\downarrow\ \ ${\scriptsize$\text{div}(\cdot)$}\\[5pt]
+%   \hspace{5pt}\includegraphics[height=50pt]{prism_p1} $T,S$
+% }
+% \end{columns}
+% }
+
+% \frame{
+% \frametitle{Time integration}
+% \begin{itemize}
+%  \item Most restrictive CFL conditions
+%  \begin{itemize}
+%   \item \textcolor{red}{Free surface waves}: {\scriptsize $\Delta t < \Delta x / \sqrt{gH}$}
+%   \item \textcolor{blue}{Vertical diffusion}: {\scriptsize $\Delta t < \Delta z^2 / \nu$}
+%   \item Horizontal advection: {\scriptsize $\Delta t < \Delta x / U$}
+%  \end{itemize}
+%  \item<2-> 2D shallow water equations
+%  \begin{itemize}
+%   \item \textcolor{red}{Free surface waves} are treated with $\Theta$ scheme
+%   \item Rest of the terms are explicit
+%  \end{itemize}
+%  \item<3-> 3D momentum and tracer equations
+%  \begin{itemize}
+%   \item \textcolor{blue}{Vertical diffusion} is treated implicitly
+%   \item Rest of the terms are explicit
+%  \end{itemize}
+%  \item<4-> Tracer advection
+%  \begin{itemize}
+%   \item Accurate and positivity preserving advection scheme
+%   \item 3rd order Strong-Stability Preserving Runge-Kutta scheme
+%   \item Slope limiters
+%   \item No overshoots
+%  \end{itemize}
+% \end{itemize}
+% }
+
+% \frame{
+% \frametitle{Function spaces}
+% \small
+% \textbf{Horizontal space} (velocity-pressure)
+% \begin{itemize}
+%  \item FE element pairs for rotating shallow water flows
+% %  \item<2-> P1DG-P1DG
+% %  \item<2-> P1DG-P2 (Cotter et al., 2009)
+% %  \item<3-> RT1-P1DG (\emph{mimetic elements}, McRae and Cotter, 2014)
+% \end{itemize}
+% \visible<2->{
+% \textbf{P1DG-P1DG}
+% \begin{itemize}
+%   \item 2D elevation: P1DG
+%   \item 2D velocity: P1DG
+%   \item 3D horizontal velocity: P1DG$\times$P1DG
+%   \item 3D vertical velocity: P1DG$\times$P1DG
+%   \item 3D tracers: P1DG$\times$P1DG
+% \end{itemize}
+% }
+% \visible<3->{
+% \textbf{RT1-P1DG} \emph{Mimetic elements} (McRae and Cotter, 2014)
+% \begin{itemize}
+%   \item 2D elevation: P1DG
+%   \item 2D velocity: RT1
+%   \item 3D horizontal velocity: RT1$\times$P1DG
+%   \item 3D vertical velocity: P1DG$\times$P1DG
+%   \item 3D tracers: P1DG$\times$P1DG
+% \end{itemize}
+% }
+% }
+
+% \frame{
+% \frametitle{Lock-exchange flow}
+% \begin{itemize}
+%  \item Simulation without turbulence
+%  \item Lock exchange?
+% \end{itemize}
+% }
+%
+% \frame{
+% \frametitle{Turbulence closure}
+% \begin{itemize}
+%  \item Equations
+%  \item Implementation
+% \end{itemize}
+% }
+
+\frame{
+\frametitle{Idealized estuarine circulation}
+\includegraphics[width=\textwidth]{warner_normal_frame_0175}
+}
+
+\frame{
+\frametitle{Idealized river plume simulation}
+\hspace*{-18pt}
+\includegraphics[width=1.1\textwidth]{rhinerofi_coarse_frame_0221.png}
+}
+
+\frame{
+\frametitle{What about computational efficiency?}
+Lock-exchange test case
+\begin{itemize}
+ \item[--] 512 triangles, 20 layers, 10k elements
+ \item[--] 61k DOFs (P1DG scalar)
+ \item[--] CPU time for 900 s simulation on single core
+\end{itemize}
+\begin{center}
+\small
+\begin{tabular}{lr@{.}lr}
+Firedrake ``bendy'' and FFC form compilers & $\approx$190&0 s & 100\% \\
+With TSFC form compiler & 145&5 s & 76\% \\
+With COFFEE optimizations & 93&1 s & 45\% \\
+Tuned solver parameters and quadrature rules & 67&0 s & 35\% \\
+\hline\\
+\visible<2>{
+Comparison: SLIM P1DG-P1GD model & $\approx$ 148&0 s
+}
+\end{tabular}
+\end{center}
+}
+
+\frame{
+\frametitle{}
+\vspace{-40pt}
+\begin{columns}
+ \column{0.3\textwidth}
+  \begin{center}
+  \includegraphics[width=0.85\textwidth]{thetis_logo_white}
+  \end{center}
+ \column{0.7\textwidth}
+ \vspace*{10pt}\\
+ Unstructured grid coastal ocean model\\[3pt]
+ {\small
+ \url{https://github.com/thetisproject/thetis}
+ }
+\end{columns}
+\vspace{5pt}
+\begin{itemize}
+ \item Realistic ocean model can be implemented in Firedrake
+ \item Model is computationally efficient
+\end{itemize}
+\vspace{12pt}
+\visible<2>{
+Acknowledgments:\\
+\hspace*{0pt}  \raisebox{0pt}{\includegraphics[width=0.15\textwidth]{logos/nsflogo}}
+\hspace*{0pt} \raisebox{5pt}{\includegraphics[width=0.3\textwidth]{xsede_logo}}
+\hspace*{20pt} \raisebox{15pt}{\includegraphics[width=0.25\textwidth]{TACC_logo}}\\
+\vspace*{-20pt}
+\hspace*{0pt}  \raisebox{5pt}{\includegraphics[width=0.4\textwidth]{firedrake_logo}}
+\hspace*{5pt} \raisebox{0pt}{\includegraphics[width=0.3\textwidth]{fenics_logo_text_transparent}}
+\hspace*{5pt} \raisebox{5pt}{\includegraphics[width=0.2\textwidth]{PETCS_logo}}\\
+}
+}
+
+% \frame{
+% \frametitle{Next steps}
+% Thetis
+% \begin{itemize}
+%  \item Solvers: Improve computational efficiency
+% \end{itemize}
+%
+% Firedrake
+% \begin{itemize}
+%  \item Better checkpointing
+%  \item Support for Local Discontinuous Galerkin formulation
+% \end{itemize}
+% }
+
+
+
+% \frame{
+% \scriptsize
+% \bibliographystyle{apalike}
+% \bibliography{references}
+% }
+
+
+\end{document}
