@@ -248,7 +248,7 @@ Mode split 2D/3D dynamics
 \end{frame}
 
 
-\begin{frame}
+\begin{frame}[t]
   \frametitle{Time integration}
   \begin{block}{Implicit terms}
     \begin{itemize}
@@ -268,29 +268,28 @@ Mode split 2D/3D dynamics
   \end{block}
 \end{frame}
 
-\begin{frame}
+\begin{frame}[t]
 \frametitle{Time integration}
 \begin{itemize}
- \item Most restrictive CFL conditions
- \begin{itemize}
+\item Most restrictive CFL conditions
+  \begin{itemize}
   \item Free surface waves: {\scriptsize $\Delta t < \Delta x / \sqrt{gH}$}
   \item Vertical diffusion: {\scriptsize $\Delta t < \Delta z^2 / \nu$}
   \item Horizontal advection: {\scriptsize $\Delta t < \Delta x / U$}
- \end{itemize}
- \item<2-> 2D shallow water equations
- \begin{itemize}
+  \end{itemize}
+\item<2-> 2D shallow water equations
+  \begin{itemize}
   \item Free surface waves are treated with $\Theta$ scheme
   \item Rest of the terms are explicit
- \end{itemize}
- \item<3-> 3D momentum and tracer equations
- \begin{itemize}
+  \end{itemize}
+\item<3-> 3D momentum and tracer equations
+  \begin{itemize}
   \item Vertical diffusion is treated implicitly
   \item Rest of the terms are explicit
- \end{itemize}
+  \end{itemize}
 \item<4-> Horizontal advection treated explicitly
 \end{itemize}
-\visible<5->{Easy to switch treatment of individual terms from explicit to implicit
-  treatment.}
+\visible<5->{Easy to switch treatment of individual terms from explicit to implicit.}
 \end{frame}
 
 \begin{frame}
@@ -390,7 +389,7 @@ Python        1       0         0      4
 
 \begin{frame}
   \frametitle{Computational performance}
-  \begin{block}{Ilciak lock exchange test case}
+  \begin{block}{\cite{Ilicak:2012} lock exchange test case}
     \begin{itemize}
     \item 512 triangles, 20 layers. 10k elements, 61k scalar dofs.
     \item 900s simulated time.
@@ -413,65 +412,32 @@ Python        1       0         0      4
 }
 \end{frame}
 
-% \frame{
-% \frametitle{}
-% \vspace{-40pt}
-% \begin{columns}
-%  \column{0.3\textwidth}
-%   \begin{center}
-%   \includegraphics[width=0.85\textwidth]{thetis_logo_white}
-%   \end{center}
-%  \column{0.7\textwidth}
-%  \vspace*{10pt}\\
-%  Unstructured grid coastal ocean model\\[3pt]
-%  {\small
-%  \url{https://github.com/thetisproject/thetis}
-%  }
-% \end{columns}
-% \vspace{5pt}
-% \begin{itemize}
-%  \item Realistic ocean model can be implemented in Firedrake
-%  \item Model is computationally efficient
-% \end{itemize}
-% \vspace{12pt}
-% \visible<2>{
-% Acknowledgments:\\
-% \hspace*{0pt}  \raisebox{0pt}{\includegraphics[width=0.15\textwidth]{logos/nsflogo}}
-% \hspace*{0pt} \raisebox{5pt}{\includegraphics[width=0.3\textwidth]{xsede_logo}}
-% \hspace*{20pt} \raisebox{15pt}{\includegraphics[width=0.25\textwidth]{TACC_logo}}\\
-% \vspace*{-20pt}
-% \hspace*{0pt}  \raisebox{5pt}{\includegraphics[width=0.4\textwidth]{firedrake_logo}}
-% \hspace*{5pt} \raisebox{0pt}{\includegraphics[width=0.3\textwidth]{fenics_logo_text_transparent}}
-% \hspace*{5pt} \raisebox{5pt}{\includegraphics[width=0.2\textwidth]{PETCS_logo}}\\
-% }
-% }
+\begin{frame}
+  \frametitle{And finally}
+  \begin{itemize}
+  \item More rigorous performance benchmarking
+  \item Better solvers (especially for mimetic case)
+  \item Validation
+  \item ...
+  \end{itemize}
 
+  \begin{block}{Acknowledgments}
+    \begin{center}
+      \raisebox{5pt}{\includegraphics[width=0.4\textwidth]{nerc-logo}}
+      \hfil\raisebox{0pt}{\includegraphics[width=0.3\textwidth]{epsrc-logo}}
+    \end{center}
+    \begin{center}
+      \raisebox{0pt}{\includegraphics[width=0.15\textwidth]{nsf-logo}}
+      \hfil\raisebox{5pt}{\includegraphics[width=0.3\textwidth]{xsede-logo}}
+      \hfil\raisebox{15pt}{\includegraphics[width=0.25\textwidth]{tacc-logo}}
+    \end{center}
+  \end{block}
+\end{frame}
 \appendix
 \begin{frame}[t]
   \frametitle{References}
   \printbibliography[heading=none]
 \end{frame}
-% \frame{
-% \frametitle{Next steps}
-% Thetis
-% \begin{itemize}
-%  \item Solvers: Improve computational efficiency
-% \end{itemize}
-%
-% Firedrake
-% \begin{itemize}
-%  \item Better checkpointing
-%  \item Support for Local Discontinuous Galerkin formulation
-% \end{itemize}
-% }
-
-
-
-% \frame{
-% \scriptsize
-% \bibliographystyle{apalike}
-% \bibliography{references}
-% }
 
 
 \end{document}
