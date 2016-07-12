@@ -91,6 +91,16 @@ Imperial College London
 \titlegraphic{\hspace*{-2em}\includegraphics[height=1.1cm]{cmop-logo}\hfill%
   \includegraphics[height=1.1cm]{firedrake-word}}
 
+\bgroup
+\setbeamertemplate{background}{}
+\begin{frame}[standout]
+  Firetran!\\
+  \arxivlink{1407.2905}{cs.SE}
+  \vspace*{1em}\\
+  \visible<2>{\includegraphics[width=0.75\textwidth]{firetran}}
+\end{frame}
+\egroup
+
 \maketitle
 
 \section{Motivation}
@@ -151,7 +161,18 @@ Imperial College London
 \end{columns}
 \end{frame}
 
-
+\begin{frame}
+  \frametitle{Tidal turbine placement}
+  \begin{itemize}
+  \item Placement of turbines in an array can significantly change
+    power generated
+  \item Previous optimisations results using 2D shallow-water +
+    dolfin-adjoint
+  \item Want to move to 3D model
+  \item Existing AMCG code (Fluidity) faaar too slow for optimisation
+    runs.
+  \end{itemize}
+\end{frame}
 \section{A new model}
 
 \begin{frame}
@@ -238,7 +259,7 @@ Mode split 2D/3D dynamics
     \begin{itemize}
     \item 2D velocity-pressure pair: $(P_1dg)^2-P_1dg$
     \item 3D velocity in $(P_1dg)^3$, tracers $P_1dg$ otherwise as 2D
-    \item Turbulent quantities in $dP_0$.
+    \item Turbulent quantities in $P_0$.
     \end{itemize}
   \end{block}
   \begin{block}{Mimetic pair}
@@ -330,6 +351,54 @@ Mode split 2D/3D dynamics
 \end{frame}
 \egroup
 
+\begin{frame}[fragile]
+  \frametitle{Example configuration}
+\begin{minted}[fontsize=\scriptsize]{python}
+from thetis import *
+mesh2d = Mesh(...)
+V = FunctionSpace(mesh2d, "CG", 1)
+bathymetry = Function(V, name="Bathymetry")
+bathymetry.interpolate(...)
+# Build timestepping solver
+solver = solver.FlowSolver(mesh2d, bathymetry, nlayers)
+options = solver.options
+options.solve_salt = False
+options.constant_salt = Constant(...)
+options.solve_temp = True
+# More options elided...
+options.fields_to_export = ['uv_2d', ...]
+# Create variational forms (also builds function spaces)
+solver.create_equations()
+init_temp = Function(solver.function_spaces.H, 
+                     name="initial temperature")
+init_temp.interpolate(...)
+solver.assign_initial_conditions(temp=init_temp)
+solver.iterate()
+\end{minted}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Time integrators}
+  \begin{itemize}
+  \item DIRK/ERK: just provide Butcher Tableau
+\begin{minted}[fontsize=\scriptsize]{python}
+class BackwardEuler(DIRKGeneric):
+    a = [[1.0]]
+    b = [1.0]
+    c = [1.0]
+
+class DIRK23(DIRKGeneric):
+    "From DIRK(2,3,3) IMEX scheme in Ascher et al. (1997)"
+    gamma = (3 + np.sqrt(3))/6
+    a = [[gamma, 0],
+         [1-2*gamma, gamma]]
+    b = [0.5, 0.5]
+    c = [gamma, 1-gamma]
+\end{minted}
+  \item IMEX: tag equations terms as explicit, implicit or source,
+    will be treated appropriately
+  \end{itemize}
+\end{frame}
 \section{Performance}
 
 \begin{frame}[fragile]
@@ -408,7 +477,8 @@ Python        1       0         0      4
     + SSPRK3$\rightarrow$ERK2-LPUM & c.~19s   & 47            \\
   \end{tabular}
 
-\visible<2>{SLIM $P_1dg-P_1dg$ model requires c.~148s (6.1x)}
+\only<2>{SLIM $P_1dg-P_1dg$ model requires c.~148s (6.1x)}
+\only<3>{Fluidity $P_1dg-P2$, non-hydrostatic, tets c.~1000s (0.9x)}
 }
 \end{frame}
 
