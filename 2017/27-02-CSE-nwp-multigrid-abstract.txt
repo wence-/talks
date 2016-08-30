@@ -1,0 +1,18 @@
+High Level Implementation of Geometric Multigrid Solvers for Finite
+Element Problems: Applications in Atmospheric Modelling
+
+In recent years, finite element methods have gained popularity in the
+numerical weather prediction community due to their ability to deal
+with non-orthogonal meshes and high order discretisations.  Compatible
+(or mimetic) spaces offer some appealing features for models such as
+stable discretisations of pressure gradients and geostrophic balance.
+However, they present challenges in solving the elliptic system
+resulting from implicit timestepping schemes.  The high aspect ratio
+domains typical in these problems require us to treat the "vertical"
+direction specially when designing a solver if we want to achieve
+mesh-independent iteration counts.
+
+In this talk I will discuss work in the Firedrake finite element
+framework on developing custom geometric multigrid solvers for these
+problems and present an analysis of the resulting performance, solving
+problems with up to two billion degrees of freedom.
