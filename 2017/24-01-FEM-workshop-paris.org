@@ -1,0 +1,88 @@
+* How to fill a day
+
+** Abstract
+
+Solving PDEs with Firedrake
+
+Firedrake is a Python package for the automated solution of partial
+differential equations via the finite element method.  Users write
+their problems in Python using the FEniCS language to specify the
+finite element problem they wish to solve.  This results in compact
+code that is close to the mathematical formulation of the problem.
+The resulting code runs transparently in serial on a laptop and using
+thousands of cores on a supercomputer with MPI parallelism.
+
+Firedrake supports a wide range of finite element families on both
+simplex and tensor-product cells, and has special support for solving
+problems in high aspect ratio domains (as often appear in geophysical
+applications, such as ocean and atmosphere modelling).  For the
+solution of the discrete linear and nonlinear problems, it interfaces
+tightly with the PETSc library, giving access to a wide suite of
+composable algebraic solvers.
+
+In this tutorial, we will learn how to start using Firedrake for
+solving finite element problems.  We will start with an overview of
+the available features and then dive straight in to solving problems,
+ranging from simple stationary examples through to more complex
+coupled systems.
+
+Since writing down the model is normally reasonably straightforward,
+we will spend some time exploring how to configure the algebraic
+solvers from PETSc.  Particularly preconditioning of coupled systems
+using PETSc's fieldsplit preconditioning schemes.
+
+One of Firedrake's strengths is that it exposes the symbolic
+information in the model to manipulation by other computer programs,
+and a very successful example of this is the dolfin-adjoint project
+which can automatically derive the discrete adjoint of models written
+using the FEniCS language.  We will show some time-dependent examples.
+
+The tutorial will be quite hands-on, and attendees are of course
+welcome to bring their own problems to try and implement in Firedrake.
+
+
+** Firedrake intro/overview
+
+*** Installation
+
+*** Python
+
+*** Concepts
+
+*** Composability
+
+** Features
+
+*** Extruded meshes
+
+*** Tensor product finite elements
+
+*** Code generation
+
+*** Parallel
+
+** Simple demos
+
+*** Building matrices and vectors
+
+*** Poisson hello world
+
+*** Playing with solver configurations
+
+*** Time dependent problems
+
+- building solver objects up front
+
+** More complex demos
+
+*** Composable preconditioners
+
+*** Matrix free
+
+*** Multigrid
+
+** Firedrake apps
+
+*** Thetis examples
+
+*** Gusto examples?
