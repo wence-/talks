@@ -41,6 +41,43 @@ The tutorial will be quite hands-on, and attendees are of course
 welcome to bring their own problems to try and implement in Firedrake.
 
 
+** Morning session
+
+*** Debugging installation problems
+
+(Runs concurrently with actual material)
+
+*** Meshes (builtin and external) [LM]
+
+- Boundary markers
+
+*** Function spaces [MH]
+
+- Scalar/Vector/Tensor/Mixed
+
+*** UFL introduction [LM]
+
+- Test and Trial functions
+
+- defining forms
+
+*** Coefficients and operators [TG]
+
+- assembling 1- and 2-forms.
+
+- matrix types (?)
+
+*** First steps (Helmholtz problem) [TG]
+*** Boundary conditions (strong) [DH]
+
+
+*** Nonlinear problem (nonlinear Poisson?) [MH]
+
+*** Solver objects [LM]
+
+*** Timestepping [DH]
+
+
 ** Firedrake intro/overview
 
 *** Installation
@@ -50,6 +87,7 @@ welcome to bring their own problems to try and implement in Firedrake.
 *** Concepts
 
 *** Composability
+
 
 ** Features
 
