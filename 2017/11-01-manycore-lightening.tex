@@ -1,0 +1,100 @@
+\documentclass[presentation]{beamer}
+\usepackage{mathtools}
+\usepackage{minted}
+\usepackage{tikz}
+\usetikzlibrary{positioning,calc}
+\usetikzlibrary{shapes.geometric}
+\usetikzlibrary{backgrounds}% only to show the bounding box
+\usetikzlibrary{shapes,arrows}
+\usepackage{pgfplots}
+\usepackage{pgfplotstable}
+\usetikzlibrary{pgfplots.groupplots}
+\pgfplotsset{compat=1.12}
+\usepackage{appendixnumberbeamer}
+\usepackage{amsmath}
+\date{}
+\renewcommand{\vec}[1]{\ensuremath{\boldsymbol{#1}}}
+\newcommand{\ddt}[1]{\frac{\partial #1}{\partial t}}
+\newcommand{\zhat}{\hat{\vec{z}}}
+\newcommand{\W}{\ensuremath{\mathbb{W}}}
+
+\DeclareMathOperator{\grad}{grad}
+\let\div\relax
+\DeclareMathOperator{\div}{div}
+\DeclareMathOperator{\curl}{curl}
+\newcommand{\vsubset}[1]{\rotatebox[origin=c]{90}{\ensuremath{\subset}}}
+\newcommand{\inner}[2]{\ensuremath{\langle #1, #2 \rangle}}
+\author{Lawrence Mitchell\inst{1}}
+\institute{
+\inst{1}Departments of Computing and Mathematics, Imperial College
+London
+}
+
+\usetheme{metropolis}
+ 
+\begin{document}
+
+\begin{frame}[standout]
+
+  \url{www.firedrakeproject.org}
+
+  Automated solution of partial differential equations
+
+  \vspace{2em}
+  {\normalsize
+    Lawrence Mitchell
+
+    \texttt{lawrence.mitchell@imperial.ac.uk}
+    }
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{The Cahn-Hilliard equation}
+  Find $\phi, \mu \in V \times V$ s.t.
+  \begin{equation*}
+    \begin{aligned}
+      \int\!\!(\phi^{n+1} - \phi^n) q\,\text{d}x + \Delta t D \int\!\!\nabla
+      ((1 - \theta)\mu^{n} + \theta \mu^{n+1}) \cdot \nabla q\,\text{d}x &= 0 \quad \forall\, q \in V\\
+      \int\!\!(\mu - \partial_\phi f) v\,\text{d}x - \gamma \int\!\!\nabla \phi\cdot \nabla v\,\text{d}x &= 0 \quad \forall\, v \in V\\
+      n\cdot\nabla \phi = 0 \text{ and } n\cdot\nabla \mu &= 0 \quad\text{on $\partial\Omega$}
+    \end{aligned}
+  \end{equation*}
+
+  \begin{columns}
+    \begin{column}[t]{0.5\textwidth}
+      \begin{minted}[frame=none,xleftmargin=0em,xrightmargin=0em,fontsize=\tiny,mathescape]{python}
+from firedrake import *
+mesh = UnitSquareMesh(100, 100)
+V = FunctionSpace(mesh, "CG", 1)
+W = V*V
+gamma = Constant(0.005)
+D = Constant(10)
+q, v = TestFunctions(W)
+u = Function(W)
+u0 = Function(W)
+phi, mu = split(u)
+phi0, mu0 = split(u0)
+phi = variable(phi)
+f = 10*(phi**2 - 1)**2
+dfdphi = diff(f, phi)
+\end{minted}
+\end{column}
+\hspace{-4em}
+\begin{column}[t]{0.5\textwidth}
+ \begin{minted}[frame=none,xleftmargin=0em,xrightmargin=0em,fontsize=\tiny,mathescape]{python}
+theta = 0.5
+mu_theta = (1-theta)*mu0 + theta*mu
+dt = 5e-6
+F = ((phi - phi0)*q +
+     dt*D*dot(grad(mu_theta), grad(q)) +
+     (mu - dfdphi)*v -
+     gamma*dot(grad(phi), grad(v)))*dx
+for _ in range(200):
+    u0.assign(u)
+    solve(F == 0, u)
+\end{minted}
+\end{column}
+\end{columns}
+  
+\end{frame}
+\end{document}
