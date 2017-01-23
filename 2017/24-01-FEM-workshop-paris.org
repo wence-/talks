@@ -41,6 +41,65 @@ The tutorial will be quite hands-on, and attendees are of course
 welcome to bring their own problems to try and implement in Firedrake.
 
 
+** Installation
+
+* Firedrake installation
+
+** Supported platforms
+
+*** MacOS
+
+Installation is regularly tested on MacOS, we use Homebrew
+(http://brew.sh/) to provide necessary system-level dependencies.
+
+*** Ubuntu
+
+Installation is also regularly tested on Ubuntu (14.04 and 16.04).  We
+use apt to provide necessary system-level dependencies.
+
+*** Other Linux systems
+
+Installation should work on other Linux systems, however, we do not
+automatically install necessary dependent packages.  The installation
+script will tell you what these are.
+
+** Installing Firedrake
+
+The simple way to install Firedrake is to use our install script:
+
+  curl -O https://raw.githubusercontent.com/firedrakeproject/firedrake/master/scripts/firedrake-install
+  python firedrake-install
+
+This will install Firedrake in a virtualenv
+(https://virtualenv.pypa.io/) created in a "firedrake" subdirectory of
+the current directory.  Run:
+
+  python firedrake-install --help
+
+For a full list of supported installation options.  The default
+installation options will be sufficient for this workshop.
+
+*** Testing the installation
+
+If everything went well, you will be able to activate the virtualenv.
+You can test the installation by running the Firedrake test suite:
+
+  cd firedrake/src/firedrake
+  make alltest
+
+** Troubleshooting
+
+If the installation failed for some reason, please let us know and we
+will try and work through any problems.  Please post any issues as a
+comment on this github issue:
+https://github.com/firedrakeproject/firedrake/issues/976
+
+If you are unable to install Firedrake before arriving at the
+workshop, do not worry, we will dedicate some time in the morning of
+our session to debugging and fixing any final install problems.  As a
+fallback, we will also provide a virtualbox image on the day.
+
+
 ** Morning session
 
 *** Debugging installation problems
