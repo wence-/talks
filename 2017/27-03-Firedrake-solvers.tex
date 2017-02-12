@@ -1,0 +1,120 @@
+\documentclass[presentation]{beamer}
+
+\usepackage{tikz}
+\usetikzlibrary{positioning,calc}
+\usetikzlibrary{shapes.geometric}
+\usetikzlibrary{backgrounds}% only to show the bounding box
+\usetikzlibrary{shapes,arrows}
+\usepackage{pgfplots}
+\usepackage{pgfplotstable}
+\usetikzlibrary{pgfplots.groupplots}
+\pgfplotsset{compat=1.12}
+\usepackage{appendixnumberbeamer}
+\usepackage{amsmath}
+\date{27th March 2017}
+\usetheme{metropolis}
+
+\pgfplotscreateplotcyclelist{decent cycle}{%
+  {blue, mark=*, mark options={fill=blue},
+    mark size=2pt},
+  {cyan, mark=square*, mark options={fill=cyan},
+    mark size=2pt},
+  {magenta, mark=triangle*, mark options={fill=magenta},
+    mark size=3pt},
+  {blue, mark=*, mark options={fill=blue},
+    mark size=2pt},
+  {cyan, mark=square*, mark options={fill=cyan},
+    mark size=2pt},
+  {magenta, mark=triangle*, mark options={fill=magenta},
+    mark size=3pt},
+}
+
+\pgfplotsset{
+  decent/.style={
+    cycle list name=decent cycle,
+  }
+}
+\renewcommand{\vec}[1]{\ensuremath{\boldsymbol{#1}}}
+\newcommand{\ddt}[1]{\frac{\partial #1}{\partial t}}
+\newcommand{\zhat}{\hat{\vec{z}}}
+\newcommand{\W}{\ensuremath{\mathbb{W}}}
+
+\DeclareMathOperator{\grad}{grad}
+\let\div\relax
+\DeclareMathOperator{\div}{div}
+\DeclareMathOperator{\curl}{curl}
+\newcommand{\vsubset}[1]{\rotatebox[origin=c]{90}{\ensuremath{\subset}}}
+\newcommand{\inner}[2]{\ensuremath{\langle #1, #2 \rangle}}
+\author{Lawrence Mitchell\inst{1} \and Rob Kirby\inst{2}}
+\institute{
+\inst{1}Departments of Computing and Mathematics, Imperial College
+London
+\and
+\inst{2}Department of Mathematics, Baylor University
+}
+
+\graphicspath{{./\jobname.figures/}}
+
+\newcommand{\arxivlink}[2]{%
+  \href{http://www.arxiv.org/abs/#1}%
+  {{\small\texttt{arXiv:\,#1\,[#2]}}}%
+}
+\newcommand{\doilink}[1]{%
+  \href{http://dx.doi.org/#1}%
+  {{\small\texttt{doi:\,#1}{}}}%
+}
+\usepackage[url=false,
+            doi=true,
+            isbn=false,
+            style=authoryear,
+            firstinits=true,
+            uniquename=init,
+            backend=biber]{biblatex}
+
+\setbeamertemplate{bibliography item}{}
+\renewcommand{\bibfont}{\footnotesize}
+\addbibresource{references.bib}
+
+\setlength{\bibitemsep}{1ex}
+
+\renewbibmacro{in:}{}
+\DeclareFieldFormat[article]{volume}{\textbf{#1}}
+\DeclareFieldFormat{doi}{%
+  doi\addcolon%
+  {\scriptsize\ifhyperref{\href{http://dx.doi.org/#1}{\nolinkurl{#1}}}
+    {\nolinkurl{#1}}}}
+\AtEveryBibitem{%
+\clearfield{pages}%
+\clearfield{issue}%
+\clearfield{number}%
+}
+
+\usepackage{minted}
+
+\title{Composable block preconditioning for multiphysics problems}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+  Many scalable approaches for preconditioning systems of multiple
+  variables rely on block factorisations and approximate block
+  inverses of the monolithic operator. Some of these can be performed
+  purely algebraically (through manipulation of the assembled
+  operator), however, many cannot. Instead, they rely on the creation
+  of auxiliary, discretisation-dependent, operators.
+
+  In this talk, I will discuss the support Firedrake has for the fast
+  prototyping and development of scalable block preconditioners, based
+  on a composition of PDE-level and solver-level data. This includes
+  the ability to build matrix-free methods, with complex custom
+  preconditioners in only a few lines of code.
+\end{abstract}
+
+\appendix
+\begin{frame}[t]
+  \frametitle{References}
+  \printbibliography[heading=none]
+\end{frame}
+\end{document}
