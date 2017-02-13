@@ -40,6 +40,7 @@ London
 \renewcommand{\bibfont}{\footnotesize}
 \addbibresource{references.bib}
 
+\newcommand{\inner}[1]{\left\langle #1 \right \rangle}
 \setlength{\bibitemsep}{1ex}
 \setlength{\fboxsep}{1pt}
 
@@ -66,7 +67,7 @@ London
 \begin{frame}[fragile]
   \frametitle{Software libraries simplify writing models}
   \begin{columns}
-    \begin{column}{0.5\framewidth}
+    \begin{column}{0.48\framewidth}
       \begin{block}{Stationary Rayleigh-B\'enard convection}
         \begin{equation*}
           \begin{split}
@@ -78,7 +79,7 @@ London
         \end{equation*}
       \end{block}
     \end{column}
-    \begin{column}{0.5\framewidth}
+    \begin{column}{0.52\framewidth}
 \begin{minted}[fontsize=\tiny,mathescape]{python}
 from firedrake import *
 mesh = Mesh(...)
@@ -86,10 +87,12 @@ V = VectorFunctionSpace(mesh, "CG", 2)
 W = FunctionSpace(mesh, "CG", 1)
 Q = FunctionSpace(mesh, "CG", 1)
 Z = V * W * Q
-
 upT = Function(Z)
 u, p, T = split(upT)
 v, q, S = TestFunctions(Z)
+bcs = [...] # no-flow + temp gradient
+nullspace = MixedVectorSpaceBasis(
+   Z, [Z.sub(0), VectorSpaceBasis(constant=True), Z.sub(2)])
 
 F = (inner(grad(u), grad(v))
      + inner(dot(grad(u), u), v)
@@ -97,9 +100,9 @@ F = (inner(grad(u), grad(v))
      + (Ra/Pr)*inner(T*g, v)
      + inner(div(u), q)
      + inner(dot(grad(T), u), S)
-     + 1/Pr * inner(grad(T), grad(S)))*dx
+     + (1/Pr) * inner(grad(T), grad(S)))*dx
 
-solve(F == 0, upT, bcs=bcs)
+solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
 \end{minted}
     \end{column}
   \end{columns}
@@ -118,38 +121,35 @@ solve(F == 0, upT, bcs=bcs)
 \end{frame}
 \begin{frame}
   \frametitle{Block preconditioning}
-  \begin{itemize}
-  \item Most state of the art preconditioning for multi-variable
-    problems is based on block LU factorisations.
-  \item Why? Krylov methods converge fast on operators with low-degree
-    minimal polynomials.
-  \end{itemize}
+  Most state of the art preconditioning for multi-variable
+  problems is based on block LU factorisations.
 
-  \begin{block}{\cite{Murphy:2000}}
-    \begin{equation*}
-    \begin{bmatrix}
+  \begin{equation*}
+    T = \begin{bmatrix}
       A & 0 \\
       0 & C A^{-1} B^T
     \end{bmatrix}^{-1}
     \begin{bmatrix}
       A & B^T \\
-      C & 0
+      C & D = 0
     \end{bmatrix}
   \end{equation*}
-    has at most four distinct eigenvalues.
-  \end{block}
+  has minimal polynomial $T(T - I)(T^2 - T - I) =
+  0$ \parencite{Murphy:2000}.
+
+  See \cite{Ipsen:2001} for the case $D \ne 0$.
 \end{frame}
 
 \begin{frame}
   \frametitle{What does this mean}
   \begin{itemize}
-  \item Only need inverses of diagonal blocks.
+  \item Only need inverses of diagonal blocks (and [dense] Schur complements).
   \item Only need the \emph{action} of off-diagonal blocks.
   \item The most efficient (time to solution) strategy is problem and
     parameter dependent:
     \begin{itemize}
-    \item Do I invert the blocks well?
-    \item Do I invert them inexactly?
+    \item Do I invert the blocks well or not?
+    \item How many couping terms should I drop?
     \end{itemize}
   \item Need to be able to \emph{configure} the solver without
     changing the code (e.g.~eliminating first row or second?)
@@ -205,9 +205,9 @@ solve(F == 0, upT, bcs=bcs)
     P^{-1} J x = P^{-1} b.
   \end{equation*}
 
-  Write $\mathcal{K}(A, \mathbb{A})\sim A^{-1}$ to denote an iteration
-  $\mathcal{K}$ on $A$ using $\mathbb{A}$ to construct the
-  preconditioner.  Then
+  Write $\mathcal{K}(A, \mathbb{A})$ to denote approximating $A^{-1}$
+  using an iteration $\mathcal{K}$ on $A$ using $\mathbb{A}$ as a
+  preconditioner.  Then the block multiplicative preconditioner
   \begin{equation*}
     P^{-1} = \begin{bmatrix}
       \ksp{N} & 0 \\
@@ -222,7 +222,9 @@ solve(F == 0, upT, bcs=bcs)
       0 & \ksp{K}
     \end{bmatrix}
   \end{equation*}
-  is a block-multiplicative combination of $\ksp{N}$ and $\ksp{K}$.
+  empirically requires few Krylov iterations to invert $J$, and
+  requires only preconditioners $\mathbb{N}$ for Navier-Stokes and
+  $\mathbb{K}$ for convection-diffusion.
 \end{frame}
 
 \begin{frame}
@@ -233,13 +235,13 @@ solve(F == 0, upT, bcs=bcs)
   One option is the \emph{pressure convection-diffusion}
   approximation:
   \begin{equation*}
-    \KSP{S_p}{S} = \KSP{L_p}{L} F_p \KSP{M_p}{M},
+    \mathbb{S} = \KSP{L_p}{L} F_p \KSP{M_p}{M},
   \end{equation*}
   giving
   \begin{equation*}
-    \ksp{N} = \begin{bmatrix}
+    \mathbb{N} = \begin{bmatrix}
       F & 0 \\
-      0 & \KSP{L_p}{L}\,F_p \, \KSP{M_p}{M}
+      0 & \mathcal{K}(S_p, \KSP{L_p}{L}\,F_p \, \KSP{M_p}{M})
     \end{bmatrix}
     \begin{bmatrix}
       I & 0\\
@@ -307,8 +309,7 @@ class PCDPC(PCBase):
         M_ksp.setOperators(M_p)
         L_ksp = KSP().create()
         L_ksp.setOperators(L_p)
-        # Some boilerplate elided
-        [...]
+        [...] # Some boilerplate elided
         u0 = split(appctx["state"])[appctx["velocity_space"]]
         F_p = assemble(inner(grad(p), grad(q))*dx + inner(u0, grad(p))*q*dx)
 
@@ -363,7 +364,7 @@ class PCDPC(PCBase):
   \end{bmatrix}$
   and we are using
   \begin{equation*}
-    \ksp{J} =
+    \mathbb{J} =
     \begin{bmatrix}
       \KSP{\begin{bmatrix}
         F & B^T\\
@@ -384,9 +385,9 @@ class PCDPC(PCBase):
 \end{equation*}
 with
 \begin{equation*}
-    \ksp{N} = \begin{bmatrix}
+    \mathbb{N} = \begin{bmatrix}
       F & 0 \\
-      0 & \KSP{L_p}{L}\,F_p \, \KSP{M_p}{M}
+      0 & \mathcal{K}(S_p, \KSP{L_p}{L}\,F_p \, \KSP{M_p}{M})
     \end{bmatrix}
     \begin{bmatrix}
       I & 0\\
@@ -688,7 +689,7 @@ with
     \begin{equation*}
       \mathcal{K}(N, \mathbb{N}) = \begin{bmatrix}
         F & 0 \\
-        0 & \underbrace{\KSP{L_p}{L}\,F_p \, \KSP{M_p}{M}}_{\KSP{S_p}{S}}
+        0 & \mathcal{K}(S_p, \KSP{L_p}{L}\,F_p \, \KSP{M_p}{M})
       \end{bmatrix}
       \begin{bmatrix}
         I & 0\\
@@ -723,7 +724,7 @@ with
     \begin{equation*}
       \highlight{$\mathcal{K}$}(N, \mathbb{N}) = \begin{bmatrix}
         F & 0 \\
-        0 & \underbrace{\KSP{L_p}{L}\,F_p \, \KSP{M_p}{M}}_{\KSP{S_p}{S}}
+        0 & \mathcal{K}(S_p, \KSP{L_p}{L}\,F_p \, \KSP{M_p}{M})
       \end{bmatrix}
       \begin{bmatrix}
         I & 0\\
@@ -758,7 +759,7 @@ with
     \begin{equation*}
       \mathcal{K}(N, \highlight{$\mathbb{N}$}) = \highlight{$\begin{bmatrix}
         F & 0 \\
-        0 & \underbrace{\KSP{L_p}{L}\,F_p \, \KSP{M_p}{M}}_{\KSP{S_p}{S}}
+        0 & \mathcal{K}(S_p, \KSP{L_p}{L}\,F_p \, \KSP{M_p}{M})
       \end{bmatrix}
       \begin{bmatrix}
         I & 0\\
@@ -793,7 +794,7 @@ with
     \begin{equation*}
       \mathcal{K}(N, \mathbb{N}) = \begin{bmatrix}
         F & 0 \\
-        0 & \underbrace{\KSP{L_p}{L}\,F_p \, \KSP{M_p}{M}}_{\KSP{S_p}{S}}
+        0 & \mathcal{K}(S_p, \KSP{L_p}{L}\,F_p \, \KSP{M_p}{M})
       \end{bmatrix}
       \begin{bmatrix}
         I & 0\\
@@ -828,7 +829,7 @@ with
     \begin{equation*}
       \mathcal{K}(N, \mathbb{N}) = \begin{bmatrix}
         F & 0 \\
-        0 & \underbrace{\KSP{L_p}{L}\,F_p \, \KSP{M_p}{M}}_{\KSP{S_p}{S}}
+        0 & \mathcal{K}(S_p, \KSP{L_p}{L}\,F_p \, \KSP{M_p}{M})
       \end{bmatrix}
       \begin{bmatrix}
         I & 0\\
@@ -863,8 +864,7 @@ with
     \begin{equation*}
       \mathcal{K}(N, \mathbb{N}) = \begin{bmatrix}
         F & 0 \\
-        0 & \underbrace{\KSP{L_p}{L}\,F_p \,
-          \KSP{M_p}{M}}_{\highlight{$\mathcal{K}$}(S_p, \mathbb{S})}
+        0 & \highlight{$\mathcal{K}$}(S_p, \KSP{L_p}{L}\,F_p \, \KSP{M_p}{M})
       \end{bmatrix}
       \begin{bmatrix}
         I & 0\\
@@ -899,7 +899,7 @@ with
     \begin{equation*}
       \mathcal{K}(N, \mathbb{N}) = \begin{bmatrix}
         F & 0 \\
-        0 & \underbrace{\highlight{$\KSP{L_p}{L}\,F_p \, \KSP{M_p}{M}$}}_{\mathcal{K}(S_p, \highlight{$\mathbb{S}$})}
+        0 & \mathcal{K}(S_p, \highlight{$\KSP{L_p}{L}\,F_p \, \KSP{M_p}{M}$})
       \end{bmatrix}
       \begin{bmatrix}
         I & 0\\
@@ -934,7 +934,7 @@ with
     \begin{equation*}
       \mathcal{K}(N, \mathbb{N}) = \begin{bmatrix}
         F & 0 \\
-        0 & \underbrace{\KSP{L_p}{L}\,\highlight{$F_p$} \, \KSP{M_p}{M}}_{\KSP{S_p}{S}}
+        0 & \mathcal{K}(S_p, \KSP{L_p}{L}\,\highlight{$F_p$} \, \KSP{M_p}{M})
       \end{bmatrix}
       \begin{bmatrix}
         I & 0\\
@@ -969,8 +969,7 @@ with
     \begin{equation*}
       \mathcal{K}(N, \mathbb{N}) = \begin{bmatrix}
         F & 0 \\
-        0 & \underbrace{\KSP{L_p}{L}\,F_p \, \highlight{$\mathcal{K}$}(M_p,
-        \mathbb{M})}_{\KSP{S_p}{S}}
+        0 & \mathcal{K}(S_p, \KSP{L_p}{L}\,F_p \, \highlight{$\mathcal{K}$}(M_p, \mathbb{M}))
       \end{bmatrix}
       \begin{bmatrix}
         I & 0\\
@@ -1005,7 +1004,7 @@ with
     \begin{equation*}
       \ksp{N} = \begin{bmatrix}
         F & 0 \\
-        0 & \underbrace{\KSP{L_p}{L}\,F_p \, \mathcal{K}(M_p, \highlight{$\mathbb{M}$})}_{\KSP{S_p}{S}}
+        0 & \mathcal{K}(S_p, \KSP{L_p}{L}\,F_p \, \mathcal{K}(M_p, \highlight{$\mathbb{M}$}))
       \end{bmatrix}
       \begin{bmatrix}
         I & 0\\
@@ -1040,7 +1039,7 @@ with
     \begin{equation*}
       \mathcal{K}(N, \mathbb{N}) = \begin{bmatrix}
         F & 0 \\
-        0 & \underbrace{\highlight{$\mathcal{K}$}(L_p, \mathbb{L})\,F_p \, \KSP{M_p}{M}}_{\KSP{S_p}{S}}
+        0 & \mathcal{K}(S_p, \highlight{$\mathcal{K}$}(L_p, \mathbb{L})\,F_p \, \KSP{M_p}{M})
       \end{bmatrix}
       \begin{bmatrix}
         I & 0\\
@@ -1075,7 +1074,7 @@ with
     \begin{equation*}
       \mathcal{K}(N, \mathbb{N}) = \begin{bmatrix}
         F & 0 \\
-        0 & \underbrace{\mathcal{K}(L_p, \highlight{$\mathbb{L}$})\,F_p \, \KSP{M_p}{M}}_{\KSP{S_p}{S}}
+        0 & \mathcal{K}(S_p, \mathcal{K}(L_p, \highlight{$\mathbb{L}$})\,F_p \, \KSP{M_p}{M})
       \end{bmatrix}
       \begin{bmatrix}
         I & 0\\
@@ -1112,10 +1111,11 @@ with
 
   \begin{itemize}
   \item Can tune implicit solve for Navier-Stokes on its own, then
-    drop in where-ever a Navier-Stokes block wants inverted.
+    drop in where-ever such a block wants inverted.
 
-  \item Don't need to know ahead of time how to split, maybe we wanted to
-    eliminate temperature first.  Do so, without changing the code.
+  \item Model formulation doesn't care about variable
+    splittings. Maybe we wanted to eliminate temperature first.  Do
+    so, without changing the code.
 
   \item Composes with nonlinear solvers that need linearisations.
 
@@ -1129,21 +1129,20 @@ with
 \begin{frame}[fragile]
   \frametitle{Easy extensibility}
   A preconditioner for the Ohta--Kawasaki equation \parencite{Farrell:2016}
-\begin{minted}[fontsize=\tiny]{python}
+\begin{minted}[fontsize=\tiny,mathescape]{python}
 class OKPC(PCBase):
 
     def initialize(self, pc):
-        [...] # boilerplate elided
+        # Approximate $S^{-1} \sim \hat{S}^{-1} M \hat{S}^{-1}$
+        # with $\hat{S} = \inner{q, w} + \epsilon\sqrt{c}\inner{\nabla q, \nabla w}$
         c = (dt * theta * eps**2)/(1 + dt * theta * sigma)
-        dw = TrialFunction(V)
+        w = TrialFunction(V)
         q = TestFunction(V)
-        op = assemble(inner(dw, q)*dx + sqrt(c) * inner(grad(dw), grad(q))*dx)
+        op = assemble(inner(w, q)*dx + sqrt(c) * inner(grad(w), grad(q))*dx)
         self.ksp = KSP().create(comm=pc.comm)
         self.ksp.setOperators(op.petscmat, op.petscmat)
-        self.ksp.setOptionsPrefix(pc.getOptionsPrefix() + "hats_")
-        self.ksp.setFromOptions()
-
-        mass = assemble(dw*q*dx)
+        [...] # boilerplate elided
+        mass = assemble(w*q*dx)
         self.mass = mass.petscmat
         work = self.mass.createVecLeft()
         self.work = (work, work.duplicate())
@@ -1161,7 +1160,7 @@ class OKPC(PCBase):
   \begin{itemize}
   \item Include ability to nest GMG solves: matrix-free multigrid.
   \item Take advantage of new hybridisation opportunities in Firedrake
-  \item Extend approach to nonlinear preconditioning?
+  \item Extend approach to nonlinear preconditioning, DD?
   \end{itemize}
   \begin{center}
     All of this is available as part of the Firedrake project
@@ -1174,7 +1173,7 @@ class OKPC(PCBase):
   Questions?
 \end{frame}
 \appendix
-\begin{frame}[t]
+\begin{frame}[t,allowframebreaks]
   \frametitle{References}
   \printbibliography[heading=none]
 \end{frame}
