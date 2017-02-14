@@ -58,9 +58,30 @@ London
 
 \usepackage{minted}
 
-\title{Programming your solver}
+\title{Programming your (implicit) solver}
 
 \begin{document}
+
+\bgroup
+\setbeamertemplate{background}{}
+\begin{frame}[standout]
+
+\only<1>{\hspace*{-2em}\includegraphics[width=\paperwidth]{rainbow-city}}
+
+\only<2>{\url{http://www.climate-lab-book.ac.uk/2014/end-of-the-rainbow/}}
+
+\begin{center}
+  \begin{onlyenv}<2>
+    \begin{tikzpicture}
+      \node (A) {\includegraphics[width=\textwidth]{rainbow}};
+
+      \draw[line width=4pt, color=red] (A.south west) -- (A.north
+      east);
+    \end{tikzpicture}
+  \end{onlyenv}
+\end{center}
+\end{frame}
+\egroup
 
 \maketitle
 
@@ -117,6 +138,8 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
     factorisations.
   \item Gives many knobs to tweak, may require problem-specific
     auxiliary operators.
+  \item How do we capture the abstraction such that automated model
+    manipulation is still possible? (e.g.~automated adjoints).
   \end{itemize}
 \end{frame}
 \begin{frame}
@@ -137,7 +160,7 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
   has minimal polynomial $T(T - I)(T^2 - T - I) =
   0$ \parencite{Murphy:2000}.
 
-  See \cite{Ipsen:2001} for the case $D \ne 0$.
+  See \textcite{Ipsen:2001} for the case $D \ne 0$.
 \end{frame}
 
 \begin{frame}
@@ -175,7 +198,7 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
 \end{frame}
 
 \begin{frame}
-  \frametitle{Preconditioning \parencite{Howle:2012}}
+  \frametitle{Preconditioning}
   Write
   \begin{equation*}
     N = \begin{bmatrix}
@@ -195,21 +218,21 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
   \begin{equation*}
     S_T = K - \tilde{M}_2 N^{-1} \tilde{M}_1.
   \end{equation*}
-  \cite{Howle:2012} show that $K^{-1}$ is a good preconditioner for
+  \textcite{Howle:2012} show that $K^{-1}$ is a good preconditioner for
   $S_T$.
 \end{frame}
 \begin{frame}
-  \frametitle{Krylov iterations}
-  Solve the (left-)preconditioned system
+  \frametitle{Newton update}
+  Solve for the update
   \begin{equation*}
-    P^{-1} J x = P^{-1} b.
+    \delta x = J^{-1} r.
   \end{equation*}
 
   Write $\mathcal{K}(A, \mathbb{A})$ to denote approximating $A^{-1}$
   using an iteration $\mathcal{K}$ on $A$ using $\mathbb{A}$ as a
-  preconditioner.  Then the block multiplicative preconditioner
+  preconditioner.  Then the iteration
   \begin{equation*}
-    P^{-1} = \begin{bmatrix}
+    \KSP{J}{\begin{bmatrix}
       \ksp{N} & 0 \\
       0 & I
     \end{bmatrix}
@@ -220,9 +243,9 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
     \begin{bmatrix}
       I & 0\\
       0 & \ksp{K}
-    \end{bmatrix}
+    \end{bmatrix}}
   \end{equation*}
-  empirically requires few Krylov iterations to invert $J$, and
+  empirically converges swiftly, and
   requires only preconditioners $\mathbb{N}$ for Navier-Stokes and
   $\mathbb{K}$ for convection-diffusion.
 \end{frame}
@@ -356,35 +379,37 @@ class PCDPC(PCBase):
 
 \begin{frame}
   \frametitle{Back to the main event}
-  We want to invert $J$ using $\ksp{J}$ where
-  $J = \begin{bmatrix}
-    F & B^T & M_1\\
-    C & 0 & 0 \\
-    M_2 & 0 & K
-  \end{bmatrix}$
-  and we are using
+  We are solving
+  \begin{equation*}
+    \KSP{\begin{bmatrix}
+        F & B^T & M_1\\
+        C & 0 & 0 \\
+        M_2 & 0 & K
+      \end{bmatrix}}{J}
+  \end{equation*}
+  using
   \begin{equation*}
     \mathbb{J} =
     \begin{bmatrix}
       \KSP{\begin{bmatrix}
-        F & B^T\\
-        C & 0
-      \end{bmatrix}}{N} & 0\\
-    0 & I
-  \end{bmatrix}
-  \begin{bmatrix}
-    I & 0 & -M_1\\
-    0 & I & 0 \\
-    0 & 0 & I
-  \end{bmatrix}
-  \begin{bmatrix}
-    I & 0 & 0\\
-    0 & I & 0\\
-    0 & 0 &\ksp{K}
-  \end{bmatrix}
-\end{equation*}
-with
-\begin{equation*}
+          F & B^T\\
+          C & 0
+        \end{bmatrix}}{N} & 0\\
+      0 & I
+    \end{bmatrix}
+    \begin{bmatrix}
+      I & 0 & -M_1\\
+      0 & I & 0 \\
+      0 & 0 & I
+    \end{bmatrix}
+    \begin{bmatrix}
+      I & 0 & 0\\
+      0 & I & 0\\
+      0 & 0 &\ksp{K}
+    \end{bmatrix}
+  \end{equation*}
+  with
+  \begin{equation*}
     \mathbb{N} = \begin{bmatrix}
       F & 0 \\
       0 & \mathcal{K}(S_p, \KSP{L_p}{L}\,F_p \, \KSP{M_p}{M})
@@ -397,14 +422,19 @@ with
       \ksp{F} & 0 \\
       0 & I
     \end{bmatrix}
-\end{equation*}
+  \end{equation*}
+  and
+  \begin{equation*}
+    S_p = -C \ksp{F} B^T.
+  \end{equation*}
 \end{frame}
 
 \begin{frame}[fragile]
   \frametitle{First, the temperature solve}
+  \small
   \begin{onlyenv}<1>
     \begin{equation*}
-      \mathcal{K}(J, \mathbb{J}) =
+      \KSP{J}{%
       \begin{bmatrix}
         \KSP{\begin{bmatrix}
             F & B^T\\
@@ -421,7 +451,7 @@ with
         I & 0 & 0\\
         0 & I & 0\\
         0 & 0 &\ksp{K}
-      \end{bmatrix}
+      \end{bmatrix}}
     \end{equation*}
 \begin{minted}[fontsize=\tiny,escapeinside=||]{py}
 -mat_type matfree
@@ -439,7 +469,7 @@ with
   \begin{onlyenv}<2>
     \color{gray}
     \begin{equation*}
-      \mathcal{K}(\highlight{$J$}, \mathbb{J}) =
+      \KSP{\highlight{$J$}}{%
       \begin{bmatrix}
         \KSP{\begin{bmatrix}
             F & B^T\\
@@ -456,7 +486,7 @@ with
         I & 0 & 0\\
         0 & I & 0\\
         0 & 0 &\ksp{K}
-      \end{bmatrix}
+      \end{bmatrix}}
     \end{equation*}
 \begin{minted}[fontsize=\tiny,escapeinside=||]{py}
 |\highlight{-mat\_type matfree}|
@@ -474,7 +504,7 @@ with
   \begin{onlyenv}<3>
     \color{gray}
     \begin{equation*}
-      \highlight{$\mathcal{K}$}(J, \mathbb{J}) =
+      \highlight{$\mathcal{K}$}\left(J,%
       \begin{bmatrix}
         \KSP{\begin{bmatrix}
             F & B^T\\
@@ -491,7 +521,7 @@ with
         I & 0 & 0\\
         0 & I & 0\\
         0 & 0 &\ksp{K}
-      \end{bmatrix}
+      \end{bmatrix}\right)
     \end{equation*}
 \begin{minted}[fontsize=\tiny,escapeinside=||]{py}
 -mat_type matfree
@@ -509,7 +539,7 @@ with
   \begin{onlyenv}<4>
     \color{gray}
     \begin{equation*}
-      \mathcal{K}(J, \highlight{$\mathbb{J}$}) =
+      \KSP{J}{%
       \highlight{$\begin{bmatrix}
         \KSP{\begin{bmatrix}
             F & B^T\\
@@ -526,7 +556,7 @@ with
         I & 0 & 0\\
         0 & I & 0\\
         0 & 0 &\ksp{K}
-      \end{bmatrix}$}
+      \end{bmatrix}$}}
     \end{equation*}
 \begin{minted}[fontsize=\tiny,escapeinside=||]{py}
 -mat_type matfree
@@ -544,7 +574,7 @@ with
   \begin{onlyenv}<5>
     \color{gray}
     \begin{equation*}
-      \mathcal{K}(J, \mathbb{J}) =
+      \KSP{J}{%
       \begin{bmatrix}
         \highlight{$\KSP{\begin{bmatrix}
             F & B^T\\
@@ -561,7 +591,7 @@ with
         I & 0 & 0\\
         0 & I & 0\\
         0 & 0 &\ksp{K}
-      \end{bmatrix}
+      \end{bmatrix}}
     \end{equation*}
 \begin{minted}[fontsize=\tiny,escapeinside=||]{py}
 -mat_type matfree
@@ -579,7 +609,7 @@ with
   \begin{onlyenv}<6>
     \color{gray}
     \begin{equation*}
-      \mathcal{K}(J, \mathbb{J}) =
+      \KSP{J}{%
       \begin{bmatrix}
         \KSP{\begin{bmatrix}
             F & B^T\\
@@ -596,7 +626,7 @@ with
         I & 0 & 0\\
         0 & I & 0\\
         0 & 0 & \highlight{$\ksp{K}$}
-      \end{bmatrix}
+      \end{bmatrix}}
     \end{equation*}
 \begin{minted}[fontsize=\tiny,escapeinside=||]{py}
 -mat_type matfree
@@ -614,7 +644,7 @@ with
   \begin{onlyenv}<7>
     \color{gray}
     \begin{equation*}
-      \mathcal{K}(J, \mathbb{J}) =
+      \KSP{J}{%
       \begin{bmatrix}
         \KSP{\begin{bmatrix}
             F & B^T\\
@@ -631,7 +661,7 @@ with
         I & 0 & 0\\
         0 & I & 0\\
         0 & 0 & \highlight{$\mathcal{K}$}(K, \mathbb{K})
-      \end{bmatrix}
+      \end{bmatrix}}
     \end{equation*}
 \begin{minted}[fontsize=\tiny,escapeinside=||]{py}
 -mat_type matfree
@@ -649,7 +679,7 @@ with
   \begin{onlyenv}<8>
     \color{gray}
     \begin{equation*}
-      \mathcal{K}(J, \mathbb{J}) =
+      \KSP{J}{%
       \begin{bmatrix}
         \KSP{\begin{bmatrix}
             F & B^T\\
@@ -666,7 +696,7 @@ with
         I & 0 & 0\\
         0 & I & 0\\
         0 & 0 & \mathcal{K}(K, \highlight{$\mathbb{K}$})
-      \end{bmatrix}
+      \end{bmatrix}}
     \end{equation*}
 \begin{minted}[fontsize=\tiny,escapeinside=||]{py}
 -mat_type matfree
@@ -685,20 +715,22 @@ with
 
 \begin{frame}[fragile]
   \frametitle{Now the Navier-Stokes block}
+  \small
   \begin{onlyenv}<1>
     \begin{equation*}
-      \mathcal{K}(N, \mathbb{N}) = \begin{bmatrix}
-        F & 0 \\
-        0 & \mathcal{K}(S_p, \KSP{L_p}{L}\,F_p \, \KSP{M_p}{M})
-      \end{bmatrix}
-      \begin{bmatrix}
-        I & 0\\
-        -C & I
-      \end{bmatrix}
-      \begin{bmatrix}
-        \ksp{F} & 0 \\
-        0 & I
-      \end{bmatrix}
+      \KSP{N}{%
+        \begin{bmatrix}
+          F & 0 \\
+          0 & \mathcal{K}(S_p, \KSP{L_p}{L}\,F_p \, \KSP{M_p}{M})
+        \end{bmatrix}
+        \begin{bmatrix}
+          I & 0\\
+          -C & I
+        \end{bmatrix}
+        \begin{bmatrix}
+          \ksp{F} & 0 \\
+          0 & I
+        \end{bmatrix}}
     \end{equation*}
 \begin{minted}[fontsize=\tiny,escapeinside=||]{py}
 -fieldsplit_0_ksp_type gmres
@@ -722,7 +754,8 @@ with
   \begin{onlyenv}<2>
     \color{gray}
     \begin{equation*}
-      \highlight{$\mathcal{K}$}(N, \mathbb{N}) = \begin{bmatrix}
+      \highlight{$\mathcal{K}$}\left(N,%
+        \begin{bmatrix}
         F & 0 \\
         0 & \mathcal{K}(S_p, \KSP{L_p}{L}\,F_p \, \KSP{M_p}{M})
       \end{bmatrix}
@@ -733,7 +766,7 @@ with
       \begin{bmatrix}
         \ksp{F} & 0 \\
         0 & I
-      \end{bmatrix}
+      \end{bmatrix}\right)
     \end{equation*}
 \begin{minted}[fontsize=\tiny,escapeinside=||]{py}
 |\highlight{-fieldsplit\_0\_ksp\_type gmres}|
@@ -757,7 +790,8 @@ with
   \begin{onlyenv}<3>
     \color{gray}
     \begin{equation*}
-      \mathcal{K}(N, \highlight{$\mathbb{N}$}) = \highlight{$\begin{bmatrix}
+      \KSP{N}{%
+        \highlight{$\begin{bmatrix}
         F & 0 \\
         0 & \mathcal{K}(S_p, \KSP{L_p}{L}\,F_p \, \KSP{M_p}{M})
       \end{bmatrix}
@@ -768,7 +802,7 @@ with
       \begin{bmatrix}
         \ksp{F} & 0 \\
         0 & I
-      \end{bmatrix}$}
+      \end{bmatrix}$}}
     \end{equation*}
 \begin{minted}[fontsize=\tiny,escapeinside=||]{py}
 -fieldsplit_0_ksp_type gmres
@@ -792,7 +826,8 @@ with
   \begin{onlyenv}<4>
     \color{gray}
     \begin{equation*}
-      \mathcal{K}(N, \mathbb{N}) = \begin{bmatrix}
+      \KSP{N}{%
+        \begin{bmatrix}
         F & 0 \\
         0 & \mathcal{K}(S_p, \KSP{L_p}{L}\,F_p \, \KSP{M_p}{M})
       \end{bmatrix}
@@ -803,7 +838,7 @@ with
       \begin{bmatrix}
         \highlight{$\mathcal{K}$}(K, \mathbb{K}) & 0 \\
         0 & I
-      \end{bmatrix}
+      \end{bmatrix}}
     \end{equation*}
 \begin{minted}[fontsize=\tiny,escapeinside=||]{py}
 -fieldsplit_0_ksp_type gmres
@@ -827,7 +862,8 @@ with
   \begin{onlyenv}<5>
     \color{gray}
     \begin{equation*}
-      \mathcal{K}(N, \mathbb{N}) = \begin{bmatrix}
+      \KSP{N}{%
+        \begin{bmatrix}
         F & 0 \\
         0 & \mathcal{K}(S_p, \KSP{L_p}{L}\,F_p \, \KSP{M_p}{M})
       \end{bmatrix}
@@ -838,7 +874,7 @@ with
       \begin{bmatrix}
         \mathcal{K}(F, \highlight{$\mathbb{F}$}) & 0 \\
         0 & I
-      \end{bmatrix}
+      \end{bmatrix}}
     \end{equation*}
 \begin{minted}[fontsize=\tiny,escapeinside=||]{py}
 -fieldsplit_0_ksp_type gmres
@@ -862,7 +898,8 @@ with
   \begin{onlyenv}<6>
     \color{gray}
     \begin{equation*}
-      \mathcal{K}(N, \mathbb{N}) = \begin{bmatrix}
+      \KSP{N}{%
+        \begin{bmatrix}
         F & 0 \\
         0 & \highlight{$\mathcal{K}$}(S_p, \KSP{L_p}{L}\,F_p \, \KSP{M_p}{M})
       \end{bmatrix}
@@ -873,7 +910,7 @@ with
       \begin{bmatrix}
         \ksp{F} & 0 \\
         0 & I
-      \end{bmatrix}
+      \end{bmatrix}}
     \end{equation*}
 \begin{minted}[fontsize=\tiny,escapeinside=||]{py}
 -fieldsplit_0_ksp_type gmres
@@ -897,7 +934,8 @@ with
   \begin{onlyenv}<7>
     \color{gray}
     \begin{equation*}
-      \mathcal{K}(N, \mathbb{N}) = \begin{bmatrix}
+      \KSP{N}{%
+        \begin{bmatrix}
         F & 0 \\
         0 & \mathcal{K}(S_p, \highlight{$\KSP{L_p}{L}\,F_p \, \KSP{M_p}{M}$})
       \end{bmatrix}
@@ -908,7 +946,7 @@ with
       \begin{bmatrix}
         \ksp{F} & 0 \\
         0 & I
-      \end{bmatrix}
+      \end{bmatrix}}
     \end{equation*}
 \begin{minted}[fontsize=\tiny,escapeinside=||]{py}
 -fieldsplit_0_ksp_type gmres
@@ -932,7 +970,8 @@ with
   \begin{onlyenv}<8>
     \color{gray}
     \begin{equation*}
-      \mathcal{K}(N, \mathbb{N}) = \begin{bmatrix}
+      \KSP{N}{%
+        \begin{bmatrix}
         F & 0 \\
         0 & \mathcal{K}(S_p, \KSP{L_p}{L}\,\highlight{$F_p$} \, \KSP{M_p}{M})
       \end{bmatrix}
@@ -943,7 +982,7 @@ with
       \begin{bmatrix}
         \ksp{F} & 0 \\
         0 & I
-      \end{bmatrix}
+      \end{bmatrix}}
     \end{equation*}
 \begin{minted}[fontsize=\tiny,escapeinside=||]{py}
 -fieldsplit_0_ksp_type gmres
@@ -967,7 +1006,8 @@ with
   \begin{onlyenv}<9>
     \color{gray}
     \begin{equation*}
-      \mathcal{K}(N, \mathbb{N}) = \begin{bmatrix}
+      \KSP{N}{%
+      \begin{bmatrix}
         F & 0 \\
         0 & \mathcal{K}(S_p, \KSP{L_p}{L}\,F_p \, \highlight{$\mathcal{K}$}(M_p, \mathbb{M}))
       \end{bmatrix}
@@ -978,7 +1018,7 @@ with
       \begin{bmatrix}
         \ksp{F} & 0 \\
         0 & I
-      \end{bmatrix}
+      \end{bmatrix}}
     \end{equation*}
 \begin{minted}[fontsize=\tiny,escapeinside=||]{py}
 -fieldsplit_0_ksp_type gmres
@@ -1002,7 +1042,8 @@ with
   \begin{onlyenv}<10>
     \color{gray}
     \begin{equation*}
-      \ksp{N} = \begin{bmatrix}
+      \KSP{N}{%
+        \begin{bmatrix}
         F & 0 \\
         0 & \mathcal{K}(S_p, \KSP{L_p}{L}\,F_p \, \mathcal{K}(M_p, \highlight{$\mathbb{M}$}))
       \end{bmatrix}
@@ -1013,7 +1054,7 @@ with
       \begin{bmatrix}
         \ksp{F} & 0 \\
         0 & I
-      \end{bmatrix}
+      \end{bmatrix}}
     \end{equation*}
 \begin{minted}[fontsize=\tiny,escapeinside=||]{py}
 -fieldsplit_0_ksp_type gmres
@@ -1037,7 +1078,8 @@ with
   \begin{onlyenv}<11>
     \color{gray}
     \begin{equation*}
-      \mathcal{K}(N, \mathbb{N}) = \begin{bmatrix}
+      \KSP{N}{%
+        \begin{bmatrix}
         F & 0 \\
         0 & \mathcal{K}(S_p, \highlight{$\mathcal{K}$}(L_p, \mathbb{L})\,F_p \, \KSP{M_p}{M})
       \end{bmatrix}
@@ -1048,7 +1090,7 @@ with
       \begin{bmatrix}
         \ksp{F} & 0 \\
         0 & I
-      \end{bmatrix}
+      \end{bmatrix}}
     \end{equation*}
 \begin{minted}[fontsize=\tiny,escapeinside=||]{py}
 -fieldsplit_0_ksp_type gmres
@@ -1072,7 +1114,8 @@ with
   \begin{onlyenv}<12>
     \color{gray}
     \begin{equation*}
-      \mathcal{K}(N, \mathbb{N}) = \begin{bmatrix}
+      \KSP{N}{%
+        \begin{bmatrix}
         F & 0 \\
         0 & \mathcal{K}(S_p, \mathcal{K}(L_p, \highlight{$\mathbb{L}$})\,F_p \, \KSP{M_p}{M})
       \end{bmatrix}
@@ -1083,7 +1126,7 @@ with
       \begin{bmatrix}
         \ksp{F} & 0 \\
         0 & I
-      \end{bmatrix}
+      \end{bmatrix}}
     \end{equation*}
 \begin{minted}[fontsize=\tiny,escapeinside=||]{py}
 -fieldsplit_0_ksp_type gmres
@@ -1104,6 +1147,19 @@ with
 |\highlight{-fieldsplit\_0\_fieldsplit\_1\_pcd\_Kp\_pc\_type hypre}|
 \end{minted}
   \end{onlyenv}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Not shown}
+  \begin{itemize}
+  \item Setting solver tolerances
+  \item Configuring $\ksp{F}$ inside application of $S_p$ (not
+    needed because $\KSP{S_p}{S}$ is applied \texttt{preonly}).
+  \item More complex configurations for elliptic solves
+    (e.g.~$hp$-independent iterations using subspace corrections
+    for high order).
+  \item ...
+  \end{itemize}
 \end{frame}
 
 \begin{frame}
