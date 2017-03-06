@@ -9,27 +9,60 @@
 \usepackage{pgfplotstable}
 \usetikzlibrary{pgfplots.groupplots}
 \pgfplotsset{compat=1.12}
+
+\pgfplotsset{every axis legend/.style={
+    cells={anchor=west},
+    inner xsep=3pt,inner ysep=2pt,nodes={inner xsep=4pt, inner
+      ysep=2pt, text depth=0.15em},
+    anchor=north east,
+    shape=rectangle,
+    at={(1, 1)}
+    }
+  }
+
+\pgfplotsset{
+    compat=newest,
+    /pgfplots/legend image code/.code={%
+        \draw[mark repeat=2,mark phase=2,#1]
+            plot coordinates {
+                (0cm,0cm)
+                (0.5cm,0cm)
+                (1.0cm,0cm)%
+            };
+    },
+}
 \usepackage{appendixnumberbeamer}
 \usepackage{amsmath}
+\usepackage{xcolor}
 \date{3rd March 2017}
 \usetheme{metropolis}
 
+\definecolor{black}{rgb}{0,0,0}
+\definecolor{orange}{rgb}{0.9019607843137255, 0.6235294117647059, 0}
+\definecolor{blue}{rgb}{0.33725490196078434, 0.7058823529411765,
+  0.9137254901960784}
+\definecolor{green}{rgb}{0,0.6196078431372549, 0.45098039215686275}
+\definecolor{yellow}{rgb}{0.9411764705882353, 0.8941176470588236,
+  0.25882352941176473}
+\definecolor{oblue}{rgb}{0, 0.4470588235294118, 0.6980392156862745}
+\definecolor{oorange}{rgb}{0.8352941176470589, 0.3686274509803922, 0}
+\definecolor{pink}{rgb}{0.8, 0.4745098039215686, 0.6549019607843137}
 \pgfplotscreateplotcyclelist{decent cycle}{%
   {black, mark=diamond*, mark options={fill=black},
     mark size=2pt},
-  {blue, mark=*, mark options={fill=blue},
+  {orange, mark=*, mark options={fill=orange},
     mark size=2pt},
-  {orange, mark=square*, mark options={fill=orange},
+  {blue, mark=square*, mark options={fill=blue},
     mark size=2pt},
-  {magenta, mark=triangle*, mark options={fill=magenta},
+  {green, mark=triangle*, mark options={fill=green},
     mark size=3pt},
   {black, mark=diamond*, mark options={fill=black},
     mark size=2pt},
-  {blue, mark=*, mark options={fill=blue},
+  {orange, mark=*, mark options={fill=orange},
     mark size=2pt},
-  {orange, mark=square*, mark options={fill=orange},
+  {blue, mark=square*, mark options={fill=blue},
     mark size=2pt},
-  {magenta, mark=triangle*, mark options={fill=magenta},
+  {green, mark=triangle*, mark options={fill=green},
     mark size=3pt},
 }
 
@@ -191,8 +224,8 @@
 \begin{frame}
   \frametitle{Discretised system}
   After discretising in space and time we obtain a linear operator for
-  $\vec{v} \in H(\div)$, $p \in L^2$, $b$ scalar, collocated with
-  vertical part of $\vec{v}$ space.
+  $\vec{v} \in H(\div)$, $p \in L^2$, $b \in L^2_h \otimes H^1_v$ (collocated with
+  vertical part of $\vec{v}$).
 \begin{equation*}
 \begin{pmatrix}
   M_v &
@@ -249,11 +282,23 @@
         \end{pmatrix}
       \end{equation*}
   \begin{itemize}
+  \item All operators sparse
   \item Needs DG Laplacian
   \end{itemize}
     \end{block}
   \end{onlyenv}
   \begin{onlyenv}<3>
+    \begin{block}{Hybridisation}
+      Local Schur complement reduction and back substitution with
+      Lagrange multipliers for continuity.
+      \begin{itemize}
+      \item Only need element-wise inverses for elimination
+      \item Needs multigrid on trace variables
+      \item See Thomas Gibson's talk later in MS320
+      \end{itemize}
+    \end{block}
+  \end{onlyenv}
+  \begin{onlyenv}<4>
     \begin{block}{Schur complement reduction}
       Block elimination and back substitution
       \begin{equation*}
@@ -265,26 +310,17 @@
     \begin{itemize}
     \item $S = M_p + \omega_c^2 D M_v^{-1} D^T$ is \emph{dense}, but
       elliptic
+    \item With good inverses, preconditioned system has low degree
+      minimal polynomial.
     \item Can use similar methods as a \emph{distributive} smoother.
     \end{itemize}
-    \end{block}
-  \end{onlyenv}
-
-  \begin{onlyenv}<4>
-    \begin{block}{Hybridisation}
-      Local Schur complement reduction and back substitution with
-      Lagrange multipliers for continuity.
-      \begin{itemize}
-      \item Only need element-wise inverses for elimination
-      \item Needs multigrid on trace variables
-      \item See Thomas Gibson's talk later in MS320
-      \end{itemize}
     \end{block}
   \end{onlyenv}
 \end{frame}
 
 \begin{frame}[allowframebreaks]
   \frametitle{Approximating $S$}
+  Global Schur complement approach, needs inverse of elliptic $S$.
   \begin{itemize}
   \item Strong coupling in vertical direction, need to treat this
     exactly.
@@ -292,6 +328,7 @@
     vertical line relaxation.
   \item Exploit tensor-product structure to split horizontal and
     vertical components.
+  \item Fast solver demonstrated in FV setting \parencite{Mueller:2014}.
   \end{itemize}
   \framebreak
 
@@ -309,6 +346,7 @@
       (D^h)^T\big] \oplus \frac{\omega_c^2}{1 + \omega_N^2} D^z
       M_{v,\text{inv}}^z (D^z)^T
     \end{equation*}
+    Reasonable if $\Delta z \ll \Delta x$ and $M_v$ diagonally dominant.
   \end{block}
 \end{frame}
 
@@ -363,8 +401,6 @@ op2.par_loop(kernel, hostmesh.cell_set,
 
 \begin{frame}
   \frametitle{Compare three solvers to invert $S$}
-  GMRES(30) + full schur complement factorisation tolerance $10^{-5}$.
-
   \begin{block}{Single level}
     Two smoother iterations just on fine level (standard approach in
     Met Office Unified Model).
@@ -378,6 +414,12 @@ op2.par_loop(kernel, hostmesh.cell_set,
   \begin{block}{PETSc MG}
     BoomerAMG with ILU smoother on $\tilde{S} = M_p + \omega_c^2 D M_{v,\text{inv}} D^T$
   \end{block}
+  \begin{block}{Two problem settings}
+    \begin{itemize}
+    \item[LO] lowest order RT0 space for velocity
+    \item[NLO] higher order BDFM1-like \parencite{Cotter:2012a}
+    \end{itemize}
+  \end{block}
 \end{frame}
 \begin{frame}
   \frametitle{Algorithmic performance}
@@ -387,7 +429,7 @@ op2.par_loop(kernel, hostmesh.cell_set,
         \begin{semilogyaxis}[
           decent,
           title={Convergence with $\text{CFL} = 8$,
-            low-order\\
+            LO\\
             $\vec{v} \in \text{RT}0$, $p \in \text{DG}0$},
           title style={align=center},
           xlabel={Iterations},
@@ -424,7 +466,7 @@ op2.par_loop(kernel, hostmesh.cell_set,
       \begin{tikzpicture}
         \begin{semilogyaxis}[
           decent,
-          title={Convergence with $\text{CFL} = 8$, high-order\\
+          title={Convergence with $\text{CFL} = 8$, NLO\\
             $\vec{v} \in \texttt{HDiv}(\text{BDFM1} \otimes \text{P}2)$, $p \in \text{DG}1$},
           title style={align=center},
           xlabel={Iterations},
@@ -474,9 +516,9 @@ op2.par_loop(kernel, hostmesh.cell_set,
         Custom MG (LO),
         PETSc MG (LO),
         Custom coarse AMG (LO),
-        Single level (HO),
-        Custom MG (HO),
-        PETSc MG (HO),
+        Single level (NLO),
+        Custom MG (NLO),
+        PETSc MG (NLO),
         Custom coarse AMG (LO)},
       legend style={legend to name=grouplegend, legend columns=2}
       ]
@@ -515,7 +557,7 @@ op2.par_loop(kernel, hostmesh.cell_set,
 \end{frame}
 
 \begin{frame}
-  \frametitle{Weak scaling}
+  \frametitle{Weak scaling ($\text{CFL = 8}$)}
   \begin{tikzpicture}[scale=0.65]
     \begin{groupplot}[
       group style={
@@ -529,7 +571,7 @@ op2.par_loop(kernel, hostmesh.cell_set,
       xlabel=Num processes,
       ylabel=Time (s),
       align=center,
-      title={Low order\\(Total DoFs)},
+      title={LO \\(Total DoFs)},
       title style={yshift=2ex},
       ymin=0,
       xtick={1, 6, 24, 96, 384, 1536},
@@ -553,7 +595,7 @@ op2.par_loop(kernel, hostmesh.cell_set,
       \nextgroupplot[
       decent,
       xmode=log,xlabel=Num processes,
-      title={High order\\(Total DoFs)},
+      title={NLO\\(Total DoFs)},
       align=center,
       title style={yshift=2ex},
       xtick={1, 6, 24, 96, 384, 1536, 6144},
@@ -588,7 +630,7 @@ op2.par_loop(kernel, hostmesh.cell_set,
   \begin{block}{Measured bandwidth GB/s}
     \begin{center}
       \begin{tabular}{lrrrr}
-        & \multicolumn{2}{c}{Low order} & \multicolumn{2}{c}{High order}\\
+        & \multicolumn{2}{c}{LO} & \multicolumn{2}{c}{NLO}\\
         Level & $\tilde{S}$ & $\tilde{S}^{-1}$ & $\tilde{S}$ & $\tilde{S}^{-1}$\\
         0  &   2.52 &   1.55 &    0.70 &   0.47\\
         1  &   6.65 &   4.50 &    2.30 &   1.60\\
