@@ -12,30 +12,15 @@
 \usepackage{appendixnumberbeamer}
 \usepackage{amsmath}
 \date{27th March 2017}
-\usetheme{ometropolis}
+\usetheme{metropolis}
+\usepackage{pifont}
 
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
+
+\titlegraphic{\hfill\includegraphics[height=2em]{imperial-bw-gray}}
 \metroset{progressbar=frametitle}
 
-\pgfplotscreateplotcyclelist{decent cycle}{%
-  {blue, mark=*, mark options={fill=blue},
-    mark size=2pt},
-  {cyan, mark=square*, mark options={fill=cyan},
-    mark size=2pt},
-  {magenta, mark=triangle*, mark options={fill=magenta},
-    mark size=3pt},
-  {blue, mark=*, mark options={fill=blue},
-    mark size=2pt},
-  {cyan, mark=square*, mark options={fill=cyan},
-    mark size=2pt},
-  {magenta, mark=triangle*, mark options={fill=magenta},
-    mark size=3pt},
-}
-
-\pgfplotsset{
-  decent/.style={
-    cycle list name=decent cycle,
-  }
-}
 \renewcommand{\vec}[1]{\ensuremath{\boldsymbol{#1}}}
 \newcommand{\ddt}[1]{\frac{\partial #1}{\partial t}}
 \newcommand{\zhat}{\hat{\vec{z}}}
@@ -63,13 +48,15 @@ London
   \href{http://dx.doi.org/#1}%
   {{\small\texttt{doi:\,#1}{}}}%
 }
+
 \usepackage[url=false,
-            doi=true,
-            isbn=false,
-            style=authoryear,
-            firstinits=true,
-            uniquename=init,
-            backend=biber]{biblatex}
+doi=true,
+isbn=false,
+style=authoryear,
+firstinits=true,
+uniquename=init,
+backend=biber]{biblatex}
+
 
 \setbeamertemplate{bibliography item}{}
 \renewcommand{\bibfont}{\footnotesize}
@@ -98,12 +85,11 @@ London
 
 \maketitle
 
-\begin{frame}
-  \frametitle{What we all would like for exascale}
-  \begin{center}
-    \Large High frequency, single-core CPUs
-  \end{center}
+\begin{frame}[standout]
+  50GHz single-core CPUs
 \end{frame}
+
+\section{The status quo}
 
 \begin{frame}
   \frametitle{What we have to work with}
@@ -116,13 +102,13 @@ London
   \end{tabular}
 
   \begin{block}{Exascale}
-    Easy, just multiply by $10^6$.
     \begin{itemize}
     \item<1-> 190K NVidia P100s, 1e9-way concurrency, 50MW
     \item<1-> 290K Intel Phis, 1e8-way concurrency, 75MW
     \item<1-> 1.3M Intel Broadwells, 3e7-way concurrency, 180MW
     \item<2-> 1 Boeing 747, 140MW
     \item<3-> 1 Sizewell B, 1200MW
+    \item<4-> 1 UK, 35GW
     \end{itemize}
   \end{block}
   % NVIDIA P100 (Pascal) 56 SMTs 5.3TF/s 732GB/s (16GB) 7.2F/B 250W 21F/W
@@ -132,203 +118,353 @@ London
   % Intel Broadwell E5-2699v4 22 cores 0.78TF/s 150GB/s (<1.5TB) 5.2F/B
   % 140W 5.6F/W
 \end{frame}
-\begin{frame}
-  \frametitle{How do you achieve these numbers?}
 
-  \begin{onlyenv}<1>
-    \begin{center}
-      \Large
-      Run LINPACK
-  \end{center}
-  \end{onlyenv}
+\begin{frame}[standout]
+ Run LINPACK
+\end{frame}
+
+\begin{frame}
+  \frametitle{But seriously}
+  \begin{itemize}
+  \item High useful arithmetic intensity (flops are cheaper than bytes)
+  \item Vectorise, vectorise, vectorise (only way to achieve flops)
+  \item Avoid bulk synchronous computation (performance resilience)
+  \item Reduce and/or amortise communication (hide latency)
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Current codes}
+
+  \begin{itemize}
+  \item[\xmark] Typically low order, memory-bound
+  \item[\xmark] Vectorisation left to compiler (?)
+  \item[\xmark] Iterative schemes with blocking reductions
+  \item[\xmark] Simple communication patterns (not optimal?)
+  \end{itemize}
+\end{frame}
+
+
+\section{Is my code any good?}
+
+\begin{frame}
+  \frametitle{Algorithmically}
+
+  \begin{block}{Notation}
+  $N$ -- total number of degrees of freedom;
+
+  $P$ -- total number of processes;
+
+  $T(N, P)$ -- time to solution.
+  \end{block}
+
+  \begin{block}{Good}
+    $\mathcal{O}(N)$ computational complexity;
+
+    $\mathcal{O}(\log P)$ communication complexity.
+
+    Actually care about minimal $T$, so $\mathcal{O}(N\log N)$ can be good.
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Scalability}
+
+  \begin{block}{Weak scaling}
+    Constant local work $N/P$.
+
+    Scalable code has $T(N, P) = T(2N, 2P)$.
+  \end{block}
+
+  \begin{block}{Strong scaling}
+    Decreasing local work $N/P$.
+
+    Scalable code has $T(N, P) = 2T(N, 2P)$.
+  \end{block}
 
   \begin{onlyenv}<2>
-    \begin{itemize}
-    \item Do many calculations on data when you fetch it (flops are free)
-    \item Do the same calculation on adjacent data items (vectorise)
-    \item Avoid communicating (hah!)
-    \end{itemize}
+    Time-resolved transient simulations do not weak scale. Sad!
   \end{onlyenv}
 \end{frame}
 
-\begin{frame}
-  \frametitle{How do I know what is good?}
 
-  \begin{block}{Build a model \parencite{Fischer:2015}}
-    Problem size $N$, processes $P$.
+\begin{frame}
+  \frametitle{What is good?}
+
+  Summarising \textcite{Fischer:2015}\footnote{\citefield{Fischer:2015}{doi}}.
+  
+  \begin{block}{}
+
+    $T_a(N, P) = T_a(N, 1)/P$ -- parallelisable work;
+
+    $T_c(N, P)$ -- communication;
+
+    $c$ -- serial overhead.
+
     \begin{equation*}
-      T(N, P) = \max{(T_a(N, P), T_c(N, P))} + c
+      T(N, P) = \left\{
+        \begin{split}
+          &T_a(N, P) + T_c(N, P) + c &\text{ synchronous comms}\\
+          &\max(T_a(N, P), T_c(N, P)) + c\,\,&\text{ asynchronous comms}
+        \end{split}\right.
     \end{equation*}
-    \begin{itemize}
-    \item $T_a(N, P) = T_a(N, 1)/P$ parallelizable work
-    \item $T_c$ communication
-    \item $c$ non-parallelizable
-    \end{itemize}
-  \end{block}
-  \begin{center}
-    \begin{columns}
-      \begin{column}{0.4\textwidth}
-        \begin{block}{Strong scaling}
-          Fix $N$, increase $P$.
-        \end{block}
-      \end{column}
-      \begin{column}{0.4\textwidth}
-        \begin{block}{Weak scaling}
-          Fix $N/P$, increase $P$.
-        \end{block}
-      \end{column}
-    \end{columns}
-  \end{center}
-\end{frame}
-\begin{frame}
-  \frametitle{Strong scaling}
-  This is the important one, since larger transient simulations need
-  more timesteps.  To maintain time to solution, must decrease $N/P$
-  with increasing $N$.
 
-  \begin{block}{Some costs do not go to zero}
-    \begin{itemize}
-    \item $\lim_{P\rightarrow \infty} T_a(N, P) = 0$.
-    \item $\lim_{P\rightarrow\infty} T_c(N, P) \ne 0$.
-    \item Ignore $c$ (reasonable for CPU).
-    \item Economics: stop increasing $P$ once $T_a < T_c$ (less than
-      50\% efficiency).
-    \end{itemize}
+    $\eta = T(N, 1)/(PT(N,P)$ -- strong scaling efficiency.
   \end{block}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Simple models}
+  \frametitle{When to stop?}
+
+  Bigger problems need more timesteps.
+  
+  To maintain time to solution as $N\rightarrow \infty$, need strong
+  scaling.
+
+  \begin{block}{Cost efficiency}
+    Ignore $c$ (reasonable for CPUs for a good code).
+
+    Often $P_{\text{opt}}$ when $T_a(N, P_\text{opt}) = T_c(N,
+    P_\text{opt})$, $\eta = 0.5$.
+  \end{block}
+
+  \begin{block}{Folk lemma}
+    Krylov methods strong scale to $N/P \approx 30000$.
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Measuring $P_{\text{opt}}$}
+  
+  \begin{itemize}
+  \item Measure $T(N, 1)$, $T(N, P)$, for a range of $P$.
+
+  \item Find $P_\text{opt}$ such that
+    $P_\text{opt}T(N, P_\text{opt}) = 2T(N,1)$.
+
+  \item How do I know if that is objectively optimal?
+
+  \item<2>{Build a model.}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Building blocks}
   \begin{block}{Computation}
-    Achieved flop rate for ``atomic'' unit of computation.
-    $t_a$ (s/F).  Measure using $P=1$, $N\rightarrow\infty$.
+    Measure $S$, e.g., flops with $P=1$, $N$ large.
+
+    ``atomic'' unit of computation takes time $t_a = S^{-1}$.
   \end{block}
+
   \begin{block}{Communication}
+    Linear model, latency + bandwidth.
+
     Time (s) to send $m$ doubles
     \begin{equation*}
       t_c(m) = \alpha^* + \beta^* m
     \end{equation*}
-    non-dimensionalise, provides comparable machine parameters
-    $\alpha = \alpha^*/t_a$ (F), $\beta = \beta^*/t_a$ (F/B).
+    non-dimensionalise, $\alpha = \alpha^*/t_a$, $\beta =
+    \beta^*/t_a$.
+    \begin{equation*}
+      t_c(m) = (\alpha + \beta m)t_a
+    \end{equation*}
   \end{block}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Measure on your machine}
-  \begin{columns}
-    \begin{column}{0.5\textwidth}
-      \includegraphics[width=\columnwidth]{ping-pong}
-    \end{column}
-    \begin{column}{0.5\textwidth}
-      \includegraphics[width=\columnwidth]{allreduce}
-    \end{column}
-  \end{columns}
+  \frametitle{Is this a good model?}
+  \begin{center}
+    \includegraphics[height=0.8\textheight]{ping-pong}
+  \end{center}
+  From \textcite{Fischer:2015}.
+
 \end{frame}
 
 \begin{frame}
-  \frametitle{Back to models}
+  \frametitle{Jacobi iteration}
+  \begin{equation*}
+    u_i^{k+1} = a_{ii}^{-1}\left(f_i + \sum_{j \ne i} a_{ij}u_j^{k}\right)
+  \end{equation*}
+  counting operations with $N/P$ entries per process, for a 7 point stencil.
+  \begin{equation*}
+    T_a = 14(N/P)t_a.
+  \end{equation*}
+  With a block decomposition, each face exchange moves $(N/P)^{2/3}$
+  values, so
+  \begin{equation*}
+    T_c = 6 \left(\alpha + \beta (N/P)^{2/3}\right)t_a.
+  \end{equation*}
 
-  \begin{block}{Jacobi iteration}
-    7-point stencil.
+  With $\alpha = 3750, \beta = 2.86$ (BG/Q), $T_a = T_c$ when $N/P
+  \approx 1700$.  \emph{Independent} of $P$.
 
-    \begin{itemize}
-    \item computation: $T_a = 14 (N/P) t_a$
-    \item communication: exchange 6 faces $6 (N/P)^{2/3}$ values.
-      $T_c = 6(\alpha + \beta (N/P)^{2/3})t_a$.
-    \end{itemize}
-    No $P$ dependence (perfectly scalable).
+  If $\beta = 0$, $N/P \approx 1600$.
+\end{frame}
 
-    Measure $\alpha$, $\beta$.  Set $T_a = T_c$, solve for $N/P$.
 
-    e.g. BG/Q $\alpha = 3750$, $\beta = 2.86$
+\begin{frame}
+  \frametitle{Conjugate gradients}
+  For a 7 point stencil, we do 27 operations per dof
+  \begin{equation*}
+    T_a = 27(N/P) t_a
+  \end{equation*}
+  With a block decomposition, we again need 6 face exchanges, plus
+  two reductions
+  \begin{equation*}
+    T_c = 6 \left(\alpha + \beta (N/P)^{2/3}\right)t_a + 2 \cdot 2 \log_2 P \alpha t_a.
+  \end{equation*}
 
-    $N/P \sim 1700$.
+  Now the scaling limit is $P$-dependent.
 
-    If $\beta = 0$ (infinite bandwidth), $N/P \sim 1600$.
+  \begin{itemize}
+    \item $P=10^6$: $N/P \approx 12000$;
+    \item $P=10^9$: $N/P \approx 17000$.
+  \end{itemize}
+
+  Reasonably well aligned with the folk lemma.
+\end{frame}
+
+\begin{frame}
+  \frametitle{But wait}
+  \begin{center}
+    \includegraphics[height=0.8\textheight]{allreduce}
+  \end{center}
+  From \textcite{Fischer:2015}.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Round again}
+  \begin{equation*}
+    T_c = 6 \left(\alpha + \beta (N/P)^{2/3}\right)t_a +
+    \cancel{2\cdot 2 \log_2 P \alpha t_a} + 2 \cdot 5 \alpha t_a.
+  \end{equation*}
+
+  Now we have $P$-\emph{independent} scaling behaviour, $N/P \approx 2100$.
+
+  Using only a single reduction, we can get to $N/P \approx
+  1500$.
+
+  \alert{8x} more strong scaling on $P=10^9$.
+
+  A similar analysis can be done for multilevel algorithms,
+  e.g.~Poisson $N/P \approx 7500$, or $N\approx 10^{12}$ on an exascale
+  system.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Latency hurts}
+
+  \begin{itemize}
+  \item When strong-scaling mesh codes, you don't care about network
+    bandwidth.
+  \item Decreasing $\alpha$ is important, pester your vendor!
+  \item Faster cores (relative to network) means worse strong scaling.
+  \item Faster code means worse strong scaling.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Something to aim at}
+
+  \begin{onlyenv}<1>
+    3-D incompressible Navier-Stokes for reactor cooling, NEK5000.
+
+    \begin{center}
+      \includegraphics[height=0.6\textheight]{nek-strong-scale}
+
+      Data reproduced from \textcite{Fischer:2015}.
+    \end{center}
+  \end{onlyenv}
+
+  \begin{onlyenv}<2>
+    3-D non-hydrostatic baroclinic instability 3km resolution, Gordon Bell prize
+    2016.
+    \begin{center}
+      \includegraphics[height=0.6\textheight]{sunway-strong-scale}
+
+      Data reproduced from \textcite{Yang:2016}.
+    \end{center}
+  \end{onlyenv}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Some thoughts on climate codes}
+
+  \begin{block}{Conjecture}
+    Most (all?) full climate models are nowhere near optimal use of current
+    hardware.
+
+    Extrapolating current SYPD to larger problems is perhaps not
+    useful, unless we think the current models are good.
   \end{block}
+
+  \begin{itemize}
+  \item More work means scaling should improve.
+  \item Will column-wise data decomposition start to hurt?
+  \item Lobby for power spend on interconnect, not cores?
+  \item Don't forget to focus on minimising time-to-solution first.
+  \end{itemize}
 \end{frame}
+
+\section{What might we do?}
+
 \begin{frame}
-  \frametitle{Jacobi no good for global solve}
-  \begin{block}{Conjugate gradients}
-    \begin{itemize}
-    \item computation: $T_a/t_a = 27 (N/P)$.
-    \item communication: $T_c/t_a = 6(\alpha + \beta(N/P)^{2/3}) +
-      2\cdot 2\alpha\log_2 P$.
-    \end{itemize}
+  \frametitle{Improving SYPD}
 
-    $\log P$ factor (not perfectly scalable).
+  Better serial performance.  Is it the case that current codes make
+  efficient use of hardware?
 
-    Set $P=10^6$ gives $N/P \sim 12000$.
+  High order?  Only useful if we can use fewer dofs.  Are models in
+  the asymptotic region where we expect exponential accuracy gains
+  from high order discretisations?
 
-    $P=10^9$ gives $N/P \sim 17000$.
-
-    But, remember the BG/Q picture: $2 \alpha \log_2 P \rightarrow 4
-    \alpha$.
-
-    $N/P \sim 2100$, even better with a single reduction ($N/P \sim 1500$).
-  \end{block}
-\end{frame}
-\begin{frame}
-  \frametitle{How about multigrid?}
-  \begin{block}{Multigrid (geometric)}
-    \begin{itemize}
-    \item computation: $T_a/t_a = 50 (N/P)$.
-    \item communication: $T_c / t_a = 8 \alpha \log_2(N/P) + 30
-      \beta(N/P)^{2/3} + 4\cdot 2 \alpha \log_2 P$.
-    \end{itemize}
-    Again, $\log P$ factor prevents perfect scalability.
-
-    $P=10^6$ gives $N/P \sim 21000$.
-
-    $P = 10^9$ gives $N/P \sim 27000$.
-
-    What if the (generalised) tree reduction is constant cost?
-    $2\alpha \log_2 P \rightarrow 4 \alpha$.
-
-    $N/P \sim 10000$
-  \end{block}
+  Better strong scaling.  Necessary to counteract timestep
+  restrictions with increasing resolution.
 \end{frame}
 
 \begin{frame}
-  \frametitle{Latency is all that matters!}
+  \frametitle{Better serial performance}
 
-  Things to note
+  Ground up rewrites of models?
 
-  If $\alpha$ decreases, can strong scale much better
-
-  In strong scaled limit, don't really care about $\beta$ (since data
-  moved is small).
-
-  If you can strong scale into cache, everything looks much better
-  (bandwidth is higher).  But this is bad for GPUs (need lots of work
-  to hide latency).
-
-  If cores get relatively faster, $\alpha, \beta$ increase (can't
-  strong scale as well).
-
-  Ask your vendor to spend power on interconnect, not flops?
-
-  Questions for climate?  Columnwise decomposition important for
-  numerics.  Does it get in the way of strong scaling? 
+  Local optimisations are difficult to do, because typically we need
+  to make global changes in data layout.  If data model is implicit,
+  this is bad.
   
-  Problems:
-  - decomposition doesn't provide minimal surface area.
-  - Unit of decomposition is 1 column.  C-grid staggering gives ~800
-  velocity + pressure dofs.  Adding in additional variables, probably
-  more work than strong scaling limit.
+  Look for opportunities to reduce algorithmic complexities
 
-  - Suggests distributed memory on socket + shared memory parallel in
-  a socket (to scale a bit further: ``message latency'' much reduced).
+  \textcite{Yang:2016} is an example of what you can do for a single
+  component.
+  
 \end{frame}
 
 \begin{frame}
   \frametitle{Addressing latency}
-  What to do?
 
-  Communicate less
+  Remove communication (possible with some multilevel methods,
+  c.f. $\tau$-FAS)
 
-  Communicate less frequently
+  Amortise latency.  We're not network bandwidth limited, so ``tile''
+  in time (obvious how this works for explicit schemes).  Some work
+  from Qiqi Wang, also the ``diamond tiling'' literature (Hager/Keyes,
+  ...).
+
+  Basically, do one 10m byte exchange every 10 steps, rather than 10 m
+  byte exchanges.  Cost: $\alpha + 10 \beta m$, rather than $10(\alpha
+  + \beta m)$.
 \end{frame}
+
+\begin{frame}
+  \frametitle{Putting physics back in}
+  Will help strong scaling (more local work)
+
+  At some point, if we want more small timescales to be resolved, we
+  need time parallel (at high resolution).
+
+  Is higher resolution the best thing to do?  Better spin up/data
+  assimilation.  More ensembles?  Better statistics?
+\end{frame}
+
 \appendix
 \begin{frame}[t,allowframebreaks]
   \frametitle{References}
