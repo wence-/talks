@@ -1,53 +1,24 @@
 \documentclass[presentation]{beamer}
-
-\usepackage{tikz}
-\usetikzlibrary{positioning,calc}
-\usetikzlibrary{shapes.geometric}
-\usetikzlibrary{backgrounds}% only to show the bounding box
-\usetikzlibrary{shapes,arrows}
-\usepackage{pgfplots}
-\usepackage{pgfplotstable}
-\usetikzlibrary{pgfplots.groupplots}
-\pgfplotsset{compat=1.12}
-\usepackage{appendixnumberbeamer}
-\usepackage{amsmath}
-\date{27th March 2017}
 \usetheme{metropolis}
-\usepackage{pifont}
-
-\newcommand{\cmark}{\ding{51}}
-\newcommand{\xmark}{\ding{55}}
-
 \titlegraphic{\hfill\includegraphics[height=2em]{imperial-bw-gray}}
-\metroset{progressbar=frametitle}
 
-\renewcommand{\vec}[1]{\ensuremath{\boldsymbol{#1}}}
-\newcommand{\ddt}[1]{\frac{\partial #1}{\partial t}}
-\newcommand{\zhat}{\hat{\vec{z}}}
-\newcommand{\W}{\ensuremath{\mathbb{W}}}
-
-\DeclareMathOperator{\grad}{grad}
-\let\div\relax
-\DeclareMathOperator{\div}{div}
-\DeclareMathOperator{\curl}{curl}
-\newcommand{\vsubset}[1]{\rotatebox[origin=c]{90}{\ensuremath{\subset}}}
-\newcommand{\inner}[2]{\ensuremath{\langle #1, #2 \rangle}}
-\author{Lawrence Mitchell\inst{1}}
-\institute{
-\inst{1}Departments of Computing and Mathematics, Imperial College
-London
+\setbeamertemplate{bibliography item}{}
+\setbeamertemplate{frametitle continuation}{%
+  \usebeamerfont{frametitle}
+  \uppercase\expandafter{\romannumeral \insertcontinuationcount\relax}
 }
+
+\metroset{progressbar=frametitle}
 
 \graphicspath{{./\jobname.figures/}}
 
-\newcommand{\arxivlink}[2]{%
-  \href{http://www.arxiv.org/abs/#1}%
-  {{\small\texttt{arXiv:\,#1\,[#2]}}}%
-}
-\newcommand{\doilink}[1]{%
-  \href{http://dx.doi.org/#1}%
-  {{\small\texttt{doi:\,#1}{}}}%
-}
+\usepackage{appendixnumberbeamer}
+
+\usepackage{amsmath}
+\usepackage{cancel}
+\usepackage{pifont}
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
 
 \usepackage[url=false,
 doi=true,
@@ -57,13 +28,8 @@ firstinits=true,
 uniquename=init,
 backend=biber]{biblatex}
 
-
-\setbeamertemplate{bibliography item}{}
 \renewcommand{\bibfont}{\footnotesize}
-\addbibresource{references.bib}
-
 \setlength{\bibitemsep}{1ex}
-
 \renewbibmacro{in:}{}
 \DeclareFieldFormat[article]{volume}{\textbf{#1}}
 \DeclareFieldFormat{doi}{%
@@ -76,48 +42,57 @@ backend=biber]{biblatex}
 \clearfield{number}%
 }
 
-\usepackage{minted}
-\usepackage{cancel}
+\addbibresource{references.bib}
+
 \title{From here to there}
 \subtitle{challenges for \cancel{peta} exa-scale transient simulation}
+\date{27th March 2017}
+
+\author{Lawrence Mitchell\inst{1,*}}
+\institute{
+\inst{1}Departments of Computing and Mathematics, Imperial College
+London
+
+\inst{*}\texttt{lawrence.mitchell@imperial.ac.uk}
+}
 
 \begin{document}
 
 \maketitle
 
+\section{What do we want?}
+
 \begin{frame}[standout]
   50GHz single-core CPUs
 \end{frame}
 
-\section{The status quo}
+\section{What do we have?}
 
 \begin{frame}
-  \frametitle{What we have to work with}
+  \frametitle{Too many cores}
+  {\small
   \begin{tabular}{lccccc}
     Chip & Cores & TF/s & GB/s & F/B & Power \\
     \hline
     NVidia P100 & 56 (3584) & 5.3 & 730 & 7.2 & 250 (21 GF/W) \\
-    Xeon Phi 7290F & 72 & 3.5 & 450 & 7.8 & 260 (13 GF/W) \\
+    Xeon Phi 7290F & 72 & 3.5 & 450 + 100 & 5.4 & 260 (13 GF/W) \\
     Broadwell & 22 & 0.78 & 150 & 5.2 & 140 (5.6 GF/W)
   \end{tabular}
+  }
 
   \begin{block}{Exascale}
     \begin{itemize}
-    \item<1-> 190K NVidia P100s, 1e9-way concurrency, 50MW
-    \item<1-> 290K Intel Phis, 1e8-way concurrency, 75MW
-    \item<1-> 1.3M Intel Broadwells, 3e7-way concurrency, 180MW
+    \item<1-> 190K NVidia P100s, 1e9-way concurrency, 150MW
+    \item<1-> 290K Intel Phis, 1e8-way concurrency, 220MW
+    \item<1-> 1.3M Intel Broadwells, 3e7-way concurrency, 540MW
     \item<2-> 1 Boeing 747, 140MW
     \item<3-> 1 Sizewell B, 1200MW
     \item<4-> 1 UK, 35GW
     \end{itemize}
   \end{block}
-  % NVIDIA P100 (Pascal) 56 SMTs 5.3TF/s 732GB/s (16GB) 7.2F/B 250W 21F/W
-
-  % Intel Xeon Phi 7290F 72 cores 3.5TF/s ~450GB/s (16GB) 7.8F/B 260W 13F/W
-
-  % Intel Broadwell E5-2699v4 22 cores 0.78TF/s 150GB/s (<1.5TB) 5.2F/B
-  % 140W 5.6F/W
 \end{frame}
+
+\section{What should we do?}
 
 \begin{frame}[standout]
  Run LINPACK
@@ -126,7 +101,7 @@ backend=biber]{biblatex}
 \begin{frame}
   \frametitle{But seriously}
   \begin{itemize}
-  \item High useful arithmetic intensity (flops are cheaper than bytes)
+  \item High arithmetic intensity (flops are cheaper than bytes)
   \item Vectorise, vectorise, vectorise (only way to achieve flops)
   \item Avoid bulk synchronous computation (performance resilience)
   \item Reduce and/or amortise communication (hide latency)
@@ -134,10 +109,9 @@ backend=biber]{biblatex}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Current codes}
-
+  \frametitle{The status quo}
   \begin{itemize}
-  \item[\xmark] Typically low order, memory-bound
+  \item[\xmark] Low order, memory bound
   \item[\xmark] Vectorisation left to compiler (?)
   \item[\xmark] Iterative schemes with blocking reductions
   \item[\xmark] Simple communication patterns (not optimal?)
@@ -145,11 +119,10 @@ backend=biber]{biblatex}
 \end{frame}
 
 
-\section{Is my code any good?}
+\section{What to look for}
 
 \begin{frame}
-  \frametitle{Algorithmically}
-
+  \frametitle{Algorithmic optimality}
   \begin{block}{Notation}
   $N$ -- total number of degrees of freedom;
 
@@ -158,17 +131,17 @@ backend=biber]{biblatex}
   $T(N, P)$ -- time to solution.
   \end{block}
 
-  \begin{block}{Good}
+  \begin{block}{Desired}
     $\mathcal{O}(N)$ computational complexity;
 
     $\mathcal{O}(\log P)$ communication complexity.
 
-    Actually care about minimal $T$, so $\mathcal{O}(N\log N)$ can be good.
+    Be aware of the constants!
   \end{block}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Scalability}
+  \frametitle{Parallel scalability}
 
   \begin{block}{Weak scaling}
     Constant local work $N/P$.
@@ -182,69 +155,87 @@ backend=biber]{biblatex}
     Scalable code has $T(N, P) = 2T(N, 2P)$.
   \end{block}
 
-  \begin{onlyenv}<2>
+\end{frame}
+
+\begin{frame}
+  \frametitle{Transient simulation}
+  {\large
     Time-resolved transient simulations do not weak scale. Sad!
-  \end{onlyenv}
+  }
+
+  \begin{block}{What to do?}
+    \begin{itemize}
+    \item Get algorithmics right
+    \item Work hard to attack constant factors
+    \item Work on strong scaling efficiency
+    \item Develop \emph{predictive} models of performance to
+      \emph{understand} why codes behave how they do.
+    \end{itemize}
+  \end{block}
+
 \end{frame}
 
-
 \begin{frame}
-  \frametitle{What is good?}
+  \frametitle{Predicting scalability}
 
-  Summarising \textcite{Fischer:2015}\footnote{\citefield{Fischer:2015}{doi}}.
+  Summarising \textcite{Fischer:2015}.
   
-  \begin{block}{}
+  \begin{block}{Notation}
+    \begin{itemize}
+    \item parallelisable work: $T_a(N, P) = T_a(N, 1)/P$
 
-    $T_a(N, P) = T_a(N, 1)/P$ -- parallelisable work;
+    \item communication: $T_c(N, P)$
 
-    $T_c(N, P)$ -- communication;
+    \item serial overhead: $c \approx 0$
 
-    $c$ -- serial overhead.
+    \item time to solution
+      \begin{equation*}
+        T(N, P) = \left\{
+          \begin{split}
+            &T_a(N, P) + T_c(N, P) + c &\text{ synchronous}\\
+            &\max(T_a(N, P), T_c(N, P)) + c\,\,&\text{ asynchronous}
+          \end{split}\right.
+      \end{equation*}
 
-    \begin{equation*}
-      T(N, P) = \left\{
-        \begin{split}
-          &T_a(N, P) + T_c(N, P) + c &\text{ synchronous comms}\\
-          &\max(T_a(N, P), T_c(N, P)) + c\,\,&\text{ asynchronous comms}
-        \end{split}\right.
-    \end{equation*}
-
-    $\eta = T(N, 1)/(PT(N,P)$ -- strong scaling efficiency.
+    \item scaling efficiency: $\eta = \frac{T(N, 1)}{PT(N,P)}$
+  \end{itemize}
   \end{block}
 \end{frame}
 
 \begin{frame}
-  \frametitle{When to stop?}
+  \frametitle{When to stop adding cores?}
 
-  Bigger problems need more timesteps.
-  
-  To maintain time to solution as $N\rightarrow \infty$, need strong
-  scaling.
+  \begin{block}{Minimum $T(N, P)$}
+    Find $P$ such that $\frac{\text{d} T(N, P)}{\text{d} P} = 0$.
 
-  \begin{block}{Cost efficiency}
-    Ignore $c$ (reasonable for CPUs for a good code).
-
-    Often $P_{\text{opt}}$ when $T_a(N, P_\text{opt}) = T_c(N,
-    P_\text{opt})$, $\eta = 0.5$.
+    Typically too expensive (wasting many core hours).
   \end{block}
 
-  \begin{block}{Folk lemma}
+  \begin{block}{A compromise}
+    Find $P$ such that $T_a(N, P) = T_c(N, P)$, $\eta = 0.5$ for
+    synchronous case.
+  \end{block}
+
+  \begin{theorem}[Anonymous]
     Krylov methods strong scale to $N/P \approx 30000$.
-  \end{block}
+
+    Explicit schemes are a little better $N/P \approx 10000$.
+
+    ``Reductions limit scalability''
+  \end{theorem}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Measuring $P_{\text{opt}}$}
+  \frametitle{Empirical scaling limits}
   
   \begin{itemize}
-  \item Measure $T(N, 1)$, $T(N, P)$, for a range of $P$.
+  \item Measure $T(N, P_\text{min})$ and $T(N, P)$ for a range of
+    process counts.
 
-  \item Find $P_\text{opt}$ such that
-    $P_\text{opt}T(N, P_\text{opt}) = 2T(N,1)$.
+  \item Pick $P_\text{opt}$ such that
+    $P_\text{opt}T(N, P_\text{opt}) = 2T(N,P_\text{min})$.
 
-  \item How do I know if that is objectively optimal?
-
-  \item<2>{Build a model.}
+  \item How do I know if that is any good?
   \end{itemize}
 \end{frame}
 
@@ -272,20 +263,30 @@ backend=biber]{biblatex}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Is this a good model?}
+  \frametitle{Run some measurements}
   \begin{center}
     \includegraphics[height=0.8\textheight]{ping-pong}
   \end{center}
   From \textcite{Fischer:2015}.
-
 \end{frame}
 
 \begin{frame}
-  \frametitle{Jacobi iteration}
+  \frametitle{Performance variability}
+  \begin{itemize}
+  \item Model is pretty good
+  \item Network topology can affect even simple codes
+  \item BlueGene has torus network, each job gets a convex subset
+  \item Not true on Cray (Dragonfly/Aries fat tree), network traffic
+    from other jobs can affect your performance.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Jacobi iteration, 7-point 3D stencil}
   \begin{equation*}
     u_i^{k+1} = a_{ii}^{-1}\left(f_i + \sum_{j \ne i} a_{ij}u_j^{k}\right)
   \end{equation*}
-  counting operations with $N/P$ entries per process, for a 7 point stencil.
+  counting operations with $N/P$ entries per process.
   \begin{equation*}
     T_a = 14(N/P)t_a.
   \end{equation*}
@@ -303,15 +304,14 @@ backend=biber]{biblatex}
 
 
 \begin{frame}
-  \frametitle{Conjugate gradients}
-  For a 7 point stencil, we do 27 operations per dof
+  \frametitle{Conjugate gradients, 7-point 3D stencil}
   \begin{equation*}
     T_a = 27(N/P) t_a
   \end{equation*}
-  With a block decomposition, we again need 6 face exchanges, plus
-  two reductions
+  Again, we need 6 face exchanges, plus two reductions (each $2\alpha t_a \log_2 P$)
   \begin{equation*}
-    T_c = 6 \left(\alpha + \beta (N/P)^{2/3}\right)t_a + 2 \cdot 2 \log_2 P \alpha t_a.
+    T_c = 6 \left(\alpha + \beta (N/P)^{2/3}\right)t_a + 2 \cdot 2
+    \alpha t_a \log_2 P.
   \end{equation*}
 
   Now the scaling limit is $P$-dependent.
@@ -320,16 +320,24 @@ backend=biber]{biblatex}
     \item $P=10^6$: $N/P \approx 12000$;
     \item $P=10^9$: $N/P \approx 17000$.
   \end{itemize}
-
-  Reasonably well aligned with the folk lemma.
 \end{frame}
 
 \begin{frame}
   \frametitle{But wait}
-  \begin{center}
-    \includegraphics[height=0.8\textheight]{allreduce}
-  \end{center}
-  From \textcite{Fischer:2015}.
+  \begin{columns}
+    \begin{column}{0.6\textwidth}
+      \includegraphics[width=\columnwidth]{allreduce}
+
+      From \textcite{Fischer:2015}.
+    \end{column}
+    \begin{column}{0.4\textwidth}
+      \begin{itemize}
+      \item Hardware-level allreduce on BlueGene is \emph{$P$
+          independent}.
+      \item On the full machine, a reduction costs $5\alpha$.
+      \end{itemize}
+    \end{column}
+  \end{columns}
 \end{frame}
 
 \begin{frame}
@@ -344,11 +352,48 @@ backend=biber]{biblatex}
   Using only a single reduction, we can get to $N/P \approx
   1500$.
 
-  \alert{8x} more strong scaling on $P=10^9$.
+  \alert{8x} more strong scaling on $P=10^9$, with no increase in
+  power consumption.
 
   A similar analysis can be done for multilevel algorithms,
-  e.g.~Poisson $N/P \approx 7500$, or $N\approx 10^{12}$ on an exascale
-  system.
+  e.g.~for Poisson $N/P \approx 10000$ (constant reduction complexity).
+\end{frame}
+
+\begin{frame}
+  \frametitle{Some data points}
+
+  \begin{onlyenv}<1>
+    3-D incompressible Navier-Stokes for reactor cooling, NEK5000.
+    High order, spectral element.  60\% time in multigrid Poisson solves.
+
+    \begin{center}
+      \includegraphics[height=0.6\textheight]{nek-strong-scale}
+
+      Data reproduced from \textcite{Fischer:2015}.
+    \end{center}
+  \end{onlyenv}
+
+  \begin{onlyenv}<2>
+    3-D non-hydrostatic baroclinic instability 3km resolution, Gordon Bell prize
+    2016.  Low order, finite volume. Most time in multigrid Helmholtz solve.
+    \begin{center}
+      \includegraphics[height=0.6\textheight]{sunway-strong-scale}
+
+      Data reproduced from \textcite{Yang:2016}.
+    \end{center}
+  \end{onlyenv}
+
+  \begin{onlyenv}<3>
+    3-D nonlinear Stokes for mantle convection, Gordon Bell prize
+    2015.  High order, finite element.  Time split between viscous
+    and pressure-poisson multigrid solves.
+
+    \begin{center}
+      \includegraphics[height=0.6\textheight]{mantle-strong-scale}
+
+      Data reproduced from \textcite{Rudi:2015}.
+    \end{center}    
+  \end{onlyenv}
 \end{frame}
 
 \begin{frame}
@@ -364,34 +409,10 @@ backend=biber]{biblatex}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Something to aim at}
-
-  \begin{onlyenv}<1>
-    3-D incompressible Navier-Stokes for reactor cooling, NEK5000.
-
-    \begin{center}
-      \includegraphics[height=0.6\textheight]{nek-strong-scale}
-
-      Data reproduced from \textcite{Fischer:2015}.
-    \end{center}
-  \end{onlyenv}
-
-  \begin{onlyenv}<2>
-    3-D non-hydrostatic baroclinic instability 3km resolution, Gordon Bell prize
-    2016.
-    \begin{center}
-      \includegraphics[height=0.6\textheight]{sunway-strong-scale}
-
-      Data reproduced from \textcite{Yang:2016}.
-    \end{center}
-  \end{onlyenv}
-\end{frame}
-
-\begin{frame}
   \frametitle{Some thoughts on climate codes}
 
   \begin{block}{Conjecture}
-    Most (all?) full climate models are nowhere near optimal use of current
+    Operational climate models make nowhere near optimal use of current
     hardware.
 
     Extrapolating current SYPD to larger problems is perhaps not
@@ -411,62 +432,134 @@ backend=biber]{biblatex}
 \begin{frame}
   \frametitle{Improving SYPD}
 
-  Better serial performance.  Is it the case that current codes make
-  efficient use of hardware?
+  \begin{itemize}
+  \item Better serial performance.  Is it the case that current codes
+    make efficient use of hardware?
 
-  High order?  Only useful if we can use fewer dofs.  Are models in
-  the asymptotic region where we expect exponential accuracy gains
-  from high order discretisations?
+  \item High order?  Only useful if we can use fewer dofs.  Are models in
+    the asymptotic region where we expect exponential accuracy gains
+    from high order discretisations?
 
-  Better strong scaling.  Necessary to counteract timestep
-  restrictions with increasing resolution.
+  \item Better strong scaling.  Necessary to counteract timestep
+    restrictions with increasing resolution.
+  \end{itemize}
 \end{frame}
 
 \begin{frame}
   \frametitle{Better serial performance}
 
-  Ground up rewrites of models?
+  \begin{itemize}
+  \item Ground up rewrites of models?
 
-  Local optimisations are difficult to do, because typically we need
-  to make global changes in data layout.  If data model is implicit,
-  this is bad.
+  \item Optimising ``line by line'' doesn't work, we're stuck
+    in local minima.  e.g.~changes in data layout require a large
+    scale changes if the data model is implicit.
   
-  Look for opportunities to reduce algorithmic complexities
+  \item Look for opportunities to reduce algorithmic complexities
 
-  \textcite{Yang:2016} is an example of what you can do for a single
-  component.
-  
+  \item \textcite{Yang:2016} and \textcite{Rudi:2015} are examples of
+    what you can do for single components.
+  \end{itemize}
 \end{frame}
 
 \begin{frame}
   \frametitle{Addressing latency}
 
-  Remove communication (possible with some multilevel methods,
-  c.f. $\tau$-FAS)
-
-  Amortise latency.  We're not network bandwidth limited, so ``tile''
-  in time (obvious how this works for explicit schemes).  Some work
-  from Qiqi Wang, also the ``diamond tiling'' literature (Hager/Keyes,
-  ...).
-
-  Basically, do one 10m byte exchange every 10 steps, rather than 10 m
-  byte exchanges.  Cost: $\alpha + 10 \beta m$, rather than $10(\alpha
-  + \beta m)$.
+  \begin{itemize}
+  \item Reducing $\alpha$ has a big effect on scaling limits
+  \item $\alpha \rightarrow \alpha/10$ would allow scaling Poisson
+    multigrid to $N/P\approx 900$.  \alert{10x} in time to solution
+    for same power.
+  \item Similarly, hardware reductions are \emph{really} important.
+  \item Would we be happy if vendors spent more of the power budget on
+    network and less on chips?
+  \end{itemize}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Putting physics back in}
-  Will help strong scaling (more local work)
+  \frametitle{Reducing communication}
 
-  At some point, if we want more small timescales to be resolved, we
-  need time parallel (at high resolution).
+  \begin{block}{$\tau$-FAS}
+    \begin{itemize}
+    \item $\tau$ formulation of multigrid (\textcite{Brandt:1977},
+      \textcite[\S 8.3]{Brandt:2011}) admits low data transfer
+      implementation \parencite{Brandt:1994}.
 
-  Is higher resolution the best thing to do?  Better spin up/data
-  assimilation.  More ensembles?  Better statistics?
+    \item Performance modelling and results for 27 point FV Poisson
+      problem in \textcite{Adams:2016}.
+
+    \item Worthwhile to try if you already have a FAS for your problem?
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Tiling to amortise latency}
+  \begin{itemize}
+  \item  \emph{Diamond tiling} is a well known optimisation in computer
+    science for stencil codes.
+  \item Typically used for better cache usage.
+  \item Can be extended to hide network latency.
+  \item Good analysis in \textcite{Malas:2015}
+  \item ``Rediscovered'' in \textcite{Alhubail:2016}.
+  \item Extension to implicit?
+  \end{itemize}
+  \begin{center}
+    \includegraphics[width=0.7\textwidth]{diamond-mpi}
+  \end{center}
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{Asynchronous algorithms}
+  \begin{itemize}
+  \item Harden against OS jitter by removing barriers
+  \item Hide latency
+  \item Potential for soft error recovery
+  \end{itemize}
+
+  \begin{onlyenv}<2>
+    \begin{block}{Pipelined Krylov methods}
+      \begin{itemize}
+      \item Use asynchronous reductions \textcite{Ghysels:2013a}.
+      \item Not aware of any group other than Vanroose's that shows
+        such performance improvements.
+      \item Best suited to simple preconditioners.
+      \end{itemize}
+    \end{block}
+  \end{onlyenv}
+
+  \begin{onlyenv}<3>
+    \begin{block}{$s$-step Krylov methods}
+      \begin{itemize}
+      \item AKA communication avoiding Krylov.
+      \item Mostly work from Demmel's group.
+      \item Again, don't work with ``good'' preconditioners.
+      \item Erin Carson's thesis \parencite{Carson:2015} is an
+        excellent, and honest, summary of the current state.
+      \end{itemize}
+    \end{block}
+  \end{onlyenv}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Is time parallel the answer?}
+  \begin{itemize}
+  \item At some point, traditional timestepping will stop scaling
+  \item Time parallel is perhaps a way around this
+  \item Need to be honest.  Can we get speedups relative to the best
+    ``traditional'' model?
+  \item Are we better off running bigger ensembles?  Better data
+    assimilation?  Better subgrid models?
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[standout]
+  Questions?
 \end{frame}
 
 \appendix
-\begin{frame}[t,allowframebreaks]
+
+\begin{frame}[allowframebreaks]
   \frametitle{References}
   
   \printbibliography[heading=none]
