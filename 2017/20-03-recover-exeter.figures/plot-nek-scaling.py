@@ -22,7 +22,7 @@ ax.set_xlabel("Number of MPI ranks (2 ranks/core)\n(dofs/rank)")
 ax.loglog()
 ax.minorticks_off()
 
-ax.set_ylabel("Time per timestep (s)")
+ax.set_ylabel("Timesteps per second")
 
 def doflabel(n):
     dofs = 2e9 / n
@@ -41,14 +41,14 @@ ax.set_xticks(xticks)
 ax.set_xticklabels(["%s\n(%s)" % (n, doflabel(n))
                     for n in xticks])
 
-ax.plot(data[:, 0], data[:, 1], marker="o", color="black",
+ax.plot(data[:, 0], 1/data[:, 1], marker="o", color="black",
         linewidth=2, clip_on=False)
 
-yticks = [0.5, 1, 2, 4, 8, 16, 32]
+yticks = [0.05, 0.1, 0.2, 0.4, 0.8, 1.2]
 ax.set_yticks(yticks)
 ax.set_yticklabels(map(str, yticks))
 
-ax.set_ylim([0.5, 32])
+ax.set_ylim([0.05, 1.4])
 
 ax2 = ax.twinx()
 

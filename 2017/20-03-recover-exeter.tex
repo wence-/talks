@@ -20,6 +20,8 @@
 \newcommand{\cmark}{\ding{51}}
 \newcommand{\xmark}{\ding{55}}
 
+\usepackage{multirow}
+\usepackage{bigdelim}
 \usepackage[url=false,
 doi=true,
 isbn=false,
@@ -86,10 +88,32 @@ London
     \item<1-> 290K Intel Phis, 1e8-way concurrency, 220MW
     \item<1-> 1.3M Intel Broadwells, 3e7-way concurrency, 540MW
     \item<2-> 1 Boeing 747, 140MW
-    \item<3-> 1 Sizewell B, 1200MW
-    \item<4-> 1 UK, 35GW
+    \item<3-> 1 Google, 650MW
+    \item<4-> 1 Sizewell B, 1200MW
+    \item<5-> 1 UK, 35GW
     \end{itemize}
   \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{What's happened to the chips}
+  \begin{itemize}
+  \item Number of transistors still increasing exponentially
+  \item Frequency flat since c.~2005
+  \item Performance through on-chip parallelism: ``now it's your
+    problem''
+  \item Wider ``atomic'' floating point instructions
+  \end{itemize}
+
+  \begin{tabular}{lcccc}
+    Chip           & Cores & Clock & Vector width & Historical proxy         \\
+    \hline
+    P100           & 56    & 1.5   & 32           & CM-1                     \\
+    Broadwell      & 22    & 2.2   & 4            & \multirow{4}{*}{Cray X1} \\
+    Phi            & 72    & 1.5   & 8            &                          \\
+    Skylake        & 32    & 2.2   & 8            &                          \\
+    ARMv8 (Cavium) & 54?   & 2?    & 4-32?        &                          \\
+  \end{tabular}
 \end{frame}
 
 \section{What should we do?}
@@ -191,10 +215,10 @@ London
     \item time to solution
       \begin{equation*}
         T(N, P) = \left\{
-          \begin{split}
+          \begin{aligned}
             &T_a(N, P) + T_c(N, P) + c &\text{ synchronous}\\
             &\max(T_a(N, P), T_c(N, P)) + c\,\,&\text{ asynchronous}
-          \end{split}\right.
+          \end{aligned}\right.
       \end{equation*}
 
     \item scaling efficiency: $\eta = \frac{T(N, 1)}{PT(N,P)}$
@@ -274,10 +298,10 @@ London
   \frametitle{Performance variability}
   \begin{itemize}
   \item Model is pretty good
-  \item Network topology can affect even simple codes
+  \item Network topology + load can affect even simple codes
   \item BlueGene has torus network, each job gets a convex subset
-  \item Not true on Cray (Dragonfly/Aries fat tree), network traffic
-    from other jobs can affect your performance.
+  \item Not true on Cray (Dragonfly), network traffic
+    from other jobs can affect your performance \parencite{Prisacari:2014}.
   \end{itemize}
 \end{frame}
 
@@ -352,7 +376,7 @@ London
   Using only a single reduction, we can get to $N/P \approx
   1500$.
 
-  \alert{8x} more strong scaling on $P=10^9$, with no increase in
+  8x more strong scaling on $P=10^9$, with no increase in
   power consumption.
 
   A similar analysis can be done for multilevel algorithms,
@@ -386,7 +410,7 @@ London
   \begin{onlyenv}<3>
     3-D nonlinear Stokes for mantle convection, Gordon Bell prize
     2015.  High order, finite element.  Time split between viscous
-    and pressure-poisson multigrid solves.
+    and pressure-Poisson multigrid solves.
 
     \begin{center}
       \includegraphics[height=0.6\textheight]{mantle-strong-scale}
@@ -463,6 +487,16 @@ London
 \end{frame}
 
 \begin{frame}
+  \frametitle{High order?}
+  \begin{itemize}
+  \item High order, flop heavy, schemes are more suited to modern
+    architectures
+  \item But often not in asymptotic convergence region
+  \item Need to have competitive performance \emph{per dof}
+  \item FE probably preferable to FV or FD, since minimal stencil (less comms).
+  \end{itemize}
+\end{frame}
+\begin{frame}
   \frametitle{Addressing latency}
 
   \begin{itemize}
@@ -498,15 +532,16 @@ London
   \begin{itemize}
   \item  \emph{Diamond tiling} is a well known optimisation in computer
     science for stencil codes.
+
+    \begin{center}
+      \includegraphics[width=0.7\textwidth]{diamond-mpi}
+    \end{center}
   \item Typically used for better cache usage.
   \item Can be extended to hide network latency.
   \item Good analysis in \textcite{Malas:2015}
   \item ``Rediscovered'' in \textcite{Alhubail:2016}.
-  \item Extension to implicit?
+  \item Explicit schemes only.
   \end{itemize}
-  \begin{center}
-    \includegraphics[width=0.7\textwidth]{diamond-mpi}
-  \end{center}
 \end{frame}
 
 \begin{frame}[t]
@@ -515,6 +550,8 @@ London
   \item Harden against OS jitter by removing barriers
   \item Hide latency
   \item Potential for soft error recovery
+  \item Is MTTF \emph{really} a problem?  The same things were being
+    warned of petascale systems.
   \end{itemize}
 
   \begin{onlyenv}<2>
@@ -549,7 +586,7 @@ London
   \item Need to be honest.  Can we get speedups relative to the best
     ``traditional'' model?
   \item Are we better off running bigger ensembles?  Better data
-    assimilation?  Better subgrid models?
+    assimilation?
   \end{itemize}
 \end{frame}
 

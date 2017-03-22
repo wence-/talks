@@ -25,7 +25,7 @@ ax.set_xlabel("Number of cores\n(dofs/core)")
 ax.loglog()
 ax.minorticks_off()
 
-ax.set_ylabel("SYPD")
+ax.set_ylabel("Simulated years per day")
 
 def doflabel(n):
     dofs = 31.8e9 / n
