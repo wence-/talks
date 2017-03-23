@@ -51,10 +51,12 @@
 
 \newcommand{\highlight}[1]{\colorbox{red!20}{\color{black} #1}}
 
-\author{Lawrence Mitchell\inst{1} \and Rob Kirby\inst{2}}
+\author{Lawrence Mitchell\inst{1,*} \and Rob Kirby\inst{2}}
 \institute{
 \inst{1}Departments of Computing and Mathematics, Imperial College
 London
+
+\inst{*}\texttt{lawrence.mitchell@imperial.ac.uk}
 \and
 \inst{2}Department of Mathematics, Baylor University
 }
@@ -132,8 +134,8 @@ u, p, T = split(upT)
 v, q, S = TestFunctions(Z)
 bcs = [...] # no-flow + temp gradient
 nullspace = MixedVectorSpaceBasis(
-   Z, [Z.sub(0), VectorSpaceBasis(constant=True), Z.sub(2)])
-
+   Z, [Z.sub(0), VectorSpaceBasis(constant=True), 
+       Z.sub(2)])
 F = (inner(grad(u), grad(v))
      + inner(dot(grad(u), u), v)
      - inner(p, div(v))
@@ -150,15 +152,14 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
 \begin{frame}
   \frametitle{What about the solver?}
   \begin{itemize}
-  \item Such coupled problems are (typically) not amenable to black box solution
+  \item Coupled problems are (typically) not amenable to black box solution
     methods.
-  \item Direct factorisations reasonable for small problems.
-  \item Large problems needs scalable solution, typically block
-    factorisations.
-  \item Gives many knobs to tweak, may require problem-specific
+  \item For small problems, can just use LU factorisation.
+  \item For large problems, often use approximate block factorisations.
+  \item Many configuration options, may require problem-specific
     auxiliary operators.
-  \item How do we capture the abstraction such that automated model
-    manipulation is still possible? (e.g.~automated adjoints).
+  \item Important to capture the abstraction so that automated model
+    manipulation is still possible.
   \end{itemize}
 \end{frame}
 \begin{frame}
@@ -183,7 +184,7 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
 \end{frame}
 
 \begin{frame}
-  \frametitle{What does this mean}
+  \frametitle{What does this mean?}
   \begin{itemize}
   \item The most efficient (time to solution) strategy is problem and
     parameter dependent:
@@ -199,7 +200,7 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
 
 \begin{frame}
   \frametitle{Back to Rayleigh-B\'enard}
-  Newton needs a linearisation:
+  Newton updates need inverse of Jacobian:
   \begin{equation*}
     J = \begin{bmatrix}
       F   & B^T & M_1 \\
@@ -216,7 +217,9 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
 
 \begin{frame}
   \frametitle{Preconditioning}
-  Write
+  We will invert $J$ with a Krylov method, so we need a
+  preconditioner.
+  Let
   \begin{equation*}
     N = \begin{bmatrix}
       F & B^T\\
@@ -231,7 +234,7 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
       M_2 & 0
     \end{bmatrix}
   \end{equation*}
-  and eliminate the Navier-Stokes block, giving system for temperature:
+  and eliminate $N$ in $J$ block, giving system for temperature:
   \begin{equation*}
     S_T = K - \tilde{M}_2 N^{-1} \tilde{M}_1.
   \end{equation*}
@@ -245,8 +248,8 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
     \delta x = J^{-1} r.
   \end{equation*}
 
-  Write $\mathcal{K}(A, \mathbb{A})$ to denote approximating $A^{-1}$
-  using an iteration $\mathcal{K}$ on $A$ using $\mathbb{A}$ as a
+  Write $\mathcal{K}(J, \mathbb{J})$ to denote approximating $J^{-1}$
+  using an iteration $\mathcal{K}$ on $J$ using $\mathbb{J}$ as a
   preconditioner.  Then the iteration
   \begin{equation*}
     \KSP{J}{\begin{bmatrix}
@@ -263,8 +266,7 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
     \end{bmatrix}}
   \end{equation*}
   empirically converges swiftly, and
-  requires only preconditioners $\mathbb{N}$ for Navier-Stokes and
-  $\mathbb{K}$ for convection-diffusion.
+  requires only $\mathbb{N}$ and $\mathbb{K}$.
 \end{frame}
 
 \begin{frame}
@@ -277,9 +279,9 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
   \begin{equation*}
     \mathbb{S} = \KSP{L_p}{L} F_p \KSP{M_p}{M},
   \end{equation*}
-  giving
+  so our recipe for $\ksp{N}$ is:
   \begin{equation*}
-    \mathbb{N} = \begin{bmatrix}
+    \mathcal{K}\left(N, \begin{bmatrix}
       F & 0 \\
       0 & \mathcal{K}(S_p, \KSP{L_p}{L}\,F_p \, \KSP{M_p}{M})
     \end{bmatrix}
@@ -290,7 +292,7 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
     \begin{bmatrix}
       \ksp{F} & 0 \\
       0 & I
-    \end{bmatrix}.
+    \end{bmatrix}\right).
   \end{equation*}
 
 \end{frame}
@@ -314,25 +316,41 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
   \end{block}
 \end{frame}
 
-\begin{frame}[fragile]
+\begin{frame}
   \frametitle{Firedrake \& PETSc to the rescue}
-  PETSc already provides a highly runtime-configurable library for
-  \emph{algebraically} composing solvers \parencite{Brown:2012}.
+  \begin{itemize}
+  \item PETSc already provides a highly runtime-configurable library
+    for \emph{algebraically} composing solvers \parencite{Brown:2012}.
 
-  Firedrake makes it straightforward to build any auxiliary
-  operators.
+  \item Firedrake makes it straightforward to build any auxiliary
+    operators.
 
-  \begin{block}{A new matrix type}
-    We create a new PETSc matrix type in Firedrake that remembers the
-    symbolic Jacobian it comes from, and implements matrix-free
-    actions.
-  \end{block}
-  \begin{block}{Firedrake-aware preconditioners}
-    Algebraic preconditioners cannot work on shell matrices, so we
-    create custom preconditioners that can inspect the symbolic
-    information and do the appropriate thing.
-  \end{block}
+  \item We combine these to allow simple development of complex
+    preconditioners.
+  \end{itemize}
 \end{frame}
+\begin{frame}
+  \frametitle{Two new pieces}
+ 
+  \begin{onlyenv}<1>
+    \begin{block}{A new matrix type}
+      A PETSc shell matrix that implements matrix-free actions using
+      Firedrake, and contains the UFL of the bilinear form.
+    \end{block}
+  
+  \begin{block}{Custom preconditioners}
+    These matrices do not have entries, so we create custom
+    preconditioners that can inspect the UFL and do the appropriate
+    thing.
+  \end{block}
+\end{onlyenv}
+\begin{onlyenv}<2>
+  \begin{center}
+    \includegraphics[width=0.8\textwidth]{underhand}
+  \end{center}
+\end{onlyenv}
+\end{frame}
+
 
 \begin{frame}[fragile]
   \frametitle{PCD}
