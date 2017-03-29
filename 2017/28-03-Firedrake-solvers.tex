@@ -11,38 +11,13 @@
 \pgfplotsset{compat=1.12}
 \usepackage{appendixnumberbeamer}
 \usepackage{amsmath}
-\date{27th March 2017}
+\date{28th March 2017}
 \usetheme{firedrake}
 
-\pgfplotscreateplotcyclelist{decent cycle}{%
-  {blue, mark=*, mark options={fill=blue},
-    mark size=2pt},
-  {cyan, mark=square*, mark options={fill=cyan},
-    mark size=2pt},
-  {magenta, mark=triangle*, mark options={fill=magenta},
-    mark size=3pt},
-  {blue, mark=*, mark options={fill=blue},
-    mark size=2pt},
-  {cyan, mark=square*, mark options={fill=cyan},
-    mark size=2pt},
-  {magenta, mark=triangle*, mark options={fill=magenta},
-    mark size=3pt},
-}
-
-\pgfplotsset{
-  decent/.style={
-    cycle list name=decent cycle,
-  }
-}
 \renewcommand{\vec}[1]{\ensuremath{\boldsymbol{#1}}}
 \newcommand{\ddt}[1]{\frac{\partial #1}{\partial t}}
 \newcommand{\zhat}{\hat{\vec{z}}}
 \newcommand{\W}{\ensuremath{\mathbb{W}}}
-
-\DeclareMathOperator{\grad}{grad}
-\let\div\relax
-\DeclareMathOperator{\div}{div}
-\DeclareMathOperator{\curl}{curl}
 
 \newcommand{\inner}[1]{\left\langle #1 \right \rangle}
 
@@ -63,14 +38,6 @@ London
 
 \graphicspath{{./\jobname.figures/}}
 
-\newcommand{\arxivlink}[2]{%
-  \href{http://www.arxiv.org/abs/#1}%
-  {{\small\texttt{arXiv:\,#1\,[#2]}}}%
-}
-\newcommand{\doilink}[1]{%
-  \href{http://dx.doi.org/#1}%
-  {{\small\texttt{doi:\,#1}{}}}%
-}
 \usepackage[url=false,
             doi=true,
             isbn=false,
@@ -101,15 +68,15 @@ London
 \usepackage{minted}
 
 \title{Composable block preconditioning for multiphysics problems}
-
+\subtitle{$\dots$ or, programming your solver}
 \begin{document}
 
 \maketitle
 
 \begin{frame}[fragile]
-  \frametitle{Software libraries simplify writing models}
+  \frametitle{Firedrake simplifies writing models}
   \begin{columns}
-    \begin{column}{0.48\framewidth}
+    \begin{column}{0.47\framewidth}
       \begin{block}{Stationary Rayleigh-B\'enard convection}
         \begin{equation*}
           \begin{split}
@@ -149,8 +116,12 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
     \end{column}
   \end{columns}
 \end{frame}
+\begin{frame}[standout]
+  Krylov solvers are not solvers
+\end{frame}
+
 \begin{frame}
-  \frametitle{What about the solver?}
+  \frametitle{It's all about preconditioning}
   \begin{itemize}
   \item Coupled problems are (typically) not amenable to black box solution
     methods.
@@ -162,29 +133,34 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
     manipulation is still possible.
   \end{itemize}
 \end{frame}
+
 \begin{frame}
   \frametitle{Block preconditioning}
   Most state of the art preconditioning for multi-variable
   problems is based on block LU factorisations.
 
-  \begin{equation*}
-    T = \begin{bmatrix}
-      A & 0 \\
-      0 & C A^{-1} B^T
-    \end{bmatrix}^{-1}
-    \begin{bmatrix}
-      A & B^T \\
-      C & D = 0
-    \end{bmatrix}
-  \end{equation*}
-  has minimal polynomial $T(T - I)(T^2 - T - I) =
-  0$ \parencite{Murphy:2000}.
+  \begin{uncoverenv}<2>
+    \begin{equation*}
+      T = \begin{bmatrix}
+        A & 0 \\
+        0 & C A^{-1} B^T
+      \end{bmatrix}^{-1}
+      \begin{bmatrix}
+        A & B^T \\
+        C & D = 0
+      \end{bmatrix}
+    \end{equation*}
+    has minimal polynomial $T(T - I)(T^2 - T - I) =
+    0$ \parencite{Murphy:2000}. \textcite{Ipsen:2001} treats case of
+    $D \ne 0$.
 
-  See \textcite{Ipsen:2001} for the case $D \ne 0$.
+    Alternate approach: ``function space''
+    preconditioning \parencite{Kirby:2010,Mardal:2011,Malek:2014}.
+  \end{uncoverenv}
 \end{frame}
 
 \begin{frame}
-  \frametitle{What does this mean?}
+  \frametitle{Consequences}
   \begin{itemize}
   \item The most efficient (time to solution) strategy is problem and
     parameter dependent:
@@ -194,7 +170,10 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
     \end{itemize}
   \item Need to be able to \emph{configure} the solver without
     changing the code (e.g.~eliminating first row or second?)
-  \item Need to treat nested problems (Navier-Stokes inside Rayleigh-B\'enard).
+  \item Need to treat nested problems (Navier-Stokes inside
+    Rayleigh-B\'enard).
+  \item Much larger configuration space than single-variable, fully
+    ``algebraic'' preconditioning.
   \end{itemize}
 \end{frame}
 
@@ -234,7 +213,7 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
       M_2 & 0
     \end{bmatrix}
   \end{equation*}
-  and eliminate $N$ in $J$ block, giving system for temperature:
+  and block eliminate $N$ in $J$, giving system for temperature:
   \begin{equation*}
     S_T = K - \tilde{M}_2 N^{-1} \tilde{M}_1.
   \end{equation*}
@@ -245,7 +224,10 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
   \frametitle{Newton update}
   Solve for the update
   \begin{equation*}
-    \delta x = J^{-1} r.
+    \begin{split}
+      \delta x &= J^{-1} F(x). \\
+      x &\leftarrow x + \delta x
+    \end{split}
   \end{equation*}
 
   Write $\mathcal{K}(J, \mathbb{J})$ to denote approximating $J^{-1}$
@@ -311,8 +293,8 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
     Needs the auxiliary discretised operator $F_p$ and approximate
     inverses of the auxiliary operators $L_p$ and $M_p$.
 
-    PCD drives an axe through the horizontal split between
-    the PDE library and the solver library.
+    Communication between PDE and solver libraries can no longer be
+    \emph{unidirectional}.
   \end{block}
 \end{frame}
 
@@ -322,7 +304,7 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
   \item PETSc already provides a highly runtime-configurable library
     for \emph{algebraically} composing solvers \parencite{Brown:2012}.
 
-  \item Firedrake makes it straightforward to build any auxiliary
+  \item Firedrake makes it straightforward to build auxiliary
     operators.
 
   \item We combine these to allow simple development of complex
@@ -362,6 +344,7 @@ class PCDPC(PCBase):
         ctx = P.getContext()
         appctx = ctx.appctx
         p, q = ctx.arguments()
+        [...] # Handling of boundary conditions elided
         M_p = assemble(p*q*dx)
         L_p = assemble(inner(grad(p), grad(q))*dx
         M_ksp = KSP().create()
@@ -780,7 +763,7 @@ class PCDPC(PCBase):
 -fieldsplit_0_fieldsplit_1_ksp_type preonly
 -fieldsplit_0_fieldsplit_1_pc_type python
 -fieldsplit_0_fieldsplit_1_pc_python_type firedrake.PCDPC
--fieldsplit_0_fieldsplit_1_pcd_Fp_mat_type aij
+-fieldsplit_0_fieldsplit_1_pcd_Fp_mat_type matfree
 -fieldsplit_0_fieldsplit_1_pcd_Mp_ksp_type preonly
 -fieldsplit_0_fieldsplit_1_pcd_Mp_pc_type ilu
 -fieldsplit_0_fieldsplit_1_pcd_Kp_ksp_type preonly
@@ -816,7 +799,7 @@ class PCDPC(PCBase):
 -fieldsplit_0_fieldsplit_1_ksp_type preonly
 -fieldsplit_0_fieldsplit_1_pc_type python
 -fieldsplit_0_fieldsplit_1_pc_python_type firedrake.PCDPC
--fieldsplit_0_fieldsplit_1_pcd_Fp_mat_type aij
+-fieldsplit_0_fieldsplit_1_pcd_Fp_mat_type matfree
 -fieldsplit_0_fieldsplit_1_pcd_Mp_ksp_type preonly
 -fieldsplit_0_fieldsplit_1_pcd_Mp_pc_type ilu
 -fieldsplit_0_fieldsplit_1_pcd_Kp_ksp_type preonly
@@ -852,7 +835,7 @@ class PCDPC(PCBase):
 -fieldsplit_0_fieldsplit_1_ksp_type preonly
 -fieldsplit_0_fieldsplit_1_pc_type python
 -fieldsplit_0_fieldsplit_1_pc_python_type firedrake.PCDPC
--fieldsplit_0_fieldsplit_1_pcd_Fp_mat_type aij
+-fieldsplit_0_fieldsplit_1_pcd_Fp_mat_type matfree
 -fieldsplit_0_fieldsplit_1_pcd_Mp_ksp_type preonly
 -fieldsplit_0_fieldsplit_1_pcd_Mp_pc_type ilu
 -fieldsplit_0_fieldsplit_1_pcd_Kp_ksp_type preonly
@@ -888,7 +871,7 @@ class PCDPC(PCBase):
 -fieldsplit_0_fieldsplit_1_ksp_type preonly
 -fieldsplit_0_fieldsplit_1_pc_type python
 -fieldsplit_0_fieldsplit_1_pc_python_type firedrake.PCDPC
--fieldsplit_0_fieldsplit_1_pcd_Fp_mat_type aij
+-fieldsplit_0_fieldsplit_1_pcd_Fp_mat_type matfree
 -fieldsplit_0_fieldsplit_1_pcd_Mp_ksp_type preonly
 -fieldsplit_0_fieldsplit_1_pcd_Mp_pc_type ilu
 -fieldsplit_0_fieldsplit_1_pcd_Kp_ksp_type preonly
@@ -924,7 +907,7 @@ class PCDPC(PCBase):
 -fieldsplit_0_fieldsplit_1_ksp_type preonly
 -fieldsplit_0_fieldsplit_1_pc_type python
 -fieldsplit_0_fieldsplit_1_pc_python_type firedrake.PCDPC
--fieldsplit_0_fieldsplit_1_pcd_Fp_mat_type aij
+-fieldsplit_0_fieldsplit_1_pcd_Fp_mat_type matfree
 -fieldsplit_0_fieldsplit_1_pcd_Mp_ksp_type preonly
 -fieldsplit_0_fieldsplit_1_pcd_Mp_pc_type ilu
 -fieldsplit_0_fieldsplit_1_pcd_Kp_ksp_type preonly
@@ -960,7 +943,7 @@ class PCDPC(PCBase):
 |\highlight{-fieldsplit\_0\_fieldsplit\_1\_ksp\_type preonly}|
 -fieldsplit_0_fieldsplit_1_pc_type python
 -fieldsplit_0_fieldsplit_1_pc_python_type firedrake.PCDPC
--fieldsplit_0_fieldsplit_1_pcd_Fp_mat_type aij
+-fieldsplit_0_fieldsplit_1_pcd_Fp_mat_type matfree
 -fieldsplit_0_fieldsplit_1_pcd_Mp_ksp_type preonly
 -fieldsplit_0_fieldsplit_1_pcd_Mp_pc_type ilu
 -fieldsplit_0_fieldsplit_1_pcd_Kp_ksp_type preonly
@@ -996,7 +979,7 @@ class PCDPC(PCBase):
 -fieldsplit_0_fieldsplit_1_ksp_type preonly
 |\highlight{-fieldsplit\_0\_fieldsplit\_1\_pc\_type python}|
 |\highlight{-fieldsplit\_0\_fieldsplit\_1\_pc\_python\_type firedrake.PCDPC}|
--fieldsplit_0_fieldsplit_1_pcd_Fp_mat_type aij
+-fieldsplit_0_fieldsplit_1_pcd_Fp_mat_type matfree
 -fieldsplit_0_fieldsplit_1_pcd_Mp_ksp_type preonly
 -fieldsplit_0_fieldsplit_1_pcd_Mp_pc_type ilu
 -fieldsplit_0_fieldsplit_1_pcd_Kp_ksp_type preonly
@@ -1068,7 +1051,7 @@ class PCDPC(PCBase):
 -fieldsplit_0_fieldsplit_1_ksp_type preonly
 -fieldsplit_0_fieldsplit_1_pc_type python
 -fieldsplit_0_fieldsplit_1_pc_python_type firedrake.PCDPC
--fieldsplit_0_fieldsplit_1_pcd_Fp_mat_type aij
+-fieldsplit_0_fieldsplit_1_pcd_Fp_mat_type matfree
 |\highlight{-fieldsplit\_0\_fieldsplit\_1\_pcd\_Mp\_ksp\_type preonly}|
 -fieldsplit_0_fieldsplit_1_pcd_Mp_pc_type ilu
 -fieldsplit_0_fieldsplit_1_pcd_Kp_ksp_type preonly
@@ -1104,7 +1087,7 @@ class PCDPC(PCBase):
 -fieldsplit_0_fieldsplit_1_ksp_type preonly
 -fieldsplit_0_fieldsplit_1_pc_type python
 -fieldsplit_0_fieldsplit_1_pc_python_type firedrake.PCDPC
--fieldsplit_0_fieldsplit_1_pcd_Fp_mat_type aij
+-fieldsplit_0_fieldsplit_1_pcd_Fp_mat_type matfree
 -fieldsplit_0_fieldsplit_1_pcd_Mp_ksp_type preonly
 |\highlight{-fieldsplit\_0\_fieldsplit\_1\_pcd\_Mp\_pc\_type ilu}|
 -fieldsplit_0_fieldsplit_1_pcd_Kp_ksp_type preonly
@@ -1140,7 +1123,7 @@ class PCDPC(PCBase):
 -fieldsplit_0_fieldsplit_1_ksp_type preonly
 -fieldsplit_0_fieldsplit_1_pc_type python
 -fieldsplit_0_fieldsplit_1_pc_python_type firedrake.PCDPC
--fieldsplit_0_fieldsplit_1_pcd_Fp_mat_type aij
+-fieldsplit_0_fieldsplit_1_pcd_Fp_mat_type matfree
 -fieldsplit_0_fieldsplit_1_pcd_Mp_ksp_type preonly
 -fieldsplit_0_fieldsplit_1_pcd_Mp_pc_type ilu
 |\highlight{-fieldsplit\_0\_fieldsplit\_1\_pcd\_Kp\_ksp\_type preonly}|
@@ -1176,7 +1159,7 @@ class PCDPC(PCBase):
 -fieldsplit_0_fieldsplit_1_ksp_type preonly
 -fieldsplit_0_fieldsplit_1_pc_type python
 -fieldsplit_0_fieldsplit_1_pc_python_type firedrake.PCDPC
--fieldsplit_0_fieldsplit_1_pcd_Fp_mat_type aij
+-fieldsplit_0_fieldsplit_1_pcd_Fp_mat_type matfree
 -fieldsplit_0_fieldsplit_1_pcd_Mp_ksp_type preonly
 -fieldsplit_0_fieldsplit_1_pcd_Mp_pc_type ilu
 -fieldsplit_0_fieldsplit_1_pcd_Kp_ksp_type preonly
@@ -1238,7 +1221,7 @@ class PCDPC(PCBase):
       w + \epsilon^2 \Delta u - u(u^2 - 1) &= 0
     \end{split}
   \end{equation*}
-  Newton iteration
+  Newton iteration at each timestep solves
   \begin{equation*}
     \begin{bmatrix}
       (1 + \Delta t \theta \sigma)M  & \Delta t\theta K \\
@@ -1292,7 +1275,7 @@ class OKPC(PCBase):
         _, P = pc.getOperators()
         ctx = P.getPythonContext()
         # User information about $\Delta t$, $\theta$, etc...
-        dt, theta, eps, sigma = ctx.appctx
+        dt, theta, eps, sigma = ctx.appctx["parameters"]
         V = ctx.a.arguments()[0].function_space()
         c = (dt * theta * eps**2)/(1 + dt * theta * sigma)
         w = TrialFunction(V)
@@ -1318,9 +1301,8 @@ class OKPC(PCBase):
 \begin{frame}
   \frametitle{Future directions}
   \begin{itemize}
-  \item Include ability to nest GMG solves: matrix-free multigrid.
-  \item Take advantage of new hybridisation opportunities in Firedrake
-  \item Extend approach to nonlinear preconditioning, DD?
+  \item Include ability to nest multigrid solves: matrix-free multigrid.
+  \item Extend approach to nonlinear preconditioning, DD (needs PyOP2++)
   \end{itemize}
   \begin{center}
     All of this is available right now
@@ -1334,7 +1316,7 @@ class OKPC(PCBase):
 \end{frame}
 
 \appendix
-\begin{frame}[t]
+\begin{frame}[t,allowframebreaks]
   \frametitle{References}
   \printbibliography[heading=none]
 \end{frame}
