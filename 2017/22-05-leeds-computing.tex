@@ -1,0 +1,100 @@
+\documentclass[presentation]{beamer}
+
+\usepackage{tikz}
+\usetikzlibrary{positioning,calc}
+\usetikzlibrary{shapes.geometric}
+\usetikzlibrary{backgrounds}% only to show the bounding box
+\usetikzlibrary{shapes,arrows}
+\usepackage{pgfplots}
+\usepackage{pgfplotstable}
+\usetikzlibrary{pgfplots.groupplots}
+\pgfplotsset{compat=1.12}
+\usepackage{appendixnumberbeamer}
+\usepackage{amsmath}
+\date{28th March 2017}
+\usetheme{firedrake}
+
+\renewcommand{\vec}[1]{\ensuremath{\boldsymbol{#1}}}
+\newcommand{\ddt}[1]{\frac{\partial #1}{\partial t}}
+\newcommand{\zhat}{\hat{\vec{z}}}
+\newcommand{\W}{\ensuremath{\mathbb{W}}}
+
+\newcommand{\inner}[1]{\left\langle #1 \right \rangle}
+
+\newcommand{\KSP}[2]{\ensuremath{\mathcal{K}\left(#1, \mathbb{#2}\right)}}
+\newcommand{\ksp}[1]{\KSP{#1}{#1}}
+
+\newcommand{\highlight}[1]{\colorbox{red!20}{\color{black} #1}}
+
+\author{Lawrence Mitchell\inst{1,*}}
+\institute{
+\inst{1}Departments of Computing and Mathematics, Imperial College
+London
+
+\inst{*}\texttt{lawrence.mitchell@imperial.ac.uk}
+}
+
+\graphicspath{{./\jobname.figures/}}
+
+\usepackage[url=false,
+            doi=true,
+            isbn=false,
+            style=authoryear,
+            firstinits=true,
+            uniquename=init,
+            backend=biber]{biblatex}
+
+\setbeamertemplate{bibliography item}{}
+\renewcommand{\bibfont}{\footnotesize}
+\addbibresource{references.bib}
+
+\setlength{\bibitemsep}{1ex}
+\setlength{\fboxsep}{1pt}
+
+\renewbibmacro{in:}{}
+\DeclareFieldFormat[article]{volume}{\textbf{#1}}
+\DeclareFieldFormat{doi}{%
+  doi\addcolon%
+  {\scriptsize\ifhyperref{\href{http://dx.doi.org/#1}{\nolinkurl{#1}}}
+    {\nolinkurl{#1}}}}
+\AtEveryBibitem{%
+\clearfield{pages}%
+\clearfield{issue}%
+\clearfield{number}%
+}
+
+\usepackage{minted}
+
+\title{Firedrake: symbolic numerical computing}
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+  One of the great and enduring successes of numerical computing is
+  the capturing of mathematical abstractions in software.  This allows
+  the programmer to express the intent of their code, without
+  specifying its low-level implementation.  We then automate the
+  synthesis of efficient code by using (or writing) compilers.
+
+  In the context of solving numerical PDEs, the finite element method
+  is particularly amenable to this approach.  For many problems, the
+  choice of discretisation completely specifies the mathematical
+  intent.  A symbolic description of the PDE can then be manipulated
+  by a domain-specific compiler to produce a high-performance
+  implementation.  I this talk, I present Firedrake
+  (www.firedrakeproject.org), a concrete realisation of this idea.  I
+  will discuss how capturing and exploiting symbolic structure in
+  numerical software greatly simplifies model development while
+  simultaneously permitting the synthesis of a high performance
+  implementation.  I will illustrate with examples from high-order
+  finite element methods, and block preconditioning of multiphysics
+  problems.
+\end{abstract}
+
+\appendix
+\begin{frame}[t,allowframebreaks]
+  \frametitle{References}
+  \printbibliography[heading=none]
+\end{frame}
+\end{document}
