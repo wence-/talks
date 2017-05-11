@@ -1,0 +1,388 @@
+\documentclass[presentation]{beamer}
+
+\usepackage{tikz}
+\usetikzlibrary{positioning,calc}
+\usetikzlibrary{shapes.geometric}
+\usetikzlibrary{backgrounds}% only to show the bounding box
+\usetikzlibrary{shapes,arrows}
+\usepackage{pgfplots}
+\usepackage{pgfplotstable}
+\usetikzlibrary{pgfplots.groupplots}
+\pgfplotsset{compat=1.12}
+\usepackage{appendixnumberbeamer}
+\usepackage{amsmath}
+\date{27th March 2017}
+\usetheme{firedrake}
+
+\pgfplotscreateplotcyclelist{decent cycle}{%
+  {blue, mark=*, mark options={fill=blue},
+    mark size=2pt},
+  {cyan, mark=square*, mark options={fill=cyan},
+    mark size=2pt},
+  {magenta, mark=triangle*, mark options={fill=magenta},
+    mark size=3pt},
+  {blue, mark=*, mark options={fill=blue},
+    mark size=2pt},
+  {cyan, mark=square*, mark options={fill=cyan},
+    mark size=2pt},
+  {magenta, mark=triangle*, mark options={fill=magenta},
+    mark size=3pt},
+}
+
+\pgfplotsset{
+  decent/.style={
+    cycle list name=decent cycle,
+  }
+}
+\renewcommand{\vec}[1]{\ensuremath{\boldsymbol{#1}}}
+\newcommand{\ddt}[1]{\frac{\partial #1}{\partial t}}
+\newcommand{\zhat}{\hat{\vec{z}}}
+\newcommand{\W}{\ensuremath{\mathbb{W}}}
+
+\DeclareMathOperator{\grad}{grad}
+\let\div\relax
+\DeclareMathOperator{\div}{div}
+\DeclareMathOperator{\curl}{curl}
+
+\newcommand{\inner}[1]{\left\langle #1 \right \rangle}
+
+\newcommand{\KSP}[2]{\ensuremath{\mathcal{K}\left(#1, \mathbb{#2}\right)}}
+\newcommand{\ksp}[1]{\KSP{#1}{#1}}
+
+\newcommand{\highlight}[1]{\colorbox{red!20}{\color{black} #1}}
+
+\author{Lawrence Mitchell\inst{1,*}}
+\institute{
+\inst{1}Departments of Computing and Mathematics, Imperial College
+London
+
+\inst{*}\texttt{lawrence.mitchell@imperial.ac.uk}
+}
+
+\graphicspath{{./\jobname.figures/}}
+
+\newcommand{\arxivlink}[2]{%
+  \href{http://www.arxiv.org/abs/#1}%
+  {{\small\texttt{arXiv:\,#1\,[#2]}}}%
+}
+\newcommand{\doilink}[1]{%
+  \href{http://dx.doi.org/#1}%
+  {{\small\texttt{doi:\,#1}{}}}%
+}
+\usepackage[url=false,
+            doi=true,
+            isbn=false,
+            style=authoryear,
+            firstinits=true,
+            uniquename=init,
+            backend=biber]{biblatex}
+
+\setbeamertemplate{bibliography item}{}
+\renewcommand{\bibfont}{\footnotesize}
+\addbibresource{references.bib}
+
+\setlength{\bibitemsep}{1ex}
+\setlength{\fboxsep}{1pt}
+
+\renewbibmacro{in:}{}
+\DeclareFieldFormat[article]{volume}{\textbf{#1}}
+\DeclareFieldFormat{doi}{%
+  doi\addcolon%
+  {\scriptsize\ifhyperref{\href{http://dx.doi.org/#1}{\nolinkurl{#1}}}
+    {\nolinkurl{#1}}}}
+\AtEveryBibitem{%
+\clearfield{pages}%
+\clearfield{issue}%
+\clearfield{number}%
+}
+
+\usepackage{minted}
+
+\title{Specifying and solving PDEs ``easily''}
+
+\begin{document}
+
+\maketitle
+
+\begin{frame}
+  \frametitle{Contention}
+
+  \begin{center}
+    Developing sophisticated numerical models by traditional means is
+    a lot of work.
+
+    \uncover<2>{``program all numerics yourself''}
+  \end{center}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Corollary}
+
+  New advances in methods are tried on simple problems.
+
+  Better methods take a long time to move to ``real world''
+  application domains.
+\end{frame}
+
+\begin{frame}
+  \frametitle{What if \dots}
+
+  We could focus on the bit we're interested in\dots
+
+  \uncover<2>{and take advantage of advances in sophistication elsewhere?}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Not quite a pipe dream}
+
+  Great advances in mathematics, computing, and computational science
+  come when we can observe, and exploit, some overarching guiding
+  \emph{abstraction}.
+
+  This allows us to reason about problems at a higher level, and
+  hopefully teach computers to do the same.
+
+  For numerical models, this means, in some sense, we say \emph{what}
+  we want to do, but \emph{not how} we want to do it.
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{A simple example}
+  Approximate $\nabla \cdot \nabla x$ using finite differences.
+
+  $y = x_{i-1, j} + x_{i+1, j} + x_{i, j-1} + x_{i, j+1} - 4x_{i,j}$
+
+  \begin{onlyenv}<2>
+    \begin{block}{Before 1953}
+\begin{minted}[fontsize=\tiny]{asm}
+	subl	$101, %eax
+	flds	x.3305(,%eax,4)
+	faddp	%st, %st(1)
+	movl	-8(%ebp), %edx
+	movl	%edx, %eax
+	sall	$2, %eax
+	addl	%edx, %eax
+	leal	0(,%eax,4), %edx
+	addl	%edx, %eax
+	sall	$2, %eax
+	movl	%eax, %edx
+	movl	-4(%ebp), %eax
+	addl	%edx, %eax
+	subl	$101, %eax
+	flds	x.3305(,%eax,4)
+	flds	.LC0
+	fmulp	%st, %st(1)
+	faddp	%st, %st(1)
+	fstps	y.3307(,%ecx,4)
+	cmpl	$99, -4(%ebp)
+\end{minted}
+    \end{block}
+  \end{onlyenv}
+  \begin{onlyenv}<3>
+    \begin{block}{After 1953}
+\begin{minted}[fontsize=\tiny]{fortran}
+      PROGRAM MAIN
+      PARAMETER (N=100)
+      REAL X(N,N), Y(N,N)
+      DO 10 J=2,N-1
+         DO 20 I=2,N-1
+            Y(I,J)=X(I-1,J)+X(I+1,J)+X(I,J-1)+X(I,J+1)+4*X(I,J)
+ 20      CONTINUE
+ 10   CONTINUE
+      DO 30 I=1,N
+         Y(I,1) = 0.0
+         Y(I,N) = 0.0
+         Y(1,I) = 0.0
+         Y(N,I) = 0.0
+ 30   CONTINUE
+      END
+\end{minted}
+    \end{block}
+  \end{onlyenv}
+\end{frame}
+
+\begin{frame}
+  \frametitle{But what about complex examples?}
+  Straightforward fortran isn't a scalable answer.  But, if we can
+  find the abstract idea, then we can capture it in a \emph{library}.
+
+  Successful examples
+
+  \begin{itemize}
+  \item BLAS
+  \item LAPACK
+  \item PETSc
+  \item Matlab
+  \item R
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{When are mathematical abstractions successful?}
+
+  Atomic unit of computation is \emph{large}, so cost of serialising
+  data access is small.
+
+  e.g. Reference BLAS: build BLAS-3 out of BLAS-2 out of BLAS-1
+
+  Actual BLAS: Build BLAS-3 out of optimised code (calling BLAS-2 and
+  BLAS-1 operations too expensive).
+\end{frame}
+
+\begin{frame}
+  \frametitle{What about PDE solvers}
+
+  We can typically write a straightforward finite difference PDE
+  discretisation by hand (Fortran, as demonstrated, is a good choice).
+
+  For finite element methods, things are much more complicated.
+
+  I can't fit a traditional Poisson operator on a slide.
+\end{frame}
+
+\begin{frame}[allowframebreaks]
+  \frametitle{Finite element 101}
+  Seek weak solutions of an equation $\nabla \cdot \nabla x = f$,
+  subject to some boundary conditions in some discrete function space
+  $V_h \subset V$.
+
+  For this equation $V = H^1$ is appropriate.
+
+  So, after applying integration by parts we have.  Find $x\in V_d$
+  such that
+  \begin{equation}
+    \label{eq:1}
+    -\int \nabla x \cdot \nabla v\,\text{d}x = \int_fv\,\text{d}x
+    \quad \forall v \in V_d
+  \end{equation}
+
+  Do integration with numerical quadrature on reference cell.
+
+  \pagebreak
+  On a single cell I need
+  \begin{equation}
+  \label{eq:gem}
+  \overbrace{\sum_q w_q}^{\text{quadrature}} \text{det}J
+  \overbrace{\sum_{i} \left( \sum_{l}
+    J^{-T}_{l,i} \begin{bmatrix}
+      E^{(1)}_{q,k} & E^{(2)}_{q,k}
+    \end{bmatrix}_{l} \right)}^{(\nabla x_q}
+  \overbrace{\left( \sum_{m} J^{-T}_{m,i} \begin{bmatrix}
+      E^{(1)}_{q,j} & E^{(2)}_{q,j}
+    \end{bmatrix}_{m} \right)}^{(\nabla v)_q}
+\end{equation}
+\end{frame}
+
+\begin{frame}
+  \frametitle{But the maths said what I wanted}
+
+  Although the implementation is complex, once I picked the domain,
+  and the function spaces, the implementation was ``mechanical''.
+
+  Why don't I write down the mathematics, and let a compute do the
+  mechanical translation?
+\end{frame}
+
+\begin{frame}
+  \frametitle{Firedrake team}
+  \begin{center}
+    \url{www.firedrakeproject.org}\\
+    \cite{Rathgeber:2016} \arxivlink{1501.01809}{cs.MS}
+  \end{center}
+
+  \begin{itemize}
+  \item[IC] Thomas Gibson, David A.~Ham, Mikl\'os Homolya, {\color{gray}Fabio
+    Luporini}, Tianjiao Sun, Paul H.~J.~Kelly
+  \item[Bath] Andrew T.~T.~McRae
+  \item[\color{gray}ECMWF] \color{gray}Florian Rathgeber
+  \item[\color{gray}IBM] \color{gray}Gheorghe-Teodor Bercea
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}[fragile]
+  \frametitle{Software libraries simplify writing models}
+  \begin{columns}
+    \begin{column}{0.48\framewidth}
+      \begin{block}{Stationary Rayleigh-B\'enard convection}
+        \begin{equation*}
+          \begin{split}
+            -\Delta u + u\cdot\nabla u + \nabla p +
+            \frac{\text{Ra}}{\text{Pr}} \hat{g}T &= 0 \\
+            \nabla \cdot u &= 0 \\
+            - \frac{1}{\text{Pr}} \Delta T + u\cdot \nabla T &= 0
+          \end{split}
+        \end{equation*}
+      \end{block}
+    \end{column}
+    \begin{column}{0.52\framewidth}
+\begin{minted}[fontsize=\tiny,mathescape]{python}
+from firedrake import *
+mesh = Mesh(...)
+V = VectorFunctionSpace(mesh, "CG", 2)
+W = FunctionSpace(mesh, "CG", 1)
+Q = FunctionSpace(mesh, "CG", 1)
+Z = V * W * Q
+upT = Function(Z)
+u, p, T = split(upT)
+v, q, S = TestFunctions(Z)
+bcs = [...] # no-flow + temp gradient
+nullspace = MixedVectorSpaceBasis(
+   Z, [Z.sub(0), VectorSpaceBasis(constant=True), 
+       Z.sub(2)])
+F = (inner(grad(u), grad(v))
+     + inner(dot(grad(u), u), v)
+     - inner(p, div(v))
+     + (Ra/Pr)*inner(T*g, v)
+     + inner(div(u), q)
+     + inner(dot(grad(T), u), S)
+     + (1/Pr) * inner(grad(T), grad(S)))*dx
+
+solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
+\end{minted}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Symbolic, numerical computing}
+  Weave together
+  \begin{itemize}
+  \item \emph{symbolic} problem description
+\begin{minted}[fontsize=\tiny]{python}
+Z = V * W * Q
+upT = Function(Z)
+u, p, T = split(upT)
+v, q, S = TestFunctions(Z)
+F = (inner(grad(u), grad(v))
+     + inner(dot(grad(u), u), v)
+     - inner(p, div(v))
+     + (Ra/Pr)*inner(T*g, v)
+     + inner(div(u), q)
+     + inner(dot(grad(T), u), S)
+     + (1/Pr) * inner(grad(T), grad(S)))*dx
+\end{minted}
+  \item with problem-specific data (which mesh, what solver?)
+\begin{minted}[fontsize=\tiny]{python}
+mesh = Mesh(...)
+V = VectorFunctionSpace(mesh, "CG", 2)
+W = FunctionSpace(mesh, "CG", 1)
+Q = FunctionSpace(mesh, "CG", 1)
+bcs = [...] # no-flow + temp gradient
+nullspace = MixedVectorSpaceBasis(
+   Z, [Z.sub(0), VectorSpaceBasis(constant=True), 
+       Z.sub(2)])
+solve(F == 0, u, bcs=bcs, solver_parameters=...)
+\end{minted}
+  \end{itemize}
+  and \emph{synthesise} efficient implementation from
+  the symbolic problem description.
+\end{frame}
+
+\appendix
+\begin{frame}[t]
+  \frametitle{References}
+  \printbibliography[heading=none]
+\end{frame}
+
+\end{document}
