@@ -5,10 +5,7 @@
 \usetikzlibrary{shapes.geometric}
 \usetikzlibrary{backgrounds}% only to show the bounding box
 \usetikzlibrary{shapes,arrows}
-\usepackage{pgfplots}
-\usepackage{pgfplotstable}
-\usetikzlibrary{pgfplots.groupplots}
-\pgfplotsset{compat=1.12}
+\usepackage{pgf}
 \usepackage{appendixnumberbeamer}
 \usepackage{amsmath}
 \date{28th March 2017}
@@ -91,6 +88,155 @@ London
   finite element methods, and block preconditioning of multiphysics
   problems.
 \end{abstract}
+
+\begin{frame}
+  \frametitle{Finite element crash course}
+  \begin{align*}
+    F(u) &= 0 \text{ in $\Omega$}\\
+    u &= g \text{ on $\Gamma_1$}\\
+    \frac{\partial u}{\partial n} &= h \text{ on $\Gamma_2$}
+  \end{align*}
+  Seek \emph{weak} solution in some space of functions $V(\Omega)$.
+
+  Now we need to solve the (infinite dimensional) problem, find $u\in V$ s.t.
+  \begin{equation*}
+    \int_\Omega \!F(u) v\, \text{d}x = 0 \quad \forall\, v \in V
+  \end{equation*}
+\end{frame}
+\begin{frame}
+  Choose finite dimensional $V_h \subset V$, and seek a solution in
+  that subspace: find $u_h \in V_h$ s.t.
+  \begin{equation*}
+    \int_\Omega \!F(u_h) v_h\, \text{d}x = 0 \quad \forall\, v_h \in V_h
+  \end{equation*}
+\end{frame}
+\begin{frame}
+  \begin{overprint}
+    \only<1>{Divide domain $\Omega$\dots
+    \begin{center}
+      \begin{tikzpicture}
+        \draw[very thick, line cap=rect] (0,0) -- (5, 0) (0, 0) arc
+        (180:360:2.5);
+      \end{tikzpicture}
+    \end{center}}
+  \only<2>{\dots{}into triangulation $\mathcal{T}$\dots
+    \begin{center}
+        \begin{tikzpicture}
+          \path (0,0) arc[radius=2.5, start angle=180, end angle=360]
+          node[name=E,pos=0,swap] {} node[name=F,pos=0.25,swap] {}
+          node[name=G,pos=0.5,swap] {} node[name=H,pos=0.82,swap] {}
+          node[name=I,pos=1,swap] {}; \node (A) at (2.5, 0) {}; \node
+          (B) at (1.4, -0.7) {}; \node (C) at (3.4, -1.2) {}; \node
+          (D) at (1.8, -1.5) {};
+
+          \draw[color=black, very thick, line cap=butt, line
+          join=round] (E.center) -- (A.center) -- (I.center) --
+          (H.center) -- (G.center) -- (F.center) -- (E.center) --
+          cycle; \draw[color=black, very thick, line cap=butt, line
+          join=round] (E.center) -- (B.center) -- (D.center) --
+          (F.center) -- (B.center); \draw[color=black, very thick,
+          line cap=butt, line join=round] (G.center) -- (D.center) --
+          (C.center) -- (G.center); \draw[color=black, very thick,
+          line cap=butt, line join=round] (B.center) -- (A.center) --
+          (C.center) -- (B.center); \draw[color=black, very thick,
+          line cap=butt, line join=round] (H.center) -- (C.center) --
+          (I.center);
+        \end{tikzpicture}
+    \end{center}
+  }
+  \only<3>{\dots{}and choose basis with finite support.
+    \begin{center}
+        \begin{tikzpicture}
+          \path (0,0) arc[radius=2.5, start angle=180, end angle=360]
+          node[name=E,pos=0,swap] {} node[name=F,pos=0.25,swap] {}
+          node[name=G,pos=0.5,swap] {} node[name=H,pos=0.82,swap] {}
+          node[name=I,pos=1,swap] {}; \node (A) at (2.5, 0) {}; \node
+          (B) at (1.4, -0.7) {}; \node (C) at (3.4, -1.2) {}; \node
+          (D) at (1.8, -1.5) {};
+
+        \path[fill=gray!50] (E.center) -- (A.center) -- (B.center) --
+        (F.center) --cycle;
+          \draw[color=black, very thick, line cap=butt, line
+          join=round] (E.center) -- (A.center) -- (I.center) --
+          (H.center) -- (G.center) -- (F.center) -- (E.center) --
+          cycle; \draw[color=black, very thick, line cap=butt, line
+          join=round] (E.center) -- (B.center) -- (D.center) --
+          (F.center) -- (B.center); \draw[color=black, very thick,
+          line cap=butt, line join=round] (G.center) -- (D.center) --
+          (C.center) -- (G.center); \draw[color=black, very thick,
+          line cap=butt, line join=round] (B.center) -- (A.center) --
+          (C.center) -- (B.center); \draw[color=black, very thick,
+          line cap=butt, line join=round] (H.center) -- (C.center) --
+          (I.center);
+        \end{tikzpicture}
+      \end{center}
+      }
+  \end{overprint}
+\end{frame}
+
+\begin{frame}
+  Integrals become sum over element integrals
+  \begin{equation*}
+    \int_\Omega\! F(u_h) v_h \, \text{d}x =
+    \sum_{e \in \mathcal{T}} \int_e\! F(u_h)v_h\, \text{d}x
+  \end{equation*}
+
+  (Usually) perform element integrals with numerical quadrature
+  \begin{equation*}
+    \int_e F(u_h)v_h\,\text{d}x = \sum_q w_q F(u_h(q)) v_h(q)\,\text{d}x
+  \end{equation*}
+
+  Typically, this is done by geometrically transforming from each
+  \emph{physical} element to a \emph{reference} element.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Abstractly}
+  \begin{itemize}
+  \item Mathematics says ``here is the integral to compute on each
+    element, do that everywhere''
+  \item Doesn't specify \emph{how} to compute the integral
+  \item Doesn't specify \emph{how} to gather the element contributions
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Specifying element integrals}
+
+  Traditional software libraries for finite element computations give you
+  \begin{itemize}
+  \item methods for computing numerical quadrature
+  \item methods to evaluate basis functions at quadrature points
+  \item methods to evaluate fields at quadrature points
+  \item methods to compute geometric transformations
+  \end{itemize}
+\end{frame}
+\begin{frame}[fragile]
+  You might write code like this.
+
+\begin{minted}[fontsize=\tiny]{cpp}
+template<typename EG, typename LFSU, typename X, typename LFSV, typename M>
+void jacobian_volume(const EG& eg, const LFSU& lfsu, const X& x, 
+                     const LFSV& lfsv, M& mat) const {
+  const auto geo = eg.geometry();
+  const auto S = geo.jacobianInverseTransposed(qp);
+  RF factor = weight*geo.integrationElement(qp);
+  double grad[dim][n] = {{0.0}};
+  for (int i=0; i<dim; i++)
+    for (int k=0; k<dim; k++)
+      for (int j=0; j<n; j++)
+        grad[i][j] += S[i][k] * gradhat[k][j];
+  double A[n][n] = {{0.0}};
+  for (int i=0; i<n; i++)
+    for (int k=0; k<dim; k++)
+      for (int j=0; j<n; j++)
+        A[i][j] += grad[k][i]*grad[k][j];
+  for (int i=0; i<n; i++)
+    for (int j=0; j<n; j++)
+      mat.accumulate(lfsu,i,lfsu,j,A[i][j]*factor);
+}
+\end{minted}
+\end{frame}
 
 \begin{frame}
   Finite element 101
