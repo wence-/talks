@@ -11,7 +11,7 @@
 \pgfplotsset{compat=1.12}
 \usepackage{appendixnumberbeamer}
 \usepackage{amsmath}
-\date{27th March 2017}
+\date{18th May 2017}
 \usetheme{firedrake}
 
 \pgfplotscreateplotcyclelist{decent cycle}{%
@@ -51,7 +51,7 @@
 
 \newcommand{\highlight}[1]{\colorbox{red!20}{\color{black} #1}}
 
-\author{Lawrence Mitchell\inst{1,*}}
+\author{Lawrence Mitchell\inst{1,*} {\small + a cast of tens}}
 \institute{
 \inst{1}Departments of Computing and Mathematics, Imperial College
 London
@@ -280,7 +280,7 @@ $F(u_h(q))$ is ``user-specified''.  Variability in innermost loop.
 \end{frame}
 
 \begin{frame}
-  \frametitle{Added complexity}
+  \frametitle{Added complexity I}
   Compared to the simple finite difference code, I need much more code
 
   \begin{itemize}
@@ -290,6 +290,32 @@ $F(u_h(q))$ is ``user-specified''.  Variability in innermost loop.
   \end{itemize}
 
   I can't fit the action of the Laplacian on a slide any more.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Added complexity II}
+  \begin{block}{Too many cores}
+    \small
+    \begin{tabular}{lccccc}
+      Chip           & Cores     & TF/s & GB/s      & F/B & Power         \\
+      \hline
+      NVidia P100    & 56 (3584) & 5.3  & 730       & 7.2 & 250 (21 GF/W) \\
+      Xeon Phi 7290F & 72        & 3.5  & 450 + 100 & 5.4 & 260 (13 GF/W) \\
+      Broadwell      & 22        & 0.78 & 150       & 5.2 & 140 (5.6 GF/W)
+    \end{tabular}
+  \end{block}
+  \begin{block}{Fine grained concurrency}
+    \small
+    \begin{tabular}{lcccc}
+      Chip           & Cores & Clock & Vector width \\
+      \hline
+      P100           & 56    & 1.5   & 32           \\
+      Broadwell      & 22    & 2.2   & 4            \\
+      Phi            & 72    & 1.5   & 8            \\
+      Skylake        & 32    & 2.2   & 8            \\
+      ARMv8 (Cavium) & 54?   & 2?    & 4-32?        \\
+    \end{tabular}
+  \end{block}
 \end{frame}
 
 \begin{frame}
@@ -303,10 +329,10 @@ $F(u_h(q))$ is ``user-specified''.  Variability in innermost loop.
     \begin{tabular}{lr}
       deal.II   & \url{www.dealii.org}            \\
       DUNE      & \url{www.dune-project.org}      \\
-      Firedrake & \url{www.firedrakeproject.org}  \\
-      FEniCS    & \url{www.fenicsproject.org}     \\
-      FreeFEM++ & \url{www.freefem.org}           \\
       Feel++    & \url{www.feelpp.org}            \\
+      FEniCS    & \url{www.fenicsproject.org}     \\
+      Firedrake & \url{www.firedrakeproject.org}  \\
+      FreeFEM++ & \url{www.freefem.org}           \\
       MFEM      & \url{mfem.org}                  \\
       NGSolve   & \url{ngsolve.org}               \\
       oomph-lib & \url{oomph-lib.maths.man.ac.uk} \\
@@ -361,7 +387,7 @@ void jacobian_volume(const EG& eg, const LFSU& lfsu, const X& x,
     \item Not tied to particular discretisation
     \item Relatively easy to understand
     \item Extensible once code is understood
-    \item Free to ``do what you want''
+    \item Free to ``do what you want'', e.g. manually vectorise
     \end{itemize}
   \end{block}
   \begin{block}{Cons}
@@ -370,20 +396,9 @@ void jacobian_volume(const EG& eg, const LFSU& lfsu, const X& x,
       \texttt{geo.integrationElement(qp)})
     \item Compiler may do a bad job optimising
     \item Need to learn more nouns and verbs
-    \item Implementation still tied to numerics
+    \item May do a bad job of producing high performance code
     \end{itemize}
   \end{block}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Did I implement?}
-  \begin{itemize}
-  \item \emph{Implementation} details mixed in with numerics
-  \item For example, I chose an iteration order.
-  \item To change numerics, requires \emph{understanding} the
-    low-level implementation.
-  \item But, I did have full control over everything going on.
-  \end{itemize}
 \end{frame}
 
 \begin{frame}[fragile]
@@ -430,10 +445,6 @@ void jacobian_volume(const EG& eg, const LFSU& lfsu, const X& x,
   \end{itemize}
 \end{frame}
 
-\begin{frame}[standout]
-  Synthesise, don't analyse
-\end{frame}
-
 \bgroup
 \setbeamertemplate{background}{}
 \usebackgroundtemplate{\includegraphics[width=\paperwidth]{uphill}}
@@ -461,6 +472,7 @@ A = assemble(a)
   \begin{itemize}
   \item Symbolic description, implementation of ``maths'', not
     ``numerics''.
+  \item Can concentrate on numerical aspects, not low-level code.
   \item Don't control everything, but did I need to?
   \end{itemize}
 \end{frame}
@@ -519,7 +531,7 @@ void cell_integral(double A[4][4], const double *const restrict *restrict coords
   There are a few of these:
 
   \begin{itemize}
-  \item DUNE: form compiler in development
+  \item DUNE (PDELAB): form compiler in development
   \item FFC: the FEniCS form compiler
   \item TSFC: the two stage form compiler
   \item SyFI: abandonware...
@@ -535,12 +547,13 @@ void cell_integral(double A[4][4], const double *const restrict *restrict coords
 
     \item \emph{Sum factorisation} (e.g. \textcite{Karniadakis:2005}) reduces
       operation count for residual evaluation from $\mathcal{O}(p^{2d})$
-      to $\mathcal{O}(p^{d+1})$.
+      to $\mathcal{O}(d p^{d+1})$.
+    \item Adds extra local memory pressure
   \end{itemize}
   \begin{uncoverenv}<2>
     \begin{center}
 \begin{minted}[fontsize=\tiny]{python}
-V = FiniteElement("Lagrange", hexhedron, 7)
+V = FiniteElement("Lagrange", hexahedron, 7)
 u = Coefficient(V)
 v = TestFunction(V)
 F = inner(grad(u), grad(v))*dx
@@ -634,42 +647,17 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
 \end{frame}
 
 \begin{frame}
-  \frametitle{Some questions to ask}
-  Once I've set up my model, how much code do I have to change to:
-
-  \begin{itemize}
-  \item Change preconditioner?
-  \item Drop terms in preconditioning operator?
-  \item Use a different operator as preconditioner?
-  \item Run quasi-Newton?
-  \item Use matrix-free actions?
-  \item Precondition matrix-free problems?
-  \end{itemize}
-\end{frame}
-
-\begin{frame}
   \frametitle{Simple model development and experimentation}
   Fast prototyping is good, ``but I have to rewrite for performance''.
 
-  \begin{itemize}
-  \item Firedrake provides computational performance often >50\% achievable
-    peak.
-  \item Hero-coding necessary if you want the last 10-20\%
-  \item ...but at what (person) cost?
-  \end{itemize}  
-\end{frame}
-
-\begin{frame}
-  \frametitle{Parallel ``for free''}
-  \begin{itemize}
-  \item Natural parallelisation is domain decomposition
-  \item We can do this automatically given a mesh
-  \item The mathematics doesn't say anything about parallelisation
-  \item It's just a data parallel (``go do this everywhere'')
-    description
-  \item Model description says the same, so we can parallelise
-    automatically
-  \end{itemize}
+  \begin{uncoverenv}<2>
+    \begin{itemize}
+    \item Firedrake provides computational performance often >50\%
+      achievable peak.
+    \item Hero-coding necessary if you want the last 10-20\%
+    \item ...but at what (person) cost?
+    \end{itemize}
+  \end{uncoverenv}
 \end{frame}
 
 \begin{frame}
@@ -737,22 +725,6 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
   \end{onlyenv}
 \end{frame}
 
-\begin{frame}[fragile]
-  \frametitle{Automated manipulation of PDE solvers}
-  \begin{block}{\url{www.dolfin-adjoint.org}}
-    Automated derivation of the discrete adjoint from forward models
-    written using FEniCS.
-
-\begin{minted}[fontsize=\scriptsize]{sh}
-$ cloc dolfin-adjoint/
-Language  files   blank   comment   code
-Python       52    2228       878   6939
-$ cloc dolfin-adjoint/compatibility.py
-Python        1      36         9    135
-\end{minted}
-  \end{block}  
-\end{frame}
-
 \section{Solving implicit systems}
 
 \begin{frame}
@@ -765,8 +737,12 @@ Python        1      36         9    135
   \end{itemize}
 \end{frame}
 
+\begin{frame}[standout]
+  Krylov methods are not solvers
+\end{frame}
+
 \begin{frame}
-  \frametitle{Coupled problems make everything harder}
+  \frametitle{Coupled problems make this hard}
   \begin{itemize}
   \item Coupled problems are (typically) not amenable to black box solution
     methods.
@@ -1548,15 +1524,18 @@ class PCDPC(PCBase):
 \begin{frame}
   \frametitle{Open challenges}
   \begin{itemize}
-  \item I haven't said anything about timestepping
+  \item How should we compare methods?  What is fair? Work precision?
+
+  \item I haven't really said anything about timestepping.
 
   \item Problem, I think, is that there is no clean mathematical
-    abstraction that captures a large enough class of methods.
+    abstraction that captures a large enough class of methods.  But
+    note the work in \textcite{Maddison:2014}.
 
   \item Some formulations (e.g. space-time DG) are amenable, but
     no-one has done the work.
-    
-  \item A challenge!
+
+  \item What about complex (multilevel) timesteppers?
   \end{itemize}
 \end{frame}
 
