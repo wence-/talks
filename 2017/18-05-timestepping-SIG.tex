@@ -108,19 +108,6 @@ London
 \section{Introduction}
 
 \begin{frame}
-  \frametitle{Overview}
-  Philosophy
-
-  Numerical solution of PDEs using finite elements
-
-  A generative approach
-
-  What did we gain?
-
-  Examples and discussion
-\end{frame}
-
-\begin{frame}
   \frametitle{A barrier to progress}
   \begin{lemma}
     Developing sophisticated numerical models ``from scratch'' is a
@@ -135,7 +122,7 @@ London
 \end{frame}
 
 \begin{frame}
-  \frametitle{Why does it happen like this?}
+  \frametitle{A play in two acts}
   \begin{itemize}[<+->]
   \item ``I need to solve a PDE''
   \item (search for software that solves my problem)
@@ -153,19 +140,24 @@ London
 \end{frame}
 
 \begin{frame}
-  \frametitle{Why are libraries too complicated?}
-  \begin{itemize}
-  \item Evidence that the \emph{abstraction level} is wrong.
-  
-  \item If I want to solve a PDE, in the first instance, I don't (or
-    shouldn't) care about parallel computing.
-  
-  \item Well-designed abstractions present low barrier to entry, without
-    only being useful for toy problems.
+  \frametitle{Why might this occur}
 
-  \item Then, we can build on them, rather than starting from scratch
+  \only<1>{\centering ``Mongolian is hard, I need to learn all these new words''}
+
+  \only<2->{
+  \begin{itemize}
+  \item<2-> Evidence that the \emph{abstraction level} is wrong?
+    
+  \item<2-> Abstraction level is right, but the library only works for
+    toy problems.
+    
+  \item<3-> Well-designed abstractions present low barrier to entry, without
+    only being useful for toy problems.
+    
+  \item<3-> Then, we can build on them, rather than starting from scratch
     every time.
   \end{itemize}
+  }
 \end{frame}
 
 \begin{frame}[fragile, t]
@@ -280,42 +272,44 @@ $F(u_h(q))$ is ``user-specified''.  Variability in innermost loop.
 \end{frame}
 
 \begin{frame}
-  \frametitle{Added complexity I}
+  \frametitle{Added complexity: more code}
   Compared to the simple finite difference code, I need much more code
 
   \begin{itemize}
   \item Numerical quadrature
   \item Orthogonal polynomials
-  \item Indirections from elements to data
+  \item Indirections from mesh topology to data
   \end{itemize}
 
   I can't fit the action of the Laplacian on a slide any more.
 \end{frame}
 
 \begin{frame}
-  \frametitle{Added complexity II}
-  \begin{block}{Too many cores}
-    \small
-    \begin{tabular}{lccccc}
-      Chip           & Cores     & TF/s & GB/s      & F/B & Power         \\
-      \hline
-      NVidia P100    & 56 (3584) & 5.3  & 730       & 7.2 & 250 (21 GF/W) \\
-      Xeon Phi 7290F & 72        & 3.5  & 450 + 100 & 5.4 & 260 (13 GF/W) \\
-      Broadwell      & 22        & 0.78 & 150       & 5.2 & 140 (5.6 GF/W)
-    \end{tabular}
-  \end{block}
-  \begin{block}{Fine grained concurrency}
-    \small
-    \begin{tabular}{lcccc}
-      Chip           & Cores & Clock & Vector width \\
-      \hline
-      P100           & 56    & 1.5   & 32           \\
-      Broadwell      & 22    & 2.2   & 4            \\
-      Phi            & 72    & 1.5   & 8            \\
-      Skylake        & 32    & 2.2   & 8            \\
-      ARMv8 (Cavium) & 54?   & 2?    & 4-32?        \\
-    \end{tabular}
-  \end{block}
+  \frametitle{Added complexity: hardware is terrible}
+  \begin{center}
+    \begin{block}{Too many cores}
+      \small
+      \begin{tabular}{lccccc}
+        Chip           & Cores     & TF/s & GB/s      & F/B \\
+        \hline
+        NVidia P100    & 56 (3584) & 5.3  & 730       & 7.2 \\
+        Xeon Phi 7290F & 72        & 3.5  & 450 + 100 & 5.4 \\
+        Broadwell      & 22        & 0.78 & 150       & 5.2 \\
+      \end{tabular}
+    \end{block}
+    \begin{block}{Fine grained concurrency}
+      \small
+      \begin{tabular}{lcccc}
+        Chip           & Cores & Clock & Vector width \\
+        \hline
+        P100           & 56    & 1.5   & 32           \\
+        Broadwell      & 22    & 2.2   & 4            \\
+        Phi            & 72    & 1.5   & 8            \\
+        Skylake        & 32    & 2.2   & 8            \\
+        ARMv8 (Cavium) & 54?   & 2?    & 4-32?        \\
+      \end{tabular}
+    \end{block}
+  \end{center}
 \end{frame}
 
 \begin{frame}
@@ -414,6 +408,30 @@ void jacobian_volume(const EG& eg, const LFSU& lfsu, const X& x,
 \section{A descriptive approach}
 
 \begin{frame}
+  \frametitle{Experimentation should be easy}
+  Once I've set up my model, how much code do I have to change to:
+
+  \begin{itemize}
+  \item Change preconditioner?
+  \item Drop terms in preconditioning operator?
+  \item Use a different operator as preconditioner?
+  \item Run quasi-Newton?
+  \item Use matrix-free actions?
+  \item Precondition matrix-free problems?
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{There is no prototype code}
+  \begin{itemize}
+  \item Research groups don't typically have the resource to rewrite
+    models
+  \item Need to have efficient code first time round
+  \item Do you have the expertise to do this?
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
   \frametitle{Firedrake}
   An automated finite element system.
 
@@ -422,14 +440,25 @@ void jacobian_volume(const EG& eg, const LFSU& lfsu, const X& x,
     \cite{Rathgeber:2016} \arxivlink{1501.01809}{cs.MS}
   \end{center}
 
-  \begin{itemize}
-  \item[IC] Thomas Gibson, David A.~Ham, Mikl\'os Homolya, Lawrence
-    Mitchell, {\color{gray}Fabio
-    Luporini}, Tianjiao Sun, Paul H.~J.~Kelly
-  \item[Bath] Andrew T.~T.~McRae
-  \item[\color{gray}ECMWF] \color{gray}Florian Rathgeber
-  \item[\color{gray}IBM] \color{gray}Gheorghe-Teodor Bercea
-  \end{itemize}
+  \begin{onlyenv}<1>
+    \begin{block}{Development team}
+      \begin{itemize}
+      \item[IC] Thomas Gibson, David A.~Ham, Mikl\'os Homolya,
+        Lawrence Mitchell, {\color{black!50}Fabio Luporini}, Tianjiao
+        Sun, Paul H.~J.~Kelly
+      \item[\color{black!75}Baylor] {\color{black!75}Robert C. Kirby}
+      \item[\color{black!75}Bath] {\color{black!75}Andrew T.~T.~McRae}
+      \item[\color{black!25}ECMWF] {\color{black!25}Florian Rathgeber}
+      \item[\color{black!15}IBM] {\color{black!15}Gheorghe-Teodor Bercea}
+      \end{itemize}
+    \end{block}
+  \end{onlyenv}
+  \begin{onlyenv}<2>
+    \begin{block}{Users at}
+      Imperial, Bath, Leeds, Kiel, Rice, Houston, Oregon Health \&
+      Science, Exeter, ETH, Waterloo, Minnesota, Baylor \dots
+    \end{block}
+  \end{onlyenv}
 \end{frame}
 
 \begin{frame}
@@ -461,7 +490,7 @@ void jacobian_volume(const EG& eg, const LFSU& lfsu, const X& x,
   finite element method in a \emph{domain specific language}.
 
   \begin{center}
-\begin{minted}[fontsize=\tiny]{python}
+\begin{minted}[fontsize=\footnotesize]{python}
 V = FunctionSpace(mesh, "Lagrange", 1)
 u = TrialFunction(V)
 v = TestFunction(V)
@@ -515,11 +544,11 @@ void cell_integral(double A[4][4], const double *const restrict *restrict coords
   \frametitle{A job for an expert}
   Hardware-aware optimsation of finite element kernels is a job for:
   \begin{itemize}
-  \item<2-> A numerical analyst?
-  \item<3-> A geodynamicist?
-  \item<4-> A computational chemist?
-  \item<5-> A computational scientist?
-  \item<6-> A computer scientist?
+  \item A numerical analyst?
+  \item A geodynamicist?
+  \item A computational chemist?
+  \item A computational scientist?
+  \item A computer scientist?
   \end{itemize}
 \end{frame}
 
@@ -533,8 +562,7 @@ void cell_integral(double A[4][4], const double *const restrict *restrict coords
   \begin{itemize}
   \item DUNE (PDELAB): form compiler in development
   \item FFC: the FEniCS form compiler
-  \item TSFC: the two stage form compiler
-  \item SyFI: abandonware...
+  \item TSFC: the two stage form compiler (Firedrake)
   \end{itemize}  
 \end{frame}
 
@@ -542,17 +570,18 @@ void cell_integral(double A[4][4], const double *const restrict *restrict coords
   \frametitle{Optimising compilers}
   \begin{itemize}
   \item Both code snippets are independent of polynomial degree.
-    \emph{But}, the naive implementation is algorithmically
+    \emph{But}, the naive implementation I showed is algorithmically
     suboptimal.
 
     \item \emph{Sum factorisation} (e.g. \textcite{Karniadakis:2005}) reduces
       operation count for residual evaluation from $\mathcal{O}(p^{2d})$
       to $\mathcal{O}(d p^{d+1})$.
-    \item Adds extra local memory pressure
+    \item<2-> Computer science translation: ``sum factorisation'' is
+      ``loop invariant code motion''.
   \end{itemize}
-  \begin{uncoverenv}<2>
+  \begin{uncoverenv}<3>
     \begin{center}
-\begin{minted}[fontsize=\tiny]{python}
+\begin{minted}[fontsize=\scriptsize]{python}
 V = FiniteElement("Lagrange", hexahedron, 7)
 u = Coefficient(V)
 v = TestFunction(V)
@@ -653,7 +682,7 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
   \begin{uncoverenv}<2>
     \begin{itemize}
     \item Firedrake provides computational performance often >50\%
-      achievable peak.
+      achievable peak \parencite{Luporini:2015,Luporini:2016,Bercea:2016}.
     \item Hero-coding necessary if you want the last 10-20\%
     \item ...but at what (person) cost?
     \end{itemize}
@@ -708,7 +737,7 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
       \begin{itemize}
       \item 3D unstructured coastal ocean model written with Firedrake
       \item 6400 LOC
-      \item 4x faster than previous code in group (same numerics)
+      \item 4-8x faster than previous code in group (same numerics)
       \end{itemize}
     \end{block}
   \end{onlyenv}
@@ -719,6 +748,7 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
       \end{center}
       \begin{itemize}
       \item 3D atmospheric dynamical core using compatible FE
+      \item Implements Met Office ``Gung Ho'' numerics
       \item 1600 LOC
       \end{itemize}
     \end{block}
@@ -733,7 +763,7 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
   \item It is easy to write down complex implicit systems.
   \item But the challenge is usually in solving them
   \item Firedrake provides access to PETSc for solving
-  \item Any algebraic solver you like, plus composed fieldsplit solvers.
+  \item ``Any'' algebraic solver you like, plus composition of block eliminations ``fieldsplit'' solvers.
   \end{itemize}
 \end{frame}
 
@@ -757,27 +787,50 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
 
 \begin{frame}
   \frametitle{Block preconditioning}
-  Most state of the art preconditioning for multi-variable
-  problems is based on block LU factorisations.
+  \begin{onlyenv}<1-2>
+    State of the art preconditioning for multi-variable problems is typically
+    based on block LU factorisations.
 
-  \begin{uncoverenv}<2>
+    \begin{uncoverenv}<2>
+      Rationale is that
+      \begin{equation*}
+        T = \begin{bmatrix}
+          A & 0 \\
+          0 & D - C A^{-1} B^T
+        \end{bmatrix}^{-1}
+        \begin{bmatrix}
+          A & B^T \\
+          C & D = 0
+        \end{bmatrix}
+      \end{equation*}
+      has minimal polynomial $T(T - I)(T^2 - T - I) = 0$
+      \parencite{Murphy:2000}.  And thus a Krylov method converges in
+      at most 4 iterations.
+
+      \textcite{Ipsen:2001} treats case of $D \ne 0$.
+    \end{uncoverenv}
+    \end{onlyenv}
+    \begin{onlyenv}<3->
+    Or ``function space'' preconditioning
+    \parencite{Kirby:2010,Mardal:2011,Malek:2014}.
+
+    Only uses block-diagonal operators.
+
+    e.g. Implicit timestepping for time-dependent Stokes
     \begin{equation*}
-      T = \begin{bmatrix}
-        A & 0 \\
-        0 & C A^{-1} B^T
-      \end{bmatrix}^{-1}
       \begin{bmatrix}
-        A & B^T \\
-        C & D = 0
+        \mathbb{I} - \Delta t \nabla^2 & -\nabla \\
+        \nabla\cdot & 0
       \end{bmatrix}
     \end{equation*}
-    has minimal polynomial $T(T - I)(T^2 - T - I) =
-    0$ \parencite{Murphy:2000}. \textcite{Ipsen:2001} treats case of
-    $D \ne 0$.
-
-    Alternate approach: ``function space''
-    preconditioning \parencite{Kirby:2010,Mardal:2011,Malek:2014}.
-  \end{uncoverenv}
+    Can be preconditioned by
+    \begin{equation*}
+      \begin{bmatrix}
+        (\mathbb{I} - \Delta t\nabla^2)^{-1} & 0 \\
+          0 & (-\nabla^2)^{-1} + \Delta t \mathbb{I}^{-1} \\
+        \end{bmatrix}
+    \end{equation*}
+    \end{onlyenv}
 \end{frame}
 
 \begin{frame}[fragile]
@@ -1000,7 +1053,7 @@ class PCDPC(PCBase):
 \end{frame}
 
 \begin{frame}
-  \frametitle{Back to the main event}
+  \frametitle{An overview of the full solver}
   We are solving
   \begin{equation*}
     \KSP{\begin{bmatrix}
@@ -1488,6 +1541,25 @@ class PCDPC(PCBase):
 \end{frame}
 
 \begin{frame}
+  \frametitle{Reasonable performance}
+  \small
+  \centering
+  \begin{tabular}{c|c|c|c|c}
+    DoFs ($\times 10^{6}$) & Cores & Newton its & Krylov its & Time (s) \\
+    \hline
+    0.741                  & 24            & 3          & 16         & 32                   \\
+    1.488                  & 48            & 3          & 16         & 36                   \\
+    2.973                  & 96            & 3          & 17         & 44                   \\
+    5.769                  & 192           & 3          & 17         & 47                   \\
+    11.66                  & 384           & 3          & 17         & 56                   \\
+    23.39                  & 768           & 3          & 17         & 65                   \\
+    45.54                  & 1536          & 3          & 18         & 85                   \\
+    92.28                  & 3072          & 3          & 18         & 120                  \\
+    185.6                  & 6144          & 3          & 19         & 167                  \\
+  \end{tabular}
+  
+\end{frame}
+\begin{frame}
   \frametitle{Runtime composability}
 
   \begin{itemize}
@@ -1495,8 +1567,7 @@ class PCDPC(PCBase):
     drop in where-ever such a block wants inverted.
 
   \item Model formulation doesn't care about variable
-    splittings. Maybe we wanted to eliminate temperature first.  Do
-    so, without changing the code.
+    splittings.
 
   \item Composes with nonlinear solvers that need linearisations.
 
@@ -1506,6 +1577,96 @@ class PCDPC(PCBase):
   \item No need to worry about parallel!
   \end{itemize}
 \end{frame}
+
+\begin{frame}[allowframebreaks]
+  \frametitle{Easy extensibility}
+  A preconditioner for the Ohta--Kawasaki
+  equation \parencite{Farrell:2016}
+
+  \begin{equation*}
+    \begin{split}
+      u_t - \Delta w + \sigma(u - m) &= 0\\
+      w + \epsilon^2 \Delta u - u(u^2 - 1) &= 0
+    \end{split}
+  \end{equation*}
+  Newton iteration at each timestep solves
+  \begin{equation*}
+    \begin{bmatrix}
+      (1 + \Delta t \theta \sigma)M  & \Delta t\theta K \\
+      -\epsilon^2 K - M_E & M
+    \end{bmatrix}
+    \begin{bmatrix}
+      \delta u \\
+      \delta w
+    \end{bmatrix} =
+    \begin{bmatrix}
+      f_1 \\
+      f_2
+    \end{bmatrix}
+  \end{equation*}
+
+  \pagebreak
+  
+  Preconditioning
+  \begin{equation*}
+    P^{-1} = 
+    \begin{bmatrix}
+      (1 + \Delta t \theta \sigma)M  & 0 \\
+      -\epsilon^2 K - M_E & S
+    \end{bmatrix}^{-1} =
+    \begin{bmatrix}
+      A^{-1}  & 0 \\
+      0 & S^{-1}
+    \end{bmatrix}
+    \begin{bmatrix}
+      I & 0 \\
+      -C A^{-1}  & I
+    \end{bmatrix}.
+  \end{equation*}
+  Use
+  \begin{equation*}
+    S^{-1} \approx \hat{S}^{-1}M\hat{S}^{-1}
+  \end{equation*}
+  where
+  \begin{equation*}
+    \hat{S} = M + \epsilon\sqrt{(\Delta t \theta)/(1+\Delta t \theta\sigma)} K.
+  \end{equation*}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Implementation}
+\begin{minted}[fontsize=\tiny,mathescape]{python}
+class OKPC(PCBase):
+
+    def initialize(self, pc):
+        # Approximate $S^{-1} \sim \hat{S}^{-1} M \hat{S}^{-1}$ where $\hat{S} = \inner{q, w} + \epsilon\sqrt{c}\inner{\nabla q, \nabla w}$
+        _, P = pc.getOperators()
+        ctx = P.getPythonContext()
+        # User information about $\Delta t$, $\theta$, etc...
+        dt, theta, eps, sigma = ctx.appctx["parameters"]
+        V = ctx.a.arguments()[0].function_space()
+        c = (dt * theta * eps**2)/(1 + dt * theta * sigma)
+        w = TrialFunction(V)
+        q = TestFunction(V)
+        op = assemble(inner(w, q)*dx + sqrt(c) * inner(grad(w), grad(q))*dx)
+        self.ksp = KSP().create(comm=pc.comm)
+        self.ksp.setOptionsPrefix(pc.getOptionsPrefix + "shat_")
+        self.ksp.setOperators(op.petscmat, op.petscmat)
+        [...] # boilerplate elided
+        mass = assemble(w*q*dx)
+        self.mass = mass.petscmat
+        work = self.mass.createVecLeft()
+        self.work = (work, work.duplicate())
+
+    def apply(self, pc, x, y):
+        tmp1, tmp2 = self.work
+        self.ksp.solve(x, tmp1)
+        self.mass.mult(tmp1, tmp2)
+        self.ksp.solve(tmp2, y)
+\end{minted}
+\end{frame}
+
+\section{Wrapping up}
 
 \begin{frame}
   \frametitle{Answering some questions}
@@ -1521,6 +1682,19 @@ class PCDPC(PCBase):
   \end{itemize}
 \end{frame}
 
+\begin{frame}
+  \frametitle{Summing up}
+  \begin{itemize}
+  \item Firedrake is high performance for many problems in both
+    the programmer and computer time metrics
+  \item A good choice for experimenting with new algorithms: you can
+    run on your laptop and scale up easily
+  \item I can't solve your maths problems, I can give you tools to
+    write down the solution more easily
+  \item You can't do everything in the framework, but we do give you
+    some mechanisms for escaping the walled garden
+  \end{itemize}
+\end{frame}
 \begin{frame}
   \frametitle{Open challenges}
   \begin{itemize}
