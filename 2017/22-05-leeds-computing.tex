@@ -8,6 +8,7 @@
 \usepackage{pgf}
 \usepackage{appendixnumberbeamer}
 \usepackage{amsmath}
+\DeclareMathOperator{\tr}{tr}
 \date{28th March 2017}
 \usetheme{firedrake}
 
@@ -22,6 +23,14 @@
 \newcommand{\ksp}[1]{\KSP{#1}{#1}}
 
 \newcommand{\highlight}[1]{\colorbox{red!20}{\color{black} #1}}
+\newcommand{\arxivlink}[2]{%
+  \href{http://www.arxiv.org/abs/#1}%
+  {{\small\texttt{arXiv:\,#1\,[#2]}}}%
+}
+\newcommand{\doilink}[1]{%
+  \href{http://dx.doi.org/#1}%
+  {{\small\texttt{doi:\,#1}{}}}%
+}
 
 \author{Lawrence Mitchell\inst{1,*}}
 \institute{
@@ -212,11 +221,10 @@ London
   \end{itemize}
 \end{frame}
 \begin{frame}[fragile]
-  You might write code like this.
-
+  You might write code like this
 \begin{minted}[fontsize=\tiny]{cpp}
 template<typename EG, typename LFSU, typename X, typename LFSV, typename M>
-void jacobian_volume(const EG& eg, const LFSU& lfsu, const X& x, 
+void jacobian_volume(const EG& eg, const LFSU& lfsu, const X& x,
                      const LFSV& lfsv, M& mat) const {
   const auto geo = eg.geometry();
   const auto S = geo.jacobianInverseTransposed(qp);
@@ -236,8 +244,309 @@ void jacobian_volume(const EG& eg, const LFSU& lfsu, const X& x,
       mat.accumulate(lfsu,i,lfsu,j,A[i][j]*factor);
 }
 \end{minted}
+  \begin{uncoverenv}<2>
+    \begin{equation*}
+      \int_\Omega \nabla u \cdot \nabla v\,\text{d}x
+    \end{equation*}
+  \end{uncoverenv}
 \end{frame}
 
+\begin{frame}
+  \frametitle{Mechanical translation}
+  \begin{block}{Assertion}
+    Once we pick the discretisation, writing the element integral is mechanical.
+  \end{block}
+  \begin{corollary}
+    Computers are good at mechanical things, why don't we get the
+    computer to write the element integral?
+  \end{corollary}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Firedrake}
+  An automated finite element system.
+
+  \begin{center}
+    \url{www.firedrakeproject.org}\\
+    \cite{Rathgeber:2016} \arxivlink{1501.01809}{cs.MS}
+  \end{center}
+
+  \begin{onlyenv}<1>
+    \begin{block}{Development team}
+      \begin{itemize}
+      \item[IC] Thomas Gibson, David A.~Ham, Mikl\'os Homolya,
+        Lawrence Mitchell, {\color{black!50}Fabio Luporini}, Tianjiao
+        Sun, Paul H.~J.~Kelly
+      \item[\color{black!75}Baylor] {\color{black!75}Robert C. Kirby}
+      \item[\color{black!75}Bath] {\color{black!75}Andrew T.~T.~McRae}
+      \item[\color{black!25}ECMWF] {\color{black!25}Florian Rathgeber}
+      \item[\color{black!15}IBM] {\color{black!15}Gheorghe-Teodor Bercea}
+      \end{itemize}
+    \end{block}
+  \end{onlyenv}
+  \begin{onlyenv}<2>
+    \begin{block}{Users at}
+      Imperial, Bath, Leeds, Kiel, Rice, Houston, Oregon Health \&
+      Science, Exeter, ETH, Waterloo, Minnesota, Baylor \dots
+    \end{block}
+  \end{onlyenv}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Exploiting abstractions}
+  \begin{itemize}
+  \item Firedrake builds on, and extends, embedded DSLs developed in
+    the FEniCS project \url{www.fenicsproject.org}
+  \item The \emph{Unified Form Language} \parencite{Alnaes:2014} to
+    specify variational forms
+  \item A symbolic problem description (generic) is woven together with
+    problem-specific data, and executed by a runtime Python library
+    that does JIT code compilation.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{UFL: a DSL for variational problems}
+\begin{minted}[fontsize=\scriptsize]{python}
+V = FiniteElement("Lagrange", triangle, 1)
+u = TrialFunction(V)
+v = TestFunction(V)
+a = dot(grad(u), grad(v))*dx
+\end{minted}
+  \begin{equation*}
+    \int_\Omega \nabla u \cdot \nabla v\,\text{d}x
+  \end{equation*}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Mechanical translation}
+  We have a symbolic description of the problem, and we need to
+  transform it to executable code.
+
+  A \emph{form compiler} translates a variational form (UFL) into
+  low-level (C/C++/...) code for performing an element integral.
+  \begin{uncoverenv}<2>
+    \begin{columns}
+      \begin{column}{0.5\textwidth}
+\begin{minted}[fontsize=\tiny]{c}
+void cell_integral(double A[3][3],
+                   double coords[3][2]) {
+  static const double t10[3] = {...};
+  static const double t12[3] = {...};
+  double t13[3];
+  double t14[3];
+  double t0 = (-1 * coords[0][1]);
+  double t1 = (t0 + coords[1][1]);
+  double t2 = (-1 * coords[0][0]);
+  double t3 = (t2 + coords[1][0]);
+  double t4 = (t0 + coords[2][1]);
+  double t5 = (t2 + coords[2][0]);
+  double t6 = ((t3 * t4) + (-1 * (t5 * t1)));
+  double t7 = ((-1 * t1) / t6);
+  double t8 = (t4 / t6);
+  double t9 = (t3 / t6);
+  double t11 = ((-1 * t5) / t6);
+\end{minted}
+      \end{column}
+      \begin{column}{0.5\textwidth}
+\begin{minted}[fontsize=\tiny]{c}
+  for (int k0 = 0; k0 < 3; k0++) {
+    t13[k0] = (t11 * t12[k0]) + (t9 * t10[k0]);
+    t14[k0] = (t8 * t12[k0]) + (t7 * t10[k0]);
+  }
+  double t15 = (0.5 * fabs(t6));
+  for (int j0 = 0; j0 < 3; j0++) {
+    double t16 = ((t11 * t12[j0])
+                  + (t9 * t10[j0]));
+    double t17 = ((t8 * t12[j0])
+                  + (t7 * t10[j0]));
+    for (int k0 = 0; k0 < 3; k0++) {
+      A[j0][k0] += t15 * ((t17 * t14[k0])
+                          + (t16 * t13[k0]));
+    }
+  }
+}
+\end{minted}
+      \end{column}
+    \end{columns}
+  \end{uncoverenv}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Works for complicated problems}
+  \begin{columns}
+    \begin{column}{0.4\textwidth}
+      \begin{align*}
+        \mathbf{F} &= \mathbf{I} + \nabla \mathbf{u}\\
+        \mathbf{C} &= \mathbf{F}^T \mathbf{F}\\
+        \mathbf{E} &= (\mathbf{C} - \mathbf{I}) / 2\\
+        \Psi &= \frac{\lambda}{2}[\tr(\mathbf{E})]^2 + \mu \tr(\mathbf{E}^2)\\
+        \mathbf{S} &= \frac{\partial \Psi}{\partial \mathbf{E}}\\
+        \mathbf{P} &= \mathbf{F} \mathbf{S}\\
+        r &= \mathbf{P} : \nabla \mathbf{v} - \mathbf{b} \cdot \mathbf{v}\\
+        a &= \lim_{\epsilon \to 0} \frac{r(\mathbf{u} + \epsilon \delta \mathbf{u}) - r(\mathbf{u})}{\epsilon}
+      \end{align*}
+    \end{column}
+    \begin{column}{0.6\textwidth}
+\begin{minted}[fontsize=\tiny]{python}
+V = VectorElement("Lagrange", triangle, 2)
+v = TestFunction(V)
+du = TrialFunction(V) # Incremental displacement
+u = Coefficient(V) # Displacement
+B = Coefficient(V) # Body force per unit mass
+# Kinematics
+I = Identity(V.cell().topological_dimension())
+F = I+grad(u)
+C = F.T*F
+E = (C - I)/2
+E = variable(E)
+# Material constants
+mu = Constant(triangle)
+lmbda = Constant(triangle)
+# Strain energy function (material model)
+psi = lmbda/2*(tr(E)**2) + mu*tr(E*E)
+S = diff(psi, E) # Second Piola-Kirchhoff stress tensor
+PK = F*S # First Piola-Kirchoff stress tensor
+# Variational problem
+a = derivative((inner(PK, grad(v))-inner(B, v))*dx,u,du)
+\end{minted}
+    \end{column}
+  \end{columns}
+\end{frame}
+\bgroup
+\setbeamertemplate{background}{}
+\begin{frame}[fragile,plain]
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+\begin{minted}[fontsize=\fontsize{4.3}{4.3}\selectfont]{c}
+void cell_integral(double A[12][12], double coords[3][2],
+                   double w_0[6][2], double w_1[1],
+                   double w_2[2]) {
+  static const double t0[2][2] = {...};
+  static const double t9[6] = {...};
+  static const double t15[6][6] = {...};
+  static const double t16[6][6] = {...};
+  double t1 = (-1 * coords[0][0]);
+  double t2 = (t1 + coords[1][0]);
+  double t3 = (-1 * coords[0][1]);
+  double t4 = (t3 + coords[2][1]);
+  double t5 = (t1 + coords[2][0]);
+  double t6 = (t3 + coords[1][1]);
+  double t7 = ((t2 * t4) + (-1 * (t5 * t6)));
+  double t8 = fabs(t7);
+  double t10 = (w_2[0] / 2);
+  double t11 = (t2 / t7);
+  double t12 = ((-1 * t5) / t7);
+  double t13 = ((-1 * t6) / t7);
+  double t14 = (t4 / t7);
+
+  for (int ip = 0; ip < 6; ip++) {
+    double t56[6][2] ;
+    double t57[6][2] ;
+    double t61[6][2] ;
+    double t62[6][2] ;
+    double t20 = 0.0;
+    double t19 = 0.0;
+    double t18 = 0.0;
+    double t17 = 0.0;
+    for (int i_0 = 0; i_0 < 6; i_0++) {
+      t17 += t16[ip][i_0] * w_0[i_0][1];
+      t18 += t15[ip][i_0] * w_0[i_0][1];
+      t19 += t16[ip][i_0] * w_0[i_0][0];
+      t20 += t15[ip][i_0] * w_0[i_0][0];
+    }
+    double t21 = (1 + ((t14 * t20) + (t13 * t19)));
+    double t22 = ((t12 * t20) + (t11 * t19));
+    double t23 = ((t14 * t18) + (t13 * t17));
+    double t24 = (1 + ((t12 * t18) + (t11 * t17)));
+    double t25 = (((t21 * t22) + (t23 * t24)) / 2);
+    double t26 = ((t25 + t25) * w_1[0]);
+    double t27 = ((-1 + ((t21 * t21) + (t23 * t23))) / 2);
+    double t28 = ((-1 + ((t22 * t22) + (t24 * t24))) / 2);
+    double t29 = ((2 * (t27 + t28)) * t10);
+    double t30 = (t29 + ((t27 + t27) * w_1[0]));
+    double t31 = (t29 + ((t28 + t28) * w_1[0]));
+    double t32 = (((t22 * t21) + (t24 * t23)) / 2);
+    double t33 = ((t32 + t32) * w_1[0]);
+    for (int k0 = 0; k0 < 6; k0++) {
+      for (int k1 = 0; k1 < 2; k1++) {
+        double t34 = (t0[k1][1] * t15[ip][k0]);
+        double t35 = (t0[k1][1] * t16[ip][k0]);
+        double t36 = ((t14 * t34) + (t13 * t35));
+\end{minted}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+\begin{minted}[fontsize=\fontsize{4.3}{4.3}\selectfont]{c}
+        double t37 = (t0[k1][0] * t15[ip][k0]);
+        double t38 = (t0[k1][0] * t16[ip][k0]);
+        double t39 = ((t12 * t37) + (t11 * t38));
+        double t40 = (t39 * t21);
+        double t41 = ((t14 * t37) + (t13 * t38));
+        double t42 = (t41 * t22);
+        double t43 = ((t12 * t34) + (t11 * t35));
+        double t44 = (t43 * t23);
+        double t45 = (t36 * t24);
+        double t46 = (((t40 + t42) + (t44 + t45)) / 2);
+        double t47 = ((t46 + t46) * w_1[0]);
+        double t48 = (t41 * t21);
+        double t49 = (t36 * t23);
+        double t50 = (((t48 + t48) + (t49 + t49)) / 2);
+        double t51 = (t39 * t22);
+        double t52 = (t43 * t24);
+        double t53 = (((t51 + t51) + (t52 + t52)) / 2);
+        double t54 = ((2 * (t50 + t53)) * t10);
+        double t55 = (t54 + ((t53 + t53) * w_1[0]));
+        t56[k0][k1] = ((t36 * t33) + (t47 * t23))
+                       + ((t43 * t31) + (t55 * t24));
+        t57[k0][k1] = ((t41 * t33) + (t47 * t21))
+                       + ((t39 * t31) + (t55 * t22));
+        double t58 = (t54 + ((t50 + t50) * w_1[0]));
+        double t59 = (((t42 + t40) + (t45 + t44)) / 2);
+        double t60 = ((t59 + t59) * w_1[0]);
+        t61[k0][k1] = ((t36 * t30) + (t58 * t23))
+                       + ((t43 * t26) + (t60 * t24));
+        t62[k0][k1] = ((t41 * t30) + (t58 * t21))
+                       + ((t39 * t26) + (t60 * t22));
+      }
+    }
+    double t63 = (t9[ip] * t8);
+    for (int j0 = 0; j0 < 6; j0++) {
+      for (int j1 = 0; j1 < 2; j1++) {
+        double t64 = (t0[j1][1] * t15[ip][j0]);
+        double t65 = (t0[j1][1] * t16[ip][j0]);
+        double t66 = ((t12 * t64) + (t11 * t65));
+        double t67 = (t0[j1][0] * t15[ip][j0]);
+        double t68 = (t0[j1][0] * t16[ip][j0]);
+        double t69 = ((t12 * t67) + (t11 * t68));
+        double t70 = ((t14 * t64) + (t13 * t65));
+        double t71 = ((t14 * t67) + (t13 * t68));
+        for (int k0 = 0; k0 < 6; k0++) {
+          for (int k1 = 0; k1 < 2; k1++) {
+            A[(j0 * 2) + j1][(k0 * 2) + k1] += t63 *
+                (((t62[k0][k1] * t71) + (t61[k0][k1] * t70))
+                 + ((t57[k0][k1] * t69) + (t56[k0][k1] * t66)));
+          }
+        }
+      }
+    }
+  }
+}
+\end{minted}
+    \end{column}
+  \end{columns}
+\end{frame}
+\egroup
+
+\begin{frame}
+  \frametitle{Adding global data}
+  \begin{itemize}
+  \item I need to enrich my generic description with problem-specific data
+  \end{itemize}
+\end{frame}
+\begin{frame}
+  \frametitle{Compiler transformations}
+
+\end{frame}
 \begin{frame}
   Finite element 101
 
