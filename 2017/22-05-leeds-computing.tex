@@ -6,11 +6,14 @@
 \usetikzlibrary{backgrounds}% only to show the bounding box
 \usetikzlibrary{shapes,arrows}
 \usepackage{pgf}
+\usepackage{pgfplots}
+\usepackage{pgfplotstable}
 \usepackage{appendixnumberbeamer}
 \usepackage{amsmath}
 \DeclareMathOperator{\tr}{tr}
 \date{28th March 2017}
 \usetheme{firedrake}
+\firedrakeset{progressbar=frametitle}
 
 \renewcommand{\vec}[1]{\ensuremath{\boldsymbol{#1}}}
 \newcommand{\ddt}[1]{\frac{\partial #1}{\partial t}}
@@ -51,6 +54,7 @@ London
             backend=biber]{biblatex}
 
 \setbeamertemplate{bibliography item}{}
+
 \renewcommand{\bibfont}{\footnotesize}
 \addbibresource{references.bib}
 
@@ -70,34 +74,42 @@ London
 }
 
 \usepackage{minted}
+\RecustomVerbatimEnvironment{Verbatim}{BVerbatim}{}
 
 \title{Firedrake: symbolic numerical computing}
 \begin{document}
 
 \maketitle
 
-\begin{abstract}
-  One of the great and enduring successes of numerical computing is
-  the capturing of mathematical abstractions in software.  This allows
-  the programmer to express the intent of their code, without
-  specifying its low-level implementation.  We then automate the
-  synthesis of efficient code by using (or writing) compilers.
+\setbeamertemplate{background}{}
+\setbeamercolor{footline}{
+  use=normal text,
+  fg=normal text.fg,
+}
 
-  In the context of solving numerical PDEs, the finite element method
-  is particularly amenable to this approach.  For many problems, the
-  choice of discretisation completely specifies the mathematical
-  intent.  A symbolic description of the PDE can then be manipulated
-  by a domain-specific compiler to produce a high-performance
-  implementation.  I this talk, I present Firedrake
-  (www.firedrakeproject.org), a concrete realisation of this idea.  I
-  will discuss how capturing and exploiting symbolic structure in
-  numerical software greatly simplifies model development while
-  simultaneously permitting the synthesis of a high performance
-  implementation.  I will illustrate with examples from high-order
-  finite element methods, and block preconditioning of multiphysics
-  problems.
-\end{abstract}
+% \begin{abstract}
+%   One of the great and enduring successes of numerical computing is
+%   the capturing of mathematical abstractions in software.  This allows
+%   the programmer to express the intent of their code, without
+%   specifying its low-level implementation.  We then automate the
+%   synthesis of efficient code by using (or writing) compilers.
 
+%   In the context of solving numerical PDEs, the finite element method
+%   is particularly amenable to this approach.  For many problems, the
+%   choice of discretisation completely specifies the mathematical
+%   intent.  A symbolic description of the PDE can then be manipulated
+%   by a domain-specific compiler to produce a high-performance
+%   implementation.  I this talk, I present Firedrake
+%   (www.firedrakeproject.org), a concrete realisation of this idea.  I
+%   will discuss how capturing and exploiting symbolic structure in
+%   numerical software greatly simplifies model development while
+%   simultaneously permitting the synthesis of a high performance
+%   implementation.  I will illustrate with examples from high-order
+%   finite element methods, and block preconditioning of multiphysics
+%   problems.
+% \end{abstract}
+
+\section{Introduction}
 \begin{frame}
   \frametitle{Finite element crash course}
   \begin{align*}
@@ -113,6 +125,7 @@ London
   \end{equation*}
 \end{frame}
 \begin{frame}
+  \frametitle{Finite element crash course}
   Choose finite dimensional $V_h \subset V$, and seek a solution in
   that subspace: find $u_h \in V_h$ s.t.
   \begin{equation*}
@@ -120,6 +133,7 @@ London
   \end{equation*}
 \end{frame}
 \begin{frame}
+  \frametitle{Finite element crash course}
   \begin{overprint}
     \only<1>{Divide domain $\Omega$\dots
     \begin{center}
@@ -184,6 +198,7 @@ London
 \end{frame}
 
 \begin{frame}
+  \frametitle{Finite element crash course}
   Integrals become sum over element integrals
   \begin{equation*}
     \int_\Omega\! F(u_h) v_h \, \text{d}x =
@@ -195,8 +210,11 @@ London
     \int_e F(u_h)v_h\,\text{d}x = \sum_q w_q F(u_h(q)) v_h(q)\,\text{d}x
   \end{equation*}
 
-  Typically, this is done by geometrically transforming from each
-  \emph{physical} element to a \emph{reference} element.
+  Replace $u_h(q), v_h(q)$ with expansion in finite element basis
+  \begin{align*}
+    u_h(q) &= \sum_i u_h^i \phi_i(q)\\
+    v_h(q) &= \phi_j(q)\\
+  \end{align*}
 \end{frame}
 
 \begin{frame}
@@ -208,6 +226,8 @@ London
   \item Doesn't specify \emph{how} to gather the element contributions
   \end{itemize}
 \end{frame}
+
+\section{Compilers for finite elements}
 
 \begin{frame}
   \frametitle{Specifying element integrals}
@@ -221,7 +241,10 @@ London
   \end{itemize}
 \end{frame}
 \begin{frame}[fragile]
-  You might write code like this
+  \frametitle{Specifying element integrals}
+  Some typical hand-written code.
+
+  \begin{center}
 \begin{minted}[fontsize=\tiny]{cpp}
 template<typename EG, typename LFSU, typename X, typename LFSV, typename M>
 void jacobian_volume(const EG& eg, const LFSU& lfsu, const X& x,
@@ -244,6 +267,7 @@ void jacobian_volume(const EG& eg, const LFSU& lfsu, const X& x,
       mat.accumulate(lfsu,i,lfsu,j,A[i][j]*factor);
 }
 \end{minted}
+  \end{center}
   \begin{uncoverenv}<2>
     \begin{equation*}
       \int_\Omega \nabla u \cdot \nabla v\,\text{d}x
@@ -252,7 +276,7 @@ void jacobian_volume(const EG& eg, const LFSU& lfsu, const X& x,
 \end{frame}
 
 \begin{frame}
-  \frametitle{Mechanical translation}
+  \frametitle{Replacing humans with computers}
   \begin{block}{Assertion}
     Once we pick the discretisation, writing the element integral is mechanical.
   \end{block}
@@ -271,25 +295,31 @@ void jacobian_volume(const EG& eg, const LFSU& lfsu, const X& x,
     \cite{Rathgeber:2016} \arxivlink{1501.01809}{cs.MS}
   \end{center}
 
-  \begin{onlyenv}<1>
-    \begin{block}{Development team}
-      \begin{itemize}
-      \item[IC] Thomas Gibson, David A.~Ham, Mikl\'os Homolya,
-        Lawrence Mitchell, {\color{black!50}Fabio Luporini}, Tianjiao
-        Sun, Paul H.~J.~Kelly
-      \item[\color{black!75}Baylor] {\color{black!75}Robert C. Kirby}
-      \item[\color{black!75}Bath] {\color{black!75}Andrew T.~T.~McRae}
-      \item[\color{black!25}ECMWF] {\color{black!25}Florian Rathgeber}
-      \item[\color{black!15}IBM] {\color{black!15}Gheorghe-Teodor Bercea}
-      \end{itemize}
-    \end{block}
-  \end{onlyenv}
-  \begin{onlyenv}<2>
-    \begin{block}{Users at}
-      Imperial, Bath, Leeds, Kiel, Rice, Houston, Oregon Health \&
-      Science, Exeter, ETH, Waterloo, Minnesota, Baylor \dots
-    \end{block}
-  \end{onlyenv}
+  \begin{overlayarea}{\textwidth}{0.6\textheight}
+    \only<1>{%
+      \begin{block}{Development team}
+        \begin{itemize}
+        \item[IC] Thomas Gibson, David A.~Ham, Mikl\'os Homolya,
+          Lawrence Mitchell, {\color{black!50}Fabio Luporini},
+          Tianjiao Sun, Paul H.~J.~Kelly
+        \item[\color{black!75}Baylor] {\color{black!75}Robert
+            C. Kirby}
+        \item[\color{black!75}Bath] {\color{black!75}Andrew
+            T.~T.~McRae}
+        \item[\color{black!25}ECMWF] {\color{black!25}Florian
+            Rathgeber}
+        \item[\color{black!15}IBM] {\color{black!15}Gheorghe-Teodor
+            Bercea}
+        \end{itemize}
+      \end{block}
+    }%
+    \only<2>{%
+      \begin{block}{Users at}
+        Imperial, Bath, Leeds, Kiel, Rice, Houston, Oregon Health \&
+        Science, Exeter, ETH, Waterloo, Minnesota, Baylor \dots
+      \end{block}
+    }
+  \end{overlayarea}
 \end{frame}
 
 \begin{frame}
@@ -305,26 +335,73 @@ void jacobian_volume(const EG& eg, const LFSU& lfsu, const X& x,
   \end{itemize}
 \end{frame}
 
+\begin{frame}
+  \includegraphics[width=\textwidth]{firedrake-stack}
+\end{frame}
+
 \begin{frame}[fragile]
   \frametitle{UFL: a DSL for variational problems}
+  \begin{equation*}
+    \int_\Omega \nabla u \cdot \nabla v\,\text{d}x
+  \end{equation*}
+
 \begin{minted}[fontsize=\scriptsize]{python}
 V = FiniteElement("Lagrange", triangle, 1)
 u = TrialFunction(V)
 v = TestFunction(V)
 a = dot(grad(u), grad(v))*dx
 \end{minted}
-  \begin{equation*}
-    \int_\Omega \nabla u \cdot \nabla v\,\text{d}x
-  \end{equation*}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Not just toy models}
+  \begin{columns}
+    \begin{column}{0.4\textwidth}
+      \begin{align*}
+        \mathbf{F} &= \mathbf{I} + \nabla \mathbf{u}\\
+        \mathbf{C} &= \mathbf{F}^T \mathbf{F}\\
+        \mathbf{E} &= (\mathbf{C} - \mathbf{I}) / 2\\
+        \Psi &= \frac{\lambda}{2}[\tr(\mathbf{E})]^2 + \mu \tr(\mathbf{E}^2)\\
+        \mathbf{S} &= \frac{\partial \Psi}{\partial \mathbf{E}}\\
+        \mathbf{P} &= \mathbf{F} \mathbf{S}\\
+        r &= \int_\Omega \mathbf{P} : \nabla \mathbf{v} - \mathbf{b} \cdot \mathbf{v}\,\text{d}x\\
+        a &= \lim_{\epsilon \to 0} \frac{r(\mathbf{u} + \epsilon \delta \mathbf{u}) - r(\mathbf{u})}{\epsilon}
+      \end{align*}
+    \end{column}
+    \begin{column}{0.6\textwidth}
+\begin{minted}[fontsize=\tiny]{python}
+V = VectorElement("Lagrange", triangle, 2)
+v = TestFunction(V)
+du = TrialFunction(V) # Incremental displacement
+u = Coefficient(V)    # Displacement
+B = Coefficient(V)    # Body force per unit mass
+I = Identity(V.cell().topological_dimension())
+F = I+grad(u)  # Deformation gradient
+C = F.T*F      # Right Cauchy-Green tensor
+E = (C - I)/2
+E = variable(E)
+# Material constants
+mu = Constant(triangle)
+lmbda = Constant(triangle)
+# Strain energy function (material model)
+psi = lmbda/2*(tr(E)**2) + mu*tr(E*E)
+S = diff(psi, E) # Second Piola-Kirchhoff stress tensor
+P = F*S          # First Piola-Kirchoff stress tensor
+# Variational problem
+r = (inner(PK, grad(v)) - inner(B, v))*dx
+a = derivative(r, u, du)
+\end{minted}
+    \end{column}
+  \end{columns}  
 \end{frame}
 
 \begin{frame}[fragile]
   \frametitle{Mechanical translation}
-  We have a symbolic description of the problem, and we need to
-  transform it to executable code.
-
-  A \emph{form compiler} translates a variational form (UFL) into
-  low-level (C/C++/...) code for performing an element integral.
+  \begin{itemize}
+  \item A \emph{form compiler} translates a symbolic description (UFL) into
+    low-level (C/C++/...) code for performing an element integral.
+  \end{itemize}
+  \hspace{2em}
   \begin{uncoverenv}<2>
     \begin{columns}
       \begin{column}{0.5\textwidth}
@@ -372,49 +449,6 @@ void cell_integral(double A[3][3],
   \end{uncoverenv}
 \end{frame}
 
-\begin{frame}[fragile]
-  \frametitle{Works for complicated problems}
-  \begin{columns}
-    \begin{column}{0.4\textwidth}
-      \begin{align*}
-        \mathbf{F} &= \mathbf{I} + \nabla \mathbf{u}\\
-        \mathbf{C} &= \mathbf{F}^T \mathbf{F}\\
-        \mathbf{E} &= (\mathbf{C} - \mathbf{I}) / 2\\
-        \Psi &= \frac{\lambda}{2}[\tr(\mathbf{E})]^2 + \mu \tr(\mathbf{E}^2)\\
-        \mathbf{S} &= \frac{\partial \Psi}{\partial \mathbf{E}}\\
-        \mathbf{P} &= \mathbf{F} \mathbf{S}\\
-        r &= \mathbf{P} : \nabla \mathbf{v} - \mathbf{b} \cdot \mathbf{v}\\
-        a &= \lim_{\epsilon \to 0} \frac{r(\mathbf{u} + \epsilon \delta \mathbf{u}) - r(\mathbf{u})}{\epsilon}
-      \end{align*}
-    \end{column}
-    \begin{column}{0.6\textwidth}
-\begin{minted}[fontsize=\tiny]{python}
-V = VectorElement("Lagrange", triangle, 2)
-v = TestFunction(V)
-du = TrialFunction(V) # Incremental displacement
-u = Coefficient(V) # Displacement
-B = Coefficient(V) # Body force per unit mass
-# Kinematics
-I = Identity(V.cell().topological_dimension())
-F = I+grad(u)
-C = F.T*F
-E = (C - I)/2
-E = variable(E)
-# Material constants
-mu = Constant(triangle)
-lmbda = Constant(triangle)
-# Strain energy function (material model)
-psi = lmbda/2*(tr(E)**2) + mu*tr(E*E)
-S = diff(psi, E) # Second Piola-Kirchhoff stress tensor
-PK = F*S # First Piola-Kirchoff stress tensor
-# Variational problem
-a = derivative((inner(PK, grad(v))-inner(B, v))*dx,u,du)
-\end{minted}
-    \end{column}
-  \end{columns}
-\end{frame}
-\bgroup
-\setbeamertemplate{background}{}
 \begin{frame}[fragile,plain]
   \begin{columns}
     \begin{column}{0.5\textwidth}
@@ -535,44 +569,603 @@ void cell_integral(double A[12][12], double coords[3][2],
     \end{column}
   \end{columns}
 \end{frame}
-\egroup
+
+\begin{frame}[fragile]
+  \frametitle{Optimisation of finite element kernels}
+  
+  \begin{problem}<+->
+    Modern optimising compilers do a bad job on finite element
+    kernels.
+  \end{problem}
+  \begin{exampleblock}<+->{Code motion (or not?)}
+\begin{minted}[fontsize=\scriptsize]{c}
+for (i = 0; i < L; i++ )
+   for (j = 0; j < M; j++)
+      for (k = 0; k < N; k++)
+         A[j][k] += f(i, j)*g(i, k)
+\end{minted}
+  \end{exampleblock}
+  \begin{corollary}<+->
+    We need to spoon-feed the compiler already optimised code.
+  \end{corollary}
+\end{frame}
 
 \begin{frame}
-  \frametitle{Adding global data}
+  \frametitle{Automating expertise}
   \begin{itemize}
-  \item I need to enrich my generic description with problem-specific data
+  \item For a given kernel, can optimise by hand
+  \item But this approach doesn't scale
+  \item and the best strategy is problem-dependent.
+  \item code generation allows us to package expertise, and provide it
+    to everyone
   \end{itemize}
 \end{frame}
-\begin{frame}
-  \frametitle{Compiler transformations}
 
+\begin{frame}
+  \frametitle{Different optimisations}
+\begin{block}{Vectorisation}
+  Align and pad data structures, then use intrinsics or rely on
+  compiler. Generic to all kernels.
+
+  \cite{Luporini:2015} \doilink{10.1145/2687415}
+\end{block}
+
+\begin{block}{Flop reduction}
+  Exploit \emph{linearity} in test functions to perform factorisation,
+  code motion and CSE.  Generic to all kernels.
+
+  \cite{Luporini:2017} \arxivlink{1604.05872}{cs.MS}
+\end{block}
+
+\begin{block}{Sum factorisation}
+  Optimal complexity for high order, enabled by development of a new
+  form compiler, TSFC.  Only with structured basis.
+
+  \cite{Homolya:2017} \arxivlink{1705.03667}{cs.MS}.
+\end{block}
 \end{frame}
 \begin{frame}
-  Finite element 101
+  \frametitle{Sum factorisation}
+  \begin{itemize}
+  \item Consider evaluating a field, defined by basis coefficients
+    $f_i$ at quadrature points $q$.
 
-  Introduce UFL as symbolic description language
+  \begin{equation*}
+    \mathcal{F}_q = \sum_i \phi_{i,q} f_i
+  \end{equation*}
 
-  Weave in problem specific data
-
-  Introduce Firedrake as a concrete example
-
-  What does the symbolic description bring us?
-
-  Not just pretty syntax, but we can teach the computer to reason
-  about the model.
-
-  We can synthesise efficient implementations from this problem
-  description.
-
-  Including applying optimisations that are tricky to get right by
-  hand (sum factorisation example)
-
-  Weaving together symbolics also allows usntructured tiling
-
-  Composing with linear algebra, reversing the one-way street.
-
-  Complex preconditioning, by composing the pieces we already have.
+  \item This matrix-vector product requires $\mathcal{O}(|i||q|) =
+    \mathcal{O}(p^{2d})$ operations for polynomial degree $p$ in $d$
+    dimensions.
+  \item This quickly becomes huge for large $p$.
+\end{itemize}
 \end{frame}
+
+\begin{frame}
+  \frametitle{Exploiting structure}
+  On many elements, there is \emph{structure} in the basis functions:
+  \begin{equation*}
+    \phi_{i,q} := \phi_{(j,k),(p,r)} = \varphi_{j,p}\varphi_{k,r}
+  \end{equation*}
+  and so
+  \begin{align*}
+    \mathcal{F}_{(p,r)} &= \sum_{j,k} \phi_{(j,k),(p,r)} f_{j,k} \\
+                        &= \sum_{j,k} \varphi_{j,p}\varphi_{k,r} f_{j,k} \\
+                        &= \sum_j \varphi_{j,p} \sum_k \varphi_{k,r} f_{j,k}
+  \end{align*}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Large computational savings}
+  \begin{itemize}
+  \item Performing this transformation provides for \emph{optimal
+      complexity} evaluation of matrix-vector products.
+
+    \begin{center}
+      \begin{tabular}{c|c|c|c}
+        Method    & Build operator        & MatVec                  & Mem refs
+        \\
+                  & (FLOPs)               & (FLOPs)                 & (bytes)               \\
+        \hline
+        Assembled & $\mathcal{O}(p^{3d})$ & $\mathcal{O}(p^{2d})$   & $\mathcal{O}(p^{2d})$ \\
+        MF        & 0                     & $\mathcal{O}(p^{2d})$   & $\mathcal{O}(p^d)$    \\
+        MF + SF   & 0                     & $\mathcal{O}(dp^{d+1})$ & $\mathcal{O}(p^d)$
+      \end{tabular}
+    \end{center}
+    
+  \item This is necessary if we want high-order methods to be competitive.
+  \end{itemize}
+  
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Automated sum factorisation}
+  \begin{itemize}
+  \item C and Fortran compilers do not perform these transformations
+  \item But they are easy on a structured expression-DAG
+  \end{itemize}
+
+  \begin{tikzpicture}
+    \begin{loglogaxis}[name=plot,
+      small,
+      title=FLOPs for hyperelastic model on single hexahedron,
+      xlabel=Polynomial degree,
+      ylabel=FLOPs,
+      xtick={1,2,4,8,16,32},
+      xticklabels={$1$,$2$,$4$,$8$,$16$,$32$},
+      yminorticks=false,
+      axis lines=left,
+      log basis x=2,
+      legend entries={TSFC ``vanilla'', TSFC ``spectral''},
+      legend style={cells={anchor=east},
+        legend pos=outer north east,
+        draw=none},
+      ]
+      \pgfplotstableread[format=inline]{
+degree flops
+1 57991.0
+2 898053.0
+3 5695832.0
+4 23385568.0
+5 73395072.0
+6 191831126.0
+7 439133008.0
+8 909180492.0
+9 1739859128.0
+10 3125082802.0
+11 5328273576.0
+12 8697298808.0
+13 13680865552.0
+14 20846372238.0
+15 30899217632.0
+16 4.47036e+10
+17 6.33046e+10
+18 8.79521e+10
+19 1.20126e+11
+20 1.61561e+11
+21 2.1428e+11
+22 2.80615e+11
+23 3.63248e+11
+24 4.65233e+11
+25 5.90039e+11
+26 7.41582e+11
+27 9.24258e+11
+28 1.14299e+12
+29 1.40325e+12
+30 1.71113e+12
+31 2.07336e+12
+32 2.49735e+12
+}\vanilla;
+
+       \pgfplotstableread[format=inline]{
+degree flops
+1 11320
+2 70587
+3 227308
+4 540688
+5 1.09416e+06
+6 1.98419e+06
+7 3.32309e+06
+8 5.23901e+06
+9 7.87593e+06
+10 1.13937e+07
+11 1.59679e+07
+12 2.17902e+07
+13 2.90678e+07
+14 3.8024e+07
+15 4.88977e+07
+16 6.19439e+07
+17 7.74332e+07
+18 9.56522e+07
+19 1.16903e+08
+20 1.41505e+08
+21 1.69791e+08
+22 2.02111e+08
+23 2.38831e+08
+24 2.80332e+08
+25 3.27013e+08
+26 3.79286e+08
+27 4.37581e+08
+28 5.02342e+08
+29 5.7403e+08
+30 6.53122e+08
+31 7.4011e+08
+32 8.35503e+08
+}\sumfact;
+
+      \pgfplotstableset{create on use/vanilla/.style={create
+          col/expr={1e4*pow(\thisrow{degree},6)}}}
+      \pgfplotstableset{create on use/spectral/.style={create
+          col/expr={5e2*pow(\thisrow{degree},4)}}}
+  
+      \addplot+[mark=none, color=black, line width=1.5pt] table [x=degree,y=flops] \vanilla;
+      \addplot+[mark=none, color=black, dashed, line width=1.5pt] table [x=degree,y=flops] \sumfact;
+      \addplot+[mark=none, color=black, dotted, line width=1pt] table
+      [x=degree,y=vanilla] \vanilla
+      coordinate [pos=0.67] (A);
+      \node at (A) [anchor=south east] {$\mathcal{O}(p^6)$};
+      \addplot+[mark=none, color=black, dotted, line width=1pt] table
+      [x=degree,y=spectral] \vanilla
+      coordinate [pos=0.67] (B);
+      \node at (B) [anchor=north west] {$\mathcal{O}(p^4)$};
+    \end{loglogaxis}
+  \end{tikzpicture}
+\end{frame}
+
+\section{Synthesising complete simulations}
+
+\begin{frame}
+  \frametitle{Synthesising efficient simulation code}
+  \begin{itemize}
+  \item Why stop at just a compiler for the element integral?
+  \item The full mathematical problem specifies both the elementary
+    integral and also the problem specific data.
+  \item Why not capture this in software too?
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{A full specification of a problem}
+  \begin{columns}
+    \begin{column}{0.47\framewidth}
+      \begin{block}{Stationary Rayleigh-B\'enard convection}
+        \begin{equation*}
+          \begin{split}
+            -\Delta u + u\cdot\nabla u + \nabla p +
+            \frac{\text{Ra}}{\text{Pr}} \hat{g}T &= 0 \\
+            \nabla \cdot u &= 0 \\
+            - \frac{1}{\text{Pr}} \Delta T + u\cdot \nabla T &= 0
+          \end{split}
+        \end{equation*}
+      \end{block}
+    \end{column}
+    \begin{column}{0.52\framewidth}
+\begin{minted}[fontsize=\tiny,mathescape]{python}
+from firedrake import *
+mesh = Mesh(...)
+V = VectorFunctionSpace(mesh, "CG", 2)
+W = FunctionSpace(mesh, "CG", 1)
+Q = FunctionSpace(mesh, "CG", 1)
+Z = V * W * Q
+upT = Function(Z)
+u, p, T = split(upT)
+v, q, S = TestFunctions(Z)
+bcs = [...] # no-flow + temp gradient
+nullspace = MixedVectorSpaceBasis(
+   Z, [Z.sub(0), VectorSpaceBasis(constant=True), 
+       Z.sub(2)])
+F = (inner(grad(u), grad(v))
+     + inner(dot(grad(u), u), v)
+     - inner(p, div(v))
+     + (Ra/Pr)*inner(T*g, v)
+     + inner(div(u), q)
+     + inner(dot(grad(T), u), S)
+     + (1/Pr) * inner(grad(T), grad(S)))*dx
+
+solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
+\end{minted}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}
+  \frametitle{More than a pretty face}
+
+  \begin{block}{Library usability}
+    \begin{itemize}
+    \item High-level language enables rapid model development
+    \item Ease of experimentation
+    \item Small model code base
+    \end{itemize}
+  \end{block}
+
+  \begin{block}{Library development}
+    \begin{itemize}
+    \item Automation of complex optimisations
+    \item Exploit expertise across disciplines
+    \item Small library code base
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Automated manipulation of PDE solvers}
+  \begin{itemize}
+  \item With a high-level problem description language, we can write
+    code that manipulates a PDE model.
+  \end{itemize}
+
+  \begin{block}{\url{www.dolfin-adjoint.org}}
+    Automated derivation of the discrete adjoint from forward models
+    written using FEniCS \emph{and Firedrake}.
+
+\begin{minted}[fontsize=\scriptsize]{sh}
+$ cloc dolfin-adjoint/
+Language  files   blank   comment   code
+Python       54    2322       937   7294
+$ cloc dolfin-adjoint/compatibility.py
+Python        1      38        11    140
+\end{minted}
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Maintainability}
+  \begin{columns}
+    \begin{column}[t]{0.5\textwidth}
+      \begin{block}{Core Firedrake}
+        \begin{table}
+          \centering
+          \begin{tabular}{lc}
+            Component & LOC   \\
+            \hline
+            Firedrake & 11500 \\
+            PyOP2     & 6000  \\
+            TSFC      & 3700  \\
+            finat     & 800   \\
+            \hline
+            Total     & 22000
+          \end{tabular}
+        \end{table}
+      \end{block}
+    \end{column}
+    \begin{column}[t]{0.5\textwidth}
+      \begin{block}{Shared with FEniCS}
+        \begin{table}
+          \centering
+          \begin{tabular}{lc}
+            Component & LOC   \\
+            \hline
+            FIAT      & 4000  \\
+            UFL       & 13000 \\
+            \hline
+            Total     & 17000
+          \end{tabular}
+        \end{table}        
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Maintainable models}
+  \begin{overlayarea}{\textwidth}{0.8\textheight}
+    \begin{onlyenv}<1>
+      \begin{block}{Thetis}
+        \begin{center}
+          \url{github.com/thetisproject/thetis}
+        \end{center}
+        \begin{itemize}
+        \item 3D unstructured coastal ocean model written with
+          Firedrake
+        \item 6400 LOC
+        \item 4-8x faster than previous code in group (same numerics)
+        \end{itemize}
+      \end{block}
+    \end{onlyenv}
+    \begin{onlyenv}<2>
+      \begin{block}{Gusto}
+        \begin{center}
+          \url{www.firedrakeproject.org/gusto/}
+        \end{center}
+        \begin{itemize}
+        \item 3D atmospheric dynamical core using compatible FE
+        \item Implements Met Office ``Gung Ho'' numerics
+        \item 1600 LOC
+        \end{itemize}
+      \end{block}
+    \end{onlyenv}
+  \end{overlayarea}
+\end{frame}
+
+\begin{frame}
+  \frametitle{High performance}
+  Fast prototyping is good, ``but I have to rewrite for performance''.
+
+  \begin{uncoverenv}<2>
+    \begin{itemize}
+    \item Firedrake provides computational performance often >50\%
+      achievable peak \parencite{Luporini:2015,Bercea:2016,Mitchell:2016}.
+    \item Hero-coding necessary if you want the last 10-20\%
+    \item ...but at what (person) cost?
+    \end{itemize}
+  \end{uncoverenv}
+\end{frame}
+
+\section{Solving implicit systems}
+
+\begin{frame}
+  \frametitle{So I can write down a residual}
+  \begin{itemize}
+  \item It is easy to write down complex implicit systems.
+  \item the challenge is usually in solving them
+  \item Firedrake provides access to PETSc for solving systems of
+    algebraic equations
+  \item ``Any'' algebraic solver you like, plus composition of block
+    eliminations ``fieldsplit'' solvers.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Coupled problems make this hard}
+  \begin{itemize}
+  \item Coupled problems are (typically) not amenable to black box solution
+    methods.
+  \item For large problems, often use approximate block factorisations.
+  \item Many configuration options, may require problem-specific
+    auxiliary operators.
+  \item Important to capture the abstraction so that automated model
+    manipulation is still possible.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Block preconditioning}
+  \begin{onlyenv}<1>
+    \begin{itemize}
+    \item Preconditioning for multi-variable problems is
+      often based on block LU factorisations.
+    \item Based on observation that
+      \begin{equation*}
+        T = \begin{bmatrix}
+          A & 0 \\
+          0 & - C A^{-1} B^T
+        \end{bmatrix}^{-1}
+        \begin{bmatrix}
+          A & B^T \\
+          C & 0
+        \end{bmatrix}
+      \end{equation*}
+      has minimal polynomial $T(T - I)(T^2 - T - I) = 0$
+      \parencite{Murphy:2000}.  
+    \item With exact inverses, a Krylov method converges in at most 4 iterations.
+    \end{itemize}
+  \end{onlyenv}
+  \begin{onlyenv}<2>
+    \begin{itemize}
+    \item Another approach is ``function space'' preconditioning
+      \parencite{Kirby:2010,Mardal:2011,Malek:2014}.
+    \item Removes mesh-dependence in iteration counts.
+    \item e.g. Implicit timestepping for time-dependent Stokes
+    \begin{equation*}
+      \begin{bmatrix}
+        \mathbb{I} - \Delta t \nabla^2 & -\nabla \\
+        \nabla\cdot & 0
+      \end{bmatrix}
+    \end{equation*}
+    Can be preconditioned by
+    \begin{equation*}
+      \begin{bmatrix}
+        (\mathbb{I} - \Delta t\nabla^2)^{-1} & 0 \\
+          0 & (-\nabla^2)^{-1} + \Delta t \mathbb{I}^{-1} \\
+        \end{bmatrix}
+      \end{equation*}
+    \end{itemize}
+  \end{onlyenv}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Extra challenges}
+  \begin{itemize}
+  \item Such preconditioners often require operators that do not
+    appear in the original system
+  \end{itemize}
+  \begin{block}{Navier-Stokes}
+    \begin{equation*}
+      \begin{bmatrix}
+        F & B^T\\
+        C & 0 \\
+      \end{bmatrix}
+    \end{equation*}
+    can be preconditioned using the pressure-convection-diffusion approximation
+    \begin{equation*}
+      \begin{bmatrix}
+        F^{-1} & 0\\
+        0 & L_p^{-1}F_p M_p^{-1}\\
+      \end{bmatrix}
+    \end{equation*}
+    Where $L_p$ is a scalar Poisson operator, $M_p$ as mass matrix,
+    and $F_p$ a scalar convection-diffusion operator.
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Reversing the one-way street}
+  \begin{itemize}
+  \item PETSc already provides a highly runtime-configurable library
+    for \emph{algebraically} composing solvers \parencite{Brown:2012}.
+
+  \item Firedrake makes it straightforward to build auxiliary
+    operators.
+
+  \item We combine these to allow simple development of complex
+    preconditioners.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Two new pieces}
+ 
+  \begin{onlyenv}<1>
+    \begin{block}{A new matrix type}
+      A PETSc shell matrix that implements matrix-free actions using
+      Firedrake, and contains the UFL of the bilinear form.
+    \end{block}
+    
+    \begin{block}{Custom preconditioners}
+      These matrices do not have entries, so we create custom
+      preconditioners that can inspect the UFL and do the appropriate
+      thing.
+    \end{block}
+  \end{onlyenv}
+  \begin{onlyenv}<2>
+    \begin{center}
+      \includegraphics[width=0.8\textwidth]{underhand}
+    \end{center}
+  \end{onlyenv}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{PCD fits on a slide}
+\begin{minted}[fontsize=\tiny,mathescape]{python}
+class PCDPC(PCBase):
+    def initialize(self, pc):
+        _, P = pc.getOperators()
+        ctx = P.getContext()
+        appctx = ctx.appctx
+        p, q = ctx.arguments()
+        [...] # Handling of boundary conditions elided
+        M_p = assemble(p*q*dx)
+        L_p = assemble(inner(grad(p), grad(q))*dx
+        M_ksp = KSP().create()
+        M_ksp.setOperators(M_p)
+        L_ksp = KSP().create()
+        L_ksp.setOperators(L_p)
+        [...] # Some boilerplate elided
+        u0 = split(appctx["state"])[appctx["velocity_space"]]
+        F_p = assemble(inner(grad(p), grad(q))*dx + inner(u0, grad(p))*q*dx)
+
+    def apply(self, pc, x, y):
+        # $y \leftarrow \KSP{L_p}{L} F_p \KSP{M_p}{M} x$
+        a, b = self.workspace
+        self.M_ksp.solve(x, a)
+        self.F_p.mult(a, b)
+        self.L_ksp.solve(b, y)
+\end{minted}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Fast development}
+
+  \begin{itemize}
+  \item Firedrake's high-level syntax means building the auxiliary
+    operators I need is straightforward
+  \item The code automatically takes advantage of any improvements in
+    the library (fast matrix actions, better vectorisation, etc\dots)
+  \item Solvers are \emph{runtime configurable} without changing code
+  \item Composes with nonlinear solvers that need linearisations, and
+    PDE manipulation libraries (
+  \item No need to worry about parallel!
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Conclusions}
+  \begin{itemize}
+  \item Firedrake is high performance for many problems in both
+    the programmer and computer time metrics
+  \item A good choice for experimenting with new algorithms: you can
+    run on your laptop and scale up easily
+  \item I can't solve your maths problems, I can give you tools to
+    write down the solution more easily
+  \item You can't do everything, but we do give you
+    some mechanisms for escaping the walled garden
+  \end{itemize}
+  \begin{center}
+    \url{www.firedrakeproject.org}
+  \end{center}
+\end{frame}
+
 \appendix
 \begin{frame}[t,allowframebreaks]
   \frametitle{References}
