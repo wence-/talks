@@ -47,7 +47,7 @@ London
             backend=biber]{biblatex}
 
 \setbeamertemplate{bibliography item}{}
-\renewcommand{\bibfont}{\footnotesize}
+\renewcommand{\bibfont}{\fontsize{7}{7}\selectfont}
 \addbibresource{references.bib}
 
 \setlength{\bibitemsep}{1ex}
@@ -57,7 +57,7 @@ London
 \DeclareFieldFormat[article]{volume}{\textbf{#1}}
 \DeclareFieldFormat{doi}{%
   doi\addcolon%
-  {\scriptsize\ifhyperref{\href{http://dx.doi.org/#1}{\nolinkurl{#1}}}
+  {\ifhyperref{\href{http://dx.doi.org/#1}{\nolinkurl{#1}}}
     {\nolinkurl{#1}}}}
 \AtEveryBibitem{%
 \clearfield{pages}%
@@ -71,40 +71,15 @@ London
 \subtitle{composable block preconditioning from UFL}
 \begin{document}
 
-\begin{abstract}
-  UFL and the FEniCS problem solving language present a beautiful set
-  of abstractions for succinctly writing variational problems.  This
-  removes a large challenge in the development of complex models.
-  Preconditioning the resulting systems of equations is often still
-  problematic.  Where monolithic algebraic approaches are available,
-  life is simple: just hand off the Jacobian to your favourite solver
-  library.  Problems with coupled systems of variables do not usually
-  fit this paradigm.  The state of the art here is often block
-  preconditioning, relying on block factorisations and approximations
-  of the block inverses.  If we are lucky, it is possible construct
-  such block preconditioners algebraically (by manipulation of the
-  assembled Jacobian).  But usually, we are not lucky.
-
-  In this talk, I discuss how we overcome this problem in Firedrake.
-  Leveraging PETSc's flexibility in defining operators and
-  preconditioners, and using UFL to simplify the assembly of any
-  auxiliary operators our preconditioner might need.
-
-  This approach allows the develoment of matrix-free iterative solvers
-  with assembly of only the necessary preconditioning blocks.
-  Moreover, our approach is easily extensible, allowing development
-  and composition of complex preconditioners for subblocks as we add
-  new couplings to our model.  I will illustrate the usage with
-  examples from fluid convection and phase separation.
-\end{abstract}
-
 \maketitle
 
 \begin{frame}[fragile]
-  \frametitle{Firedrake simplifies writing models}
+  \frametitle{UFL makes it easy to write complex PDEs}
   \begin{columns}
-    \begin{column}{0.47\framewidth}
-      \begin{block}{Stationary Rayleigh-B\'enard convection}
+    \begin{onlyenv}<1>
+      \begin{column}{0.47\framewidth}
+        \small
+      \begin{block}{Rayleigh-B\'enard convection}
         \begin{equation*}
           \begin{split}
             -\Delta u + u\cdot\nabla u + \nabla p +
@@ -116,8 +91,7 @@ London
       \end{block}
     \end{column}
     \begin{column}{0.52\framewidth}
-\begin{minted}[fontsize=\tiny,mathescape]{python}
-from firedrake import *
+\begin{minted}[fontsize=\tiny]{python}
 mesh = Mesh(...)
 V = VectorFunctionSpace(mesh, "CG", 2)
 W = FunctionSpace(mesh, "CG", 1)
@@ -141,192 +115,172 @@ F = (inner(grad(u), grad(v))
 solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
 \end{minted}
     \end{column}
+  \end{onlyenv}
   \end{columns}
 \end{frame}
-\begin{frame}[standout]
-  Krylov solvers are not solvers
+
+\begin{frame}[fragile]
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      \begin{block}{Ohta-Kawasaki}
+        \small
+        \begin{align*}
+          u_t - \Delta w + \sigma(u - m) &= 0\\
+          w + \epsilon^2 \Delta u - u(u^2 - 1) &= 0
+        \end{align*}
+        Implicit timestepping + Newton
+        \begin{equation*}
+          \begin{bmatrix}
+            (1 + \Delta t \theta \sigma)M  & \Delta t\theta K \\
+            -\epsilon^2 K - M_E & M
+          \end{bmatrix}
+          \begin{bmatrix}
+            \delta u \\
+            \delta w
+          \end{bmatrix} =
+          \begin{bmatrix}
+            f_1 \\
+            f_2
+          \end{bmatrix}
+        \end{equation*}
+      \end{block}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+\begin{minted}[fontsize=\tiny,escapeinside=||]{python}
+|$\epsilon$| = Constant(0.02)
+|$\sigma$| = Constant(100)
+dt = Constant(eps**2)
+|$\theta$| = Constant(0.5)
+mesh = Mesh(...)
+V = FunctionSpace(mesh, "CG", 1)
+Z = V*V
+v, q = TestFunctions(Z)
+z = Function(Z)
+z0 = Function(Z)
+u, w = split(z)
+u0, w0 = split(z0)
+u|$_\theta$| = (1 - |$\theta$|)*u0 + |$\theta$|*u
+w|$_\theta$| = (1 - |$\theta$|)*w0 + |$\theta$|*w
+dfdu = u**3 - u
+L = ((u - u0)*v
+     + dt*dot(grad(w|$_\theta$|), grad(v))
+     + dt*|$\sigma$|*(u|$_\theta$| - m)*v
+     + w*q - dfdu*q
+     - |$\epsilon$|**2*dot(grad(u), grad(q)))*dx
+while t < Tend:
+   z0.assign(z)
+   solve(L == 0, z)
+\end{minted}
+    \end{column}
+  \end{columns}
 \end{frame}
 
-\begin{frame}
-  \frametitle{It's all about preconditioning}
+\begin{frame}[fragile]
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      \begin{block}{Cahn-Hilliard}
+        \small
+        \begin{align*}
+          \phi_t - \nabla \cdot M \nabla \mu &= 0\\
+          \mu - \frac{\text{d} f}{\text{d} \phi} + \lambda \Delta \phi &= 0\\
+        \end{align*}
+        Implicit timestepping
+        \begin{equation*}
+          \begin{bmatrix}
+            \frac{\phi_{n+1} - \phi_n}{\Delta t} - \nabla \cdot M \nabla \mu_{n+\theta}\\
+            \mu_{n+1} - \frac{\text{d} f_{n+1}}{\text{d} \phi_{n+1}} -
+            \lambda \nabla^2\phi_{n+1}
+          \end{bmatrix} = 0
+        \end{equation*}
+      \end{block}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+\begin{minted}[fontsize=\tiny,escapeinside=||]{python}
+mesh = Mesh(...)
+V = FunctionSpace(mesh, "CG", 1)
+Z = V*V
+|$\theta$| = 0.5
+|$\lambda$| = Constant(0.005)
+M = Constant(10)
+q, v = TestFunctions(Z)
+z = Function(Z)
+z0 = Function(Z)
+|$\phi_{n+1}$|, |$\mu_{n+1}$| = split(z)
+|$\phi_n$|, |$\mu_n$| = split(z0)
+|$\phi_{n+1}$| = variable(|$\phi_{n+1}$|)
+f = 10*(|$\phi_{n+1}$|**2 - 1)**2
+dfdphi = diff(f, |$\phi_{n+1}$|)
+|$\mu_{n+\theta}$| = (1-|$\theta$|)*|$\mu_n$| + |$\theta$|*|$\mu_{n+1}$|
+dt = 5e-6
+F = ((|$\phi_{n+1}$| - |$\phi_n$|)*q 
+     + dt*M*dot(grad(|$\mu_{n+\theta}$|), grad(q)) 
+     + (|$\mu_{n+1}$| - dfdphi)*v
+     -|$\lambda$|*dot(grad(|$\phi_{n+1}$|), grad(v)))*dx
+while t < tEnd:
+    z0.assign(z)
+    solve(F == 0, z)
+\end{minted}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{What about the solvers?}
   \begin{itemize}
-  \item Coupled problems are (typically) not amenable to black box solution
-    methods.
-  \item For small problems, can just use LU factorisation.
-  \item For large problems, often use approximate block factorisations.
-  \item Many configuration options, may require problem-specific
-    auxiliary operators.
-  \item Important to capture the abstraction so that automated model
-    manipulation is still possible.
+  \item LU is alright for small problems
+  \item \dots but quickly becomes untenable in 3D.
+  \item Instead we use iterative methods (e.g. Krylov methods)
+  \item<2-> \dots but Krylov methods are \emph{not} solvers
+  \item<3-> so we need \emph{preconditioners}.
   \end{itemize}
 \end{frame}
-
 \begin{frame}
   \frametitle{Block preconditioning}
-  Most state of the art preconditioning for multi-variable
-  problems is based on block LU factorisations.
-
-  \begin{uncoverenv}<2>
-    \begin{equation*}
-      T = \begin{bmatrix}
-        A & 0 \\
-        0 & C A^{-1} B^T
-      \end{bmatrix}^{-1}
-      \begin{bmatrix}
-        A & B^T \\
-        C & D = 0
-      \end{bmatrix}
-    \end{equation*}
-    has minimal polynomial $T(T - I)(T^2 - T - I) =
-    0$ \parencite{Murphy:2000}. \textcite{Ipsen:2001} treats case of
-    $D \ne 0$.
-
-    Alternate approach: ``function space''
-    preconditioning \parencite{Kirby:2010,Mardal:2011,Malek:2014}.
-  \end{uncoverenv}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Consequences}
   \begin{itemize}
-  \item The most efficient (time to solution) strategy is problem and
-    parameter dependent:
-    \begin{itemize}
-    \item Do I invert the blocks well or not?
-    \item How many couping terms should I drop?
-    \end{itemize}
-  \item Need to be able to \emph{configure} the solver without
-    changing the code (e.g.~eliminating first row or second?)
-  \item Need to treat nested problems (Navier-Stokes inside
-    Rayleigh-B\'enard).
-  \item Much larger configuration space than single-variable, fully
-    ``algebraic'' preconditioning.
+  \item Coupled problems are (typically) not amenable to black
+    box preconditioning.
+  \item<2-> Solution: block preconditioning
   \end{itemize}
+  \begin{columns}<2>[t]
+    \begin{column}{0.5\textwidth}
+      \begin{block}{Schur complement}
+        \begin{equation*}
+          T = \begin{bmatrix}
+            A & 0 \\
+            0 & C A^{-1} B^T
+          \end{bmatrix}^{-1}
+          \begin{bmatrix}
+            A & B^T \\
+            C & D = 0
+          \end{bmatrix}
+        \end{equation*}
+        has minimal polynomial $T(T - I)(T^2 - T - I) = 0$.
+        \nocite{Murphy:2000,Ipsen:2001,Benzi:2005}
+      \end{block}
+    \end{column}
+    \hspace{1em}
+    \begin{column}{0.5\textwidth}
+      \begin{block}{Function space}
+        If $\mathcal{A} : W \rightarrow W^*$, then
+        \begin{equation*}
+          \langle u, v \rangle_W^{-1} \mathcal{A}
+        \end{equation*}
+        has mesh independent condition number.
+        \nocite{Malek:2014,Mardal:2011,Kirby:2010}
+      \end{block}
+    \end{column}
+  \end{columns}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Back to Rayleigh-B\'enard}
-  Newton updates need inverse of Jacobian:
-  \begin{equation*}
-    J = \begin{bmatrix}
-      F   & B^T & M_1 \\
-      C   & 0   & 0   \\
-      M_2 & 0   & K
-    \end{bmatrix}.
-  \end{equation*}
+  \frametitle{A problem}
   \begin{itemize}
-  \item Navier-Stokes (top left)
-  \item Convection-diffusion for temperature (bottom right)
-  \item Coupling in $M_1$ and $M_2$ (non-symmetric).
+  \item Such preconditioners often need auxiliary matrices not
+    appearing the original operator.
+  \item How do we provide these to the solver library in a composable
+    manner?
   \end{itemize}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Preconditioning}
-  We will invert $J$ with a Krylov method, so we need a
-  preconditioner.
-  Let
-  \begin{equation*}
-    N = \begin{bmatrix}
-      F & B^T\\
-      C & 0 \\
-    \end{bmatrix} \quad
-    \tilde{M}_1 =
-    \begin{bmatrix}
-      M_1 \\
-      0
-    \end{bmatrix} \quad
-    \tilde{M}_2 = \begin{bmatrix}
-      M_2 & 0
-    \end{bmatrix}
-  \end{equation*}
-  and block eliminate $N$ in $J$, giving system for temperature:
-  \begin{equation*}
-    S_T = K - \tilde{M}_2 N^{-1} \tilde{M}_1.
-  \end{equation*}
-  \textcite{Howle:2012} show that $K^{-1}$ is a good preconditioner for
-  $S_T$.
-\end{frame}
-\begin{frame}
-  \frametitle{Newton update}
-  Solve for the update
-  \begin{equation*}
-    \begin{split}
-      \delta x &= J^{-1} F(x). \\
-      x &\leftarrow x + \delta x
-    \end{split}
-  \end{equation*}
-
-  Write $\mathcal{K}(J, \mathbb{J})$ to denote approximating $J^{-1}$
-  using an iteration $\mathcal{K}$ on $J$ using $\mathbb{J}$ as a
-  preconditioner.  Then the iteration
-  \begin{equation*}
-    \KSP{J}{\begin{bmatrix}
-      \ksp{N} & 0 \\
-      0 & I
-    \end{bmatrix}
-    \begin{bmatrix}
-      I & -\tilde{M}_1 \\
-      0 & I
-    \end{bmatrix}
-    \begin{bmatrix}
-      I & 0\\
-      0 & \ksp{K}
-    \end{bmatrix}}
-  \end{equation*}
-  empirically converges swiftly, and
-  requires only $\mathbb{N}$ and $\mathbb{K}$.
-\end{frame}
-
-\begin{frame}
-  \frametitle{Navier-Stokes block \parencite{Elman:2014}}
-  A lower Schur complement factorisation of $N$ is a good option.
-  Requires $\ksp{F}$ and $\KSP{S_p}{S}$ where $S_p = -C F^{-1} B^T$.
-
-  One option is the \emph{pressure convection-diffusion}
-  approximation:
-  \begin{equation*}
-    \mathbb{S} = \KSP{L_p}{L} F_p \KSP{M_p}{M},
-  \end{equation*}
-  so our recipe for $\ksp{N}$ is:
-  \begin{equation*}
-    \mathcal{K}\left(N, \begin{bmatrix}
-      F & 0 \\
-      0 & \mathcal{K}(S_p, \KSP{L_p}{L}\,F_p \, \KSP{M_p}{M})
-    \end{bmatrix}
-    \begin{bmatrix}
-      I & 0\\
-      -C & I
-    \end{bmatrix}
-    \begin{bmatrix}
-      \ksp{F} & 0 \\
-      0 & I
-    \end{bmatrix}\right).
-  \end{equation*}
-
-\end{frame}
-
-\begin{frame}
-  \frametitle{Things to note}
-
-  \begin{itemize}
-  \item We only ever need inverses of diagonal blocks.
-  \item Can save memory by applying operators matrix-free.
-  \item The inverses are nested, we need ways of controlling the inner
-    iterations.
-  \end{itemize}
-
-  \begin{block}{PCD}
-    Needs the auxiliary discretised operator $F_p$ and approximate
-    inverses of the auxiliary operators $L_p$ and $M_p$.
-
-    Communication between PDE and solver libraries can no longer be
-    \emph{unidirectional}.
-  \end{block}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Firedrake \& PETSc to the rescue}
+  \begin{block}<2->{Firedrake \& PETSc to the rescue}
   \begin{itemize}
   \item PETSc already provides a highly runtime-configurable library
     for \emph{algebraically} composing solvers \parencite{Brown:2012}.
@@ -337,6 +291,7 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
   \item We combine these to allow simple development of complex
     preconditioners.
   \end{itemize}
+  \end{block}
 \end{frame}
 \begin{frame}
   \frametitle{Two new pieces}
@@ -345,900 +300,28 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
     \begin{block}{A new matrix type}
       A PETSc shell matrix that implements matrix-free actions using
       Firedrake, and contains the UFL of the bilinear form.
+      \begin{equation*}
+        y \leftarrow A x
+      \end{equation*}
     \end{block}
   
-  \begin{block}{Custom preconditioners}
-    These matrices do not have entries, so we create custom
-    preconditioners that can inspect the UFL and do the appropriate
-    thing.
-  \end{block}
-\end{onlyenv}
-\begin{onlyenv}<2>
-  \begin{center}
-    \includegraphics[width=0.8\textwidth]{underhand}
-  \end{center}
-\end{onlyenv}
-\end{frame}
-
-
-\begin{frame}[fragile]
-  \frametitle{PCD}
-
-\begin{minted}[fontsize=\tiny,mathescape]{python}
-class PCDPC(PCBase):
-    def initialize(self, pc):
-        _, P = pc.getOperators()
-        ctx = P.getContext()
-        appctx = ctx.appctx
-        p, q = ctx.arguments()
-        [...] # Handling of boundary conditions elided
-        M_p = assemble(p*q*dx)
-        L_p = assemble(inner(grad(p), grad(q))*dx
-        M_ksp = KSP().create()
-        M_ksp.setOperators(M_p)
-        L_ksp = KSP().create()
-        L_ksp.setOperators(L_p)
-        [...] # Some boilerplate elided
-        u0 = split(appctx["state"])[appctx["velocity_space"]]
-        F_p = assemble(inner(grad(p), grad(q))*dx + inner(u0, grad(p))*q*dx)
-
-    def apply(self, pc, x, y):
-        # $y \leftarrow \KSP{L_p}{L} F_p \KSP{M_p}{M} x$
-        a, b = self.workspace
-        self.M_ksp.solve(x, a)
-        self.F_p.mult(a, b)
-        self.L_ksp.solve(b, y)
-\end{minted}
-\end{frame}
-
-\begin{frame}
-  \frametitle{How to configure things}
-
-  PETSc provides a ``programming language'' for configuring objects at
-  runtime.  It has two operations
-
-  \begin{enumerate}
-  \item Value assignment
-  \item String concatenation
-  \end{enumerate}
-
-  Every object has an \emph{options prefix} which controls where in
-  the options database it looks for configuration values.
-
-  This is verbose, but a very powerful idea.  We can control the types
-  of individual solves by ensuring that they have different prefixes.
-\end{frame}
-
-\begin{frame}[fragile]
-  \frametitle{The elided boilerplate}
-\begin{minted}[fontsize=\small]{python}
-class PCDPC(PCBase):
-    def initialize(self, pc):
-        ...
-        prefix = pc.getOptionsPrefix()
-        M_ksp.setOptionsPrefix(prefix + "pcd_Mp_")
-        M_ksp.setFromOptions()
-        L_ksp.setOptionsPrefix(prefix + "pcd_Lp_")
-        L_ksp.setFromOptions()
-\end{minted}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Back to the main event}
-  We are solving
-  \begin{equation*}
-    \KSP{\begin{bmatrix}
-        F & B^T & M_1\\
-        C & 0 & 0 \\
-        M_2 & 0 & K
-      \end{bmatrix}}{J}
-  \end{equation*}
-  using
-  \begin{equation*}
-    \mathbb{J} =
-    \begin{bmatrix}
-      \KSP{\begin{bmatrix}
-          F & B^T\\
-          C & 0
-        \end{bmatrix}}{N} & 0\\
-      0 & I
-    \end{bmatrix}
-    \begin{bmatrix}
-      I & 0 & -M_1\\
-      0 & I & 0 \\
-      0 & 0 & I
-    \end{bmatrix}
-    \begin{bmatrix}
-      I & 0 & 0\\
-      0 & I & 0\\
-      0 & 0 &\ksp{K}
-    \end{bmatrix}
-  \end{equation*}
-  with
-  \begin{equation*}
-    \mathbb{N} = \begin{bmatrix}
-      F & 0 \\
-      0 & \mathcal{K}(S_p, \KSP{L_p}{L}\,F_p \, \KSP{M_p}{M})
-    \end{bmatrix}
-    \begin{bmatrix}
-      I & 0\\
-      -C & I
-    \end{bmatrix}
-    \begin{bmatrix}
-      \ksp{F} & 0 \\
-      0 & I
-    \end{bmatrix}
-  \end{equation*}
-  and
-  \begin{equation*}
-    S_p = -C \ksp{F} B^T.
-  \end{equation*}
-\end{frame}
-
-\begin{frame}[fragile]
-  \frametitle{First, the temperature solve}
-  \small
-  \begin{onlyenv}<1>
-    \begin{equation*}
-      \KSP{J}{%
-      \begin{bmatrix}
-        \KSP{\begin{bmatrix}
-            F & B^T\\
-            C & 0
-          \end{bmatrix}}{N} & 0\\
-        0 & I
-      \end{bmatrix}
-      \begin{bmatrix}
-        I & 0 & -M_1\\
-        0 & I & 0 \\
-        0 & 0 & I
-      \end{bmatrix}
-      \begin{bmatrix}
-        I & 0 & 0\\
-        0 & I & 0\\
-        0 & 0 &\ksp{K}
-      \end{bmatrix}}
-    \end{equation*}
-\begin{minted}[fontsize=\tiny,escapeinside=||]{py}
--mat_type matfree
--ksp_type fgmres
--pc_type fieldsplit
--pc_fieldsplit_type multiplicative
--pc_fieldsplit_0_fields 0,1
--pc_fieldsplit_1_fields 2
--fieldsplit_1_ksp_type gmres
--fieldsplit_1_pc_type python
--fieldsplit_1_pc_python_type firedrake.AssembledPC
--fieldsplit_1_assembled_pc_type hypre
-\end{minted}
+    \begin{block}{Custom preconditioners}
+      These matrices do not have entries, so we create preconditioners
+      that can inspect the UFL and do the appropriate thing.
+      \begin{equation*}
+        y \leftarrow \tilde{A}^{-1} x
+      \end{equation*}
+    \end{block}
   \end{onlyenv}
   \begin{onlyenv}<2>
-    \color{gray}
-    \begin{equation*}
-      \KSP{\highlight{$J$}}{%
-      \begin{bmatrix}
-        \KSP{\begin{bmatrix}
-            F & B^T\\
-            C & 0
-          \end{bmatrix}}{N} & 0\\
-        0 & I
-      \end{bmatrix}
-      \begin{bmatrix}
-        I & 0 & -M_1\\
-        0 & I & 0 \\
-        0 & 0 & I
-      \end{bmatrix}
-      \begin{bmatrix}
-        I & 0 & 0\\
-        0 & I & 0\\
-        0 & 0 &\ksp{K}
-      \end{bmatrix}}
-    \end{equation*}
-\begin{minted}[fontsize=\tiny,escapeinside=||]{py}
-|\highlight{-mat\_type matfree}|
--ksp_type fgmres
--pc_type fieldsplit
--pc_fieldsplit_type multiplicative
--pc_fieldsplit_0_fields 0,1
--pc_fieldsplit_1_fields 2
--fieldsplit_1_ksp_type gmres
--fieldsplit_1_pc_type python
--fieldsplit_1_pc_python_type firedrake.AssembledPC
--fieldsplit_1_assembled_pc_type hypre
-\end{minted}
+    \begin{center}
+      \includegraphics[width=0.8\textwidth]{underhand}
+    \end{center}
   \end{onlyenv}
-  \begin{onlyenv}<3>
-    \color{gray}
-    \begin{equation*}
-      \highlight{$\mathcal{K}$}\left(J,%
-      \begin{bmatrix}
-        \KSP{\begin{bmatrix}
-            F & B^T\\
-            C & 0
-          \end{bmatrix}}{N} & 0\\
-        0 & I
-      \end{bmatrix}
-      \begin{bmatrix}
-        I & 0 & -M_1\\
-        0 & I & 0 \\
-        0 & 0 & I
-      \end{bmatrix}
-      \begin{bmatrix}
-        I & 0 & 0\\
-        0 & I & 0\\
-        0 & 0 &\ksp{K}
-      \end{bmatrix}\right)
-    \end{equation*}
-\begin{minted}[fontsize=\tiny,escapeinside=||]{py}
--mat_type matfree
-|\highlight{-ksp\_type fgmres}|
--pc_type fieldsplit
--pc_fieldsplit_type multiplicative
--pc_fieldsplit_0_fields 0,1
--pc_fieldsplit_1_fields 2
--fieldsplit_1_ksp_type gmres
--fieldsplit_1_pc_type python
--fieldsplit_1_pc_python_type firedrake.AssembledPC
--fieldsplit_1_assembled_pc_type hypre
-\end{minted}
-  \end{onlyenv}
-  \begin{onlyenv}<4>
-    \color{gray}
-    \begin{equation*}
-      \KSP{J}{%
-      \highlight{$\begin{bmatrix}
-        \KSP{\begin{bmatrix}
-            F & B^T\\
-            C & 0
-          \end{bmatrix}}{N} & 0\\
-        0 & I
-      \end{bmatrix}
-      \begin{bmatrix}
-        I & 0 & -M_1\\
-        0 & I & 0 \\
-        0 & 0 & I
-      \end{bmatrix}
-      \begin{bmatrix}
-        I & 0 & 0\\
-        0 & I & 0\\
-        0 & 0 &\ksp{K}
-      \end{bmatrix}$}}
-    \end{equation*}
-\begin{minted}[fontsize=\tiny,escapeinside=||]{py}
--mat_type matfree
--ksp_type fgmres
-|\highlight{-pc\_type fieldsplit}|
-|\highlight{-pc\_fieldsplit\_type multiplicative}|
--pc_fieldsplit_0_fields 0,1
--pc_fieldsplit_1_fields 2
--fieldsplit_1_ksp_type gmres
--fieldsplit_1_pc_type python
--fieldsplit_1_pc_python_type firedrake.AssembledPC
--fieldsplit_1_assembled_pc_type hypre
-\end{minted}
-  \end{onlyenv}
-  \begin{onlyenv}<5>
-    \color{gray}
-    \begin{equation*}
-      \KSP{J}{%
-      \begin{bmatrix}
-        \highlight{$\KSP{\begin{bmatrix}
-            F & B^T\\
-            C & 0
-          \end{bmatrix}}{N}$} & 0\\
-        0 & I
-      \end{bmatrix}
-      \begin{bmatrix}
-        I & 0 & -M_1\\
-        0 & I & 0 \\
-        0 & 0 & I
-      \end{bmatrix}
-      \begin{bmatrix}
-        I & 0 & 0\\
-        0 & I & 0\\
-        0 & 0 &\ksp{K}
-      \end{bmatrix}}
-    \end{equation*}
-\begin{minted}[fontsize=\tiny,escapeinside=||]{py}
--mat_type matfree
--ksp_type fgmres
--pc_type fieldsplit
--pc_fieldsplit_type multiplicative
-|\highlight{-pc\_fieldsplit\_0\_fields 0,1}|
--pc_fieldsplit_1_fields 2
--fieldsplit_1_ksp_type gmres
--fieldsplit_1_pc_type python
--fieldsplit_1_pc_python_type firedrake.AssembledPC
--fieldsplit_1_assembled_pc_type hypre
-\end{minted}
-  \end{onlyenv}
-  \begin{onlyenv}<6>
-    \color{gray}
-    \begin{equation*}
-      \KSP{J}{%
-      \begin{bmatrix}
-        \KSP{\begin{bmatrix}
-            F & B^T\\
-            C & 0
-          \end{bmatrix}}{N} & 0\\
-        0 & I
-      \end{bmatrix}
-      \begin{bmatrix}
-        I & 0 & -M_1\\
-        0 & I & 0 \\
-        0 & 0 & I
-      \end{bmatrix}
-      \begin{bmatrix}
-        I & 0 & 0\\
-        0 & I & 0\\
-        0 & 0 & \highlight{$\ksp{K}$}
-      \end{bmatrix}}
-    \end{equation*}
-\begin{minted}[fontsize=\tiny,escapeinside=||]{py}
--mat_type matfree
--ksp_type fgmres
--pc_type fieldsplit
--pc_fieldsplit_type multiplicative
--pc_fieldsplit_0_fields 0,1
-|\highlight{-pc\_fieldsplit\_1\_fields 2}|
--fieldsplit_1_ksp_type gmres
--fieldsplit_1_pc_type python
--fieldsplit_1_pc_python_type firedrake.AssembledPC
--fieldsplit_1_assembled_pc_type hypre
-\end{minted}
-  \end{onlyenv}
-  \begin{onlyenv}<7>
-    \color{gray}
-    \begin{equation*}
-      \KSP{J}{%
-      \begin{bmatrix}
-        \KSP{\begin{bmatrix}
-            F & B^T\\
-            C & 0
-          \end{bmatrix}}{N} & 0\\
-        0 & I
-      \end{bmatrix}
-      \begin{bmatrix}
-        I & 0 & -M_1\\
-        0 & I & 0 \\
-        0 & 0 & I
-      \end{bmatrix}
-      \begin{bmatrix}
-        I & 0 & 0\\
-        0 & I & 0\\
-        0 & 0 & \highlight{$\mathcal{K}$}(K, \mathbb{K})
-      \end{bmatrix}}
-    \end{equation*}
-\begin{minted}[fontsize=\tiny,escapeinside=||]{py}
--mat_type matfree
--ksp_type fgmres
--pc_type fieldsplit
--pc_fieldsplit_type multiplicative
--pc_fieldsplit_0_fields 0,1
--pc_fieldsplit_1_fields 2
-|\highlight{-fieldsplit\_1\_ksp\_type gmres}|
--fieldsplit_1_pc_type python
--fieldsplit_1_pc_python_type firedrake.AssembledPC
--fieldsplit_1_assembled_pc_type hypre
-\end{minted}
-  \end{onlyenv}
-  \begin{onlyenv}<8>
-    \color{gray}
-    \begin{equation*}
-      \KSP{J}{%
-      \begin{bmatrix}
-        \KSP{\begin{bmatrix}
-            F & B^T\\
-            C & 0
-          \end{bmatrix}}{N} & 0\\
-        0 & I
-      \end{bmatrix}
-      \begin{bmatrix}
-        I & 0 & -M_1\\
-        0 & I & 0 \\
-        0 & 0 & I
-      \end{bmatrix}
-      \begin{bmatrix}
-        I & 0 & 0\\
-        0 & I & 0\\
-        0 & 0 & \mathcal{K}(K, \highlight{$\mathbb{K}$})
-      \end{bmatrix}}
-    \end{equation*}
-\begin{minted}[fontsize=\tiny,escapeinside=||]{py}
--mat_type matfree
--ksp_type fgmres
--pc_type fieldsplit
--pc_fieldsplit_type multiplicative
--pc_fieldsplit_0_fields 0,1
--pc_fieldsplit_1_fields 2
--fieldsplit_1_ksp_type gmres
-|\highlight{-fieldsplit\_1\_pc\_type python}|
-|\highlight{-fieldsplit\_1\_pc\_python\_type firedrake.AssembledPC}|
-|\highlight{-fieldsplit\_1\_assembled\_pc\_type hypre}|
-\end{minted}
-  \end{onlyenv}
-\end{frame}
-
-\begin{frame}[fragile]
-  \frametitle{Now the Navier-Stokes block}
-  \small
-  \begin{onlyenv}<1>
-    \begin{equation*}
-      \KSP{N}{%
-        \begin{bmatrix}
-          F & 0 \\
-          0 & \mathcal{K}(S_p, \KSP{L_p}{L}\,F_p \, \KSP{M_p}{M})
-        \end{bmatrix}
-        \begin{bmatrix}
-          I & 0\\
-          -C & I
-        \end{bmatrix}
-        \begin{bmatrix}
-          \ksp{F} & 0 \\
-          0 & I
-        \end{bmatrix}}
-    \end{equation*}
-\begin{minted}[fontsize=\tiny,escapeinside=||]{py}
--fieldsplit_0_ksp_type gmres
--fieldsplit_0_pc_type fieldsplit
--fieldsplit_0_pc_fieldsplit_type schur
--fieldsplit_0_pc_fieldsplit_schur_fact_type lower
--fieldsplit_0_fieldsplit_0_ksp_type preonly
--fieldsplit_0_fieldsplit_0_pc_type python
--fieldsplit_0_fieldsplit_0_pc_python_type firedrake.AssembledPC
--fieldsplit_0_fieldsplit_0_assembled_pc_type hypre
--fieldsplit_0_fieldsplit_1_ksp_type preonly
--fieldsplit_0_fieldsplit_1_pc_type python
--fieldsplit_0_fieldsplit_1_pc_python_type firedrake.PCDPC
--fieldsplit_0_fieldsplit_1_pcd_Fp_mat_type matfree
--fieldsplit_0_fieldsplit_1_pcd_Mp_ksp_type preonly
--fieldsplit_0_fieldsplit_1_pcd_Mp_pc_type ilu
--fieldsplit_0_fieldsplit_1_pcd_Kp_ksp_type preonly
--fieldsplit_0_fieldsplit_1_pcd_Kp_pc_type hypre
-\end{minted}
-  \end{onlyenv}
-  \begin{onlyenv}<2>
-    \color{gray}
-    \begin{equation*}
-      \highlight{$\mathcal{K}$}\left(N,%
-        \begin{bmatrix}
-        F & 0 \\
-        0 & \mathcal{K}(S_p, \KSP{L_p}{L}\,F_p \, \KSP{M_p}{M})
-      \end{bmatrix}
-      \begin{bmatrix}
-        I & 0\\
-        -C & I
-      \end{bmatrix}
-      \begin{bmatrix}
-        \ksp{F} & 0 \\
-        0 & I
-      \end{bmatrix}\right)
-    \end{equation*}
-\begin{minted}[fontsize=\tiny,escapeinside=||]{py}
-|\highlight{-fieldsplit\_0\_ksp\_type gmres}|
--fieldsplit_0_pc_type fieldsplit
--fieldsplit_0_pc_fieldsplit_type schur
--fieldsplit_0_pc_fieldsplit_schur_fact_type lower
--fieldsplit_0_fieldsplit_0_ksp_type preonly
--fieldsplit_0_fieldsplit_0_pc_type python
--fieldsplit_0_fieldsplit_0_pc_python_type firedrake.AssembledPC
--fieldsplit_0_fieldsplit_0_assembled_pc_type hypre
--fieldsplit_0_fieldsplit_1_ksp_type preonly
--fieldsplit_0_fieldsplit_1_pc_type python
--fieldsplit_0_fieldsplit_1_pc_python_type firedrake.PCDPC
--fieldsplit_0_fieldsplit_1_pcd_Fp_mat_type matfree
--fieldsplit_0_fieldsplit_1_pcd_Mp_ksp_type preonly
--fieldsplit_0_fieldsplit_1_pcd_Mp_pc_type ilu
--fieldsplit_0_fieldsplit_1_pcd_Kp_ksp_type preonly
--fieldsplit_0_fieldsplit_1_pcd_Kp_pc_type hypre
-\end{minted}
-  \end{onlyenv}
-  \begin{onlyenv}<3>
-    \color{gray}
-    \begin{equation*}
-      \KSP{N}{%
-        \highlight{$\begin{bmatrix}
-        F & 0 \\
-        0 & \mathcal{K}(S_p, \KSP{L_p}{L}\,F_p \, \KSP{M_p}{M})
-      \end{bmatrix}
-      \begin{bmatrix}
-        I & 0\\
-        -C & I
-      \end{bmatrix}
-      \begin{bmatrix}
-        \ksp{F} & 0 \\
-        0 & I
-      \end{bmatrix}$}}
-    \end{equation*}
-\begin{minted}[fontsize=\tiny,escapeinside=||]{py}
--fieldsplit_0_ksp_type gmres
-|\highlight{-fieldsplit\_0\_pc\_type fieldsplit}|
-|\highlight{-fieldsplit\_0\_pc\_fieldsplit\_type schur}|
-|\highlight{-fieldsplit\_0\_pc\_fieldsplit\_schur\_fact\_type lower}|
--fieldsplit_0_fieldsplit_0_ksp_type preonly
--fieldsplit_0_fieldsplit_0_pc_type python
--fieldsplit_0_fieldsplit_0_pc_python_type firedrake.AssembledPC
--fieldsplit_0_fieldsplit_0_assembled_pc_type hypre
--fieldsplit_0_fieldsplit_1_ksp_type preonly
--fieldsplit_0_fieldsplit_1_pc_type python
--fieldsplit_0_fieldsplit_1_pc_python_type firedrake.PCDPC
--fieldsplit_0_fieldsplit_1_pcd_Fp_mat_type matfree
--fieldsplit_0_fieldsplit_1_pcd_Mp_ksp_type preonly
--fieldsplit_0_fieldsplit_1_pcd_Mp_pc_type ilu
--fieldsplit_0_fieldsplit_1_pcd_Kp_ksp_type preonly
--fieldsplit_0_fieldsplit_1_pcd_Kp_pc_type hypre
-\end{minted}
-  \end{onlyenv}
-  \begin{onlyenv}<4>
-    \color{gray}
-    \begin{equation*}
-      \KSP{N}{%
-        \begin{bmatrix}
-        F & 0 \\
-        0 & \mathcal{K}(S_p, \KSP{L_p}{L}\,F_p \, \KSP{M_p}{M})
-      \end{bmatrix}
-      \begin{bmatrix}
-        I & 0\\
-        -C & I
-      \end{bmatrix}
-      \begin{bmatrix}
-        \highlight{$\mathcal{K}$}(K, \mathbb{K}) & 0 \\
-        0 & I
-      \end{bmatrix}}
-    \end{equation*}
-\begin{minted}[fontsize=\tiny,escapeinside=||]{py}
--fieldsplit_0_ksp_type gmres
--fieldsplit_0_pc_type fieldsplit
--fieldsplit_0_pc_fieldsplit_type schur
--fieldsplit_0_pc_fieldsplit_schur_fact_type lower
-|\highlight{-fieldsplit\_0\_fieldsplit\_0\_ksp\_type preonly}|
--fieldsplit_0_fieldsplit_0_pc_type python
--fieldsplit_0_fieldsplit_0_pc_python_type firedrake.AssembledPC
--fieldsplit_0_fieldsplit_0_assembled_pc_type hypre
--fieldsplit_0_fieldsplit_1_ksp_type preonly
--fieldsplit_0_fieldsplit_1_pc_type python
--fieldsplit_0_fieldsplit_1_pc_python_type firedrake.PCDPC
--fieldsplit_0_fieldsplit_1_pcd_Fp_mat_type matfree
--fieldsplit_0_fieldsplit_1_pcd_Mp_ksp_type preonly
--fieldsplit_0_fieldsplit_1_pcd_Mp_pc_type ilu
--fieldsplit_0_fieldsplit_1_pcd_Kp_ksp_type preonly
--fieldsplit_0_fieldsplit_1_pcd_Kp_pc_type hypre
-\end{minted}
-  \end{onlyenv}
-  \begin{onlyenv}<5>
-    \color{gray}
-    \begin{equation*}
-      \KSP{N}{%
-        \begin{bmatrix}
-        F & 0 \\
-        0 & \mathcal{K}(S_p, \KSP{L_p}{L}\,F_p \, \KSP{M_p}{M})
-      \end{bmatrix}
-      \begin{bmatrix}
-        I & 0\\
-        -C & I
-      \end{bmatrix}
-      \begin{bmatrix}
-        \mathcal{K}(F, \highlight{$\mathbb{F}$}) & 0 \\
-        0 & I
-      \end{bmatrix}}
-    \end{equation*}
-\begin{minted}[fontsize=\tiny,escapeinside=||]{py}
--fieldsplit_0_ksp_type gmres
--fieldsplit_0_pc_type fieldsplit
--fieldsplit_0_pc_fieldsplit_type schur
--fieldsplit_0_pc_fieldsplit_schur_fact_type lower
--fieldsplit_0_fieldsplit_0_ksp_type preonly
-|\highlight{-fieldsplit\_0\_fieldsplit\_0\_pc\_type python}|
-|\highlight{-fieldsplit\_0\_fieldsplit\_0\_pc\_python\_type firedrake.AssembledPC}|
-|\highlight{-fieldsplit\_0\_fieldsplit\_0\_assembled\_pc\_type hypre}|
--fieldsplit_0_fieldsplit_1_ksp_type preonly
--fieldsplit_0_fieldsplit_1_pc_type python
--fieldsplit_0_fieldsplit_1_pc_python_type firedrake.PCDPC
--fieldsplit_0_fieldsplit_1_pcd_Fp_mat_type matfree
--fieldsplit_0_fieldsplit_1_pcd_Mp_ksp_type preonly
--fieldsplit_0_fieldsplit_1_pcd_Mp_pc_type ilu
--fieldsplit_0_fieldsplit_1_pcd_Kp_ksp_type preonly
--fieldsplit_0_fieldsplit_1_pcd_Kp_pc_type hypre
-\end{minted}
-  \end{onlyenv}
-  \begin{onlyenv}<6>
-    \color{gray}
-    \begin{equation*}
-      \KSP{N}{%
-        \begin{bmatrix}
-        F & 0 \\
-        0 & \highlight{$\mathcal{K}$}(S_p, \KSP{L_p}{L}\,F_p \, \KSP{M_p}{M})
-      \end{bmatrix}
-      \begin{bmatrix}
-        I & 0\\
-        -C & I
-      \end{bmatrix}
-      \begin{bmatrix}
-        \ksp{F} & 0 \\
-        0 & I
-      \end{bmatrix}}
-    \end{equation*}
-\begin{minted}[fontsize=\tiny,escapeinside=||]{py}
--fieldsplit_0_ksp_type gmres
--fieldsplit_0_pc_type fieldsplit
--fieldsplit_0_pc_fieldsplit_type schur
--fieldsplit_0_pc_fieldsplit_schur_fact_type lower
--fieldsplit_0_fieldsplit_0_ksp_type preonly
--fieldsplit_0_fieldsplit_0_pc_type python
--fieldsplit_0_fieldsplit_0_pc_python_type firedrake.AssembledPC
--fieldsplit_0_fieldsplit_0_assembled_pc_type hypre
-|\highlight{-fieldsplit\_0\_fieldsplit\_1\_ksp\_type preonly}|
--fieldsplit_0_fieldsplit_1_pc_type python
--fieldsplit_0_fieldsplit_1_pc_python_type firedrake.PCDPC
--fieldsplit_0_fieldsplit_1_pcd_Fp_mat_type matfree
--fieldsplit_0_fieldsplit_1_pcd_Mp_ksp_type preonly
--fieldsplit_0_fieldsplit_1_pcd_Mp_pc_type ilu
--fieldsplit_0_fieldsplit_1_pcd_Kp_ksp_type preonly
--fieldsplit_0_fieldsplit_1_pcd_Kp_pc_type hypre
-\end{minted}
-  \end{onlyenv}
-  \begin{onlyenv}<7>
-    \color{gray}
-    \begin{equation*}
-      \KSP{N}{%
-        \begin{bmatrix}
-        F & 0 \\
-        0 & \mathcal{K}(S_p, \highlight{$\KSP{L_p}{L}\,F_p \, \KSP{M_p}{M}$})
-      \end{bmatrix}
-      \begin{bmatrix}
-        I & 0\\
-        -C & I
-      \end{bmatrix}
-      \begin{bmatrix}
-        \ksp{F} & 0 \\
-        0 & I
-      \end{bmatrix}}
-    \end{equation*}
-\begin{minted}[fontsize=\tiny,escapeinside=||]{py}
--fieldsplit_0_ksp_type gmres
--fieldsplit_0_pc_type fieldsplit
--fieldsplit_0_pc_fieldsplit_type schur
--fieldsplit_0_pc_fieldsplit_schur_fact_type lower
--fieldsplit_0_fieldsplit_0_ksp_type preonly
--fieldsplit_0_fieldsplit_0_pc_type python
--fieldsplit_0_fieldsplit_0_pc_python_type firedrake.AssembledPC
--fieldsplit_0_fieldsplit_0_assembled_pc_type hypre
--fieldsplit_0_fieldsplit_1_ksp_type preonly
-|\highlight{-fieldsplit\_0\_fieldsplit\_1\_pc\_type python}|
-|\highlight{-fieldsplit\_0\_fieldsplit\_1\_pc\_python\_type firedrake.PCDPC}|
--fieldsplit_0_fieldsplit_1_pcd_Fp_mat_type matfree
--fieldsplit_0_fieldsplit_1_pcd_Mp_ksp_type preonly
--fieldsplit_0_fieldsplit_1_pcd_Mp_pc_type ilu
--fieldsplit_0_fieldsplit_1_pcd_Kp_ksp_type preonly
--fieldsplit_0_fieldsplit_1_pcd_Kp_pc_type hypre
-\end{minted}
-  \end{onlyenv}
-  \begin{onlyenv}<8>
-    \color{gray}
-    \begin{equation*}
-      \KSP{N}{%
-        \begin{bmatrix}
-        F & 0 \\
-        0 & \mathcal{K}(S_p, \KSP{L_p}{L}\,\highlight{$F_p$} \, \KSP{M_p}{M})
-      \end{bmatrix}
-      \begin{bmatrix}
-        I & 0\\
-        -C & I
-      \end{bmatrix}
-      \begin{bmatrix}
-        \ksp{F} & 0 \\
-        0 & I
-      \end{bmatrix}}
-    \end{equation*}
-\begin{minted}[fontsize=\tiny,escapeinside=||]{py}
--fieldsplit_0_ksp_type gmres
--fieldsplit_0_pc_type fieldsplit
--fieldsplit_0_pc_fieldsplit_type schur
--fieldsplit_0_pc_fieldsplit_schur_fact_type lower
--fieldsplit_0_fieldsplit_0_ksp_type preonly
--fieldsplit_0_fieldsplit_0_pc_type python
--fieldsplit_0_fieldsplit_0_pc_python_type firedrake.AssembledPC
--fieldsplit_0_fieldsplit_0_assembled_pc_type hypre
--fieldsplit_0_fieldsplit_1_ksp_type preonly
--fieldsplit_0_fieldsplit_1_pc_type python
--fieldsplit_0_fieldsplit_1_pc_python_type firedrake.PCDPC
-|\highlight{-fieldsplit\_0\_fieldsplit\_1\_pcd\_Fp\_mat\_type aij}|
--fieldsplit_0_fieldsplit_1_pcd_Mp_ksp_type preonly
--fieldsplit_0_fieldsplit_1_pcd_Mp_pc_type ilu
--fieldsplit_0_fieldsplit_1_pcd_Kp_ksp_type preonly
--fieldsplit_0_fieldsplit_1_pcd_Kp_pc_type hypre
-\end{minted}
-  \end{onlyenv}
-  \begin{onlyenv}<9>
-    \color{gray}
-    \begin{equation*}
-      \KSP{N}{%
-      \begin{bmatrix}
-        F & 0 \\
-        0 & \mathcal{K}(S_p, \KSP{L_p}{L}\,F_p \, \highlight{$\mathcal{K}$}(M_p, \mathbb{M}))
-      \end{bmatrix}
-      \begin{bmatrix}
-        I & 0\\
-        -C & I
-      \end{bmatrix}
-      \begin{bmatrix}
-        \ksp{F} & 0 \\
-        0 & I
-      \end{bmatrix}}
-    \end{equation*}
-\begin{minted}[fontsize=\tiny,escapeinside=||]{py}
--fieldsplit_0_ksp_type gmres
--fieldsplit_0_pc_type fieldsplit
--fieldsplit_0_pc_fieldsplit_type schur
--fieldsplit_0_pc_fieldsplit_schur_fact_type lower
--fieldsplit_0_fieldsplit_0_ksp_type preonly
--fieldsplit_0_fieldsplit_0_pc_type python
--fieldsplit_0_fieldsplit_0_pc_python_type firedrake.AssembledPC
--fieldsplit_0_fieldsplit_0_assembled_pc_type hypre
--fieldsplit_0_fieldsplit_1_ksp_type preonly
--fieldsplit_0_fieldsplit_1_pc_type python
--fieldsplit_0_fieldsplit_1_pc_python_type firedrake.PCDPC
--fieldsplit_0_fieldsplit_1_pcd_Fp_mat_type matfree
-|\highlight{-fieldsplit\_0\_fieldsplit\_1\_pcd\_Mp\_ksp\_type preonly}|
--fieldsplit_0_fieldsplit_1_pcd_Mp_pc_type ilu
--fieldsplit_0_fieldsplit_1_pcd_Kp_ksp_type preonly
--fieldsplit_0_fieldsplit_1_pcd_Kp_pc_type hypre
-\end{minted}
-  \end{onlyenv}
-  \begin{onlyenv}<10>
-    \color{gray}
-    \begin{equation*}
-      \KSP{N}{%
-        \begin{bmatrix}
-        F & 0 \\
-        0 & \mathcal{K}(S_p, \KSP{L_p}{L}\,F_p \, \mathcal{K}(M_p, \highlight{$\mathbb{M}$}))
-      \end{bmatrix}
-      \begin{bmatrix}
-        I & 0\\
-        -C & I
-      \end{bmatrix}
-      \begin{bmatrix}
-        \ksp{F} & 0 \\
-        0 & I
-      \end{bmatrix}}
-    \end{equation*}
-\begin{minted}[fontsize=\tiny,escapeinside=||]{py}
--fieldsplit_0_ksp_type gmres
--fieldsplit_0_pc_type fieldsplit
--fieldsplit_0_pc_fieldsplit_type schur
--fieldsplit_0_pc_fieldsplit_schur_fact_type lower
--fieldsplit_0_fieldsplit_0_ksp_type preonly
--fieldsplit_0_fieldsplit_0_pc_type python
--fieldsplit_0_fieldsplit_0_pc_python_type firedrake.AssembledPC
--fieldsplit_0_fieldsplit_0_assembled_pc_type hypre
--fieldsplit_0_fieldsplit_1_ksp_type preonly
--fieldsplit_0_fieldsplit_1_pc_type python
--fieldsplit_0_fieldsplit_1_pc_python_type firedrake.PCDPC
--fieldsplit_0_fieldsplit_1_pcd_Fp_mat_type matfree
--fieldsplit_0_fieldsplit_1_pcd_Mp_ksp_type preonly
-|\highlight{-fieldsplit\_0\_fieldsplit\_1\_pcd\_Mp\_pc\_type ilu}|
--fieldsplit_0_fieldsplit_1_pcd_Kp_ksp_type preonly
--fieldsplit_0_fieldsplit_1_pcd_Kp_pc_type hypre
-\end{minted}
-  \end{onlyenv}
-  \begin{onlyenv}<11>
-    \color{gray}
-    \begin{equation*}
-      \KSP{N}{%
-        \begin{bmatrix}
-        F & 0 \\
-        0 & \mathcal{K}(S_p, \highlight{$\mathcal{K}$}(L_p, \mathbb{L})\,F_p \, \KSP{M_p}{M})
-      \end{bmatrix}
-      \begin{bmatrix}
-        I & 0\\
-        -C & I
-      \end{bmatrix}
-      \begin{bmatrix}
-        \ksp{F} & 0 \\
-        0 & I
-      \end{bmatrix}}
-    \end{equation*}
-\begin{minted}[fontsize=\tiny,escapeinside=||]{py}
--fieldsplit_0_ksp_type gmres
--fieldsplit_0_pc_type fieldsplit
--fieldsplit_0_pc_fieldsplit_type schur
--fieldsplit_0_pc_fieldsplit_schur_fact_type lower
--fieldsplit_0_fieldsplit_0_ksp_type preonly
--fieldsplit_0_fieldsplit_0_pc_type python
--fieldsplit_0_fieldsplit_0_pc_python_type firedrake.AssembledPC
--fieldsplit_0_fieldsplit_0_assembled_pc_type hypre
--fieldsplit_0_fieldsplit_1_ksp_type preonly
--fieldsplit_0_fieldsplit_1_pc_type python
--fieldsplit_0_fieldsplit_1_pc_python_type firedrake.PCDPC
--fieldsplit_0_fieldsplit_1_pcd_Fp_mat_type matfree
--fieldsplit_0_fieldsplit_1_pcd_Mp_ksp_type preonly
--fieldsplit_0_fieldsplit_1_pcd_Mp_pc_type ilu
-|\highlight{-fieldsplit\_0\_fieldsplit\_1\_pcd\_Kp\_ksp\_type preonly}|
--fieldsplit_0_fieldsplit_1_pcd_Kp_pc_type hypre
-\end{minted}
-  \end{onlyenv}
-  \begin{onlyenv}<12>
-    \color{gray}
-    \begin{equation*}
-      \KSP{N}{%
-        \begin{bmatrix}
-        F & 0 \\
-        0 & \mathcal{K}(S_p, \mathcal{K}(L_p, \highlight{$\mathbb{L}$})\,F_p \, \KSP{M_p}{M})
-      \end{bmatrix}
-      \begin{bmatrix}
-        I & 0\\
-        -C & I
-      \end{bmatrix}
-      \begin{bmatrix}
-        \ksp{F} & 0 \\
-        0 & I
-      \end{bmatrix}}
-    \end{equation*}
-\begin{minted}[fontsize=\tiny,escapeinside=||]{py}
--fieldsplit_0_ksp_type gmres
--fieldsplit_0_pc_type fieldsplit
--fieldsplit_0_pc_fieldsplit_type schur
--fieldsplit_0_pc_fieldsplit_schur_fact_type lower
--fieldsplit_0_fieldsplit_0_ksp_type preonly
--fieldsplit_0_fieldsplit_0_pc_type python
--fieldsplit_0_fieldsplit_0_pc_python_type firedrake.AssembledPC
--fieldsplit_0_fieldsplit_0_assembled_pc_type hypre
--fieldsplit_0_fieldsplit_1_ksp_type preonly
--fieldsplit_0_fieldsplit_1_pc_type python
--fieldsplit_0_fieldsplit_1_pc_python_type firedrake.PCDPC
--fieldsplit_0_fieldsplit_1_pcd_Fp_mat_type matfree
--fieldsplit_0_fieldsplit_1_pcd_Mp_ksp_type preonly
--fieldsplit_0_fieldsplit_1_pcd_Mp_pc_type ilu
--fieldsplit_0_fieldsplit_1_pcd_Kp_ksp_type preonly
-|\highlight{-fieldsplit\_0\_fieldsplit\_1\_pcd\_Kp\_pc\_type hypre}|
-\end{minted}
-  \end{onlyenv}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Not shown}
-  \begin{itemize}
-  \item Setting solver tolerances
-  \item Configuring $\ksp{F}$ inside application of $S_p$ (not
-    needed because $\KSP{S_p}{S}$ is applied \texttt{preonly}).
-  \item More complex configurations for elliptic solves
-    (e.g.~$hp$-independent iterations using subspace corrections
-    for high order).
-  \item ...
-  \end{itemize}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Runtime composability}
-
-  \begin{itemize}
-  \item Can tune implicit solve for Navier-Stokes on its own, then
-    drop in where-ever such a block wants inverted.
-
-  \item Model formulation doesn't care about variable
-    splittings. Maybe we wanted to eliminate temperature first.  Do
-    so, without changing the code.
-
-  \item Composes with nonlinear solvers that need linearisations.
-
-  \item Automatically take advantage of any improvements in Firedrake
-    (fast matrix actions, etc...)
-
-  \item No need to worry about parallel!
-  \end{itemize}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Some results}
-  Weak scaling for Rayleigh-B\'enard.  $\text{Ra} = 200$, $\text{Pr} =
-  6.8$.  Three nonlinear iterations, 10 outer Krylov iterations.
-  \begin{center}
-    \includegraphics[width=\textwidth]{rb-weak-efficiency-Ra-200}
-  \end{center}
 \end{frame}
 
 \begin{frame}[allowframebreaks]
-  \frametitle{Easy extensibility}
+  \frametitle{An example}
   A preconditioner for the Ohta--Kawasaki
   equation \parencite{Farrell:2016}
 
@@ -1294,7 +377,7 @@ class PCDPC(PCBase):
 
 \begin{frame}[fragile]
   \frametitle{Implementation}
-\begin{minted}[fontsize=\tiny,mathescape]{python}
+\begin{minted}[fontsize=\tiny,mathescape,escapeinside=||]{python}
 class OKPC(PCBase):
 
     def initialize(self, pc):
@@ -1302,12 +385,12 @@ class OKPC(PCBase):
         _, P = pc.getOperators()
         ctx = P.getPythonContext()
         # User information about $\Delta t$, $\theta$, etc...
-        dt, theta, eps, sigma = ctx.appctx["parameters"]
+        dt, |$\theta$|, |$\epsilon$|, |$\sigma$| = ctx.appctx["parameters"]
         V = ctx.a.arguments()[0].function_space()
-        c = (dt * theta * eps**2)/(1 + dt * theta * sigma)
+        c = (dt * |$\theta$| * |$\epsilon$|**2)/(1 + dt * |$\theta$| * |$\sigma$|)
         w = TrialFunction(V)
         q = TestFunction(V)
-        op = assemble(inner(w, q)*dx + sqrt(c) * inner(grad(w), grad(q))*dx)
+        op = assemble(inner(w, q)*dx + |$\epsilon$|*sqrt(c) * inner(grad(w), grad(q))*dx)
         self.ksp = KSP().create(comm=pc.comm)
         self.ksp.setOptionsPrefix(pc.getOptionsPrefix + "shat_")
         self.ksp.setOperators(op.petscmat, op.petscmat)
@@ -1325,25 +408,60 @@ class OKPC(PCBase):
 \end{minted}
 \end{frame}
 
+\begin{frame}[fragile]
+  \frametitle{Usage}
+\begin{minted}[fontsize=\tiny,highlightlines={3,12-13,17-18}]{py}
+...
+opts = {"snes_lag_preconditioner": -1,
+        "mat_type": "matfree",
+        "ksp_type": "gmres",
+        "ksp_rtol": 1.0e-8,
+        "pc_type": "fieldsplit",
+        "pc_fieldsplit_type": "schur",
+        "pc_fieldsplit_schur_factorization_type": "lower",
+
+        "fieldsplit_0": {"ksp_type": "chebyshev",
+                         "ksp_max_it": 10,
+                         "pc_type": "python",
+                         "pc_python_type": "firedrake.AssembledPC",
+                         "assembled_pc_type": "sor"},
+        "fieldsplit_1": {"ksp_type": "richardson",
+                         "ksp_max_it": 2,
+                         "pc_type": "python",
+                         "pc_python_type": "OKPC",
+                         "shat_ksp_type": "richardson",
+                         "shat_ksp_max_it": 5,
+                         "shat_pc_type": "hypre"}
+       }
+
+appctx = {"parameters": (dt, theta, eps, sigma)}
+
+solve(L == 0, z, solver_parameters=opts, appctx=appctx)
+\end{minted}
+\end{frame}
+
 \begin{frame}
-  \frametitle{Future directions}
+  \frametitle{Runtime composability}
+
   \begin{itemize}
-  \item Include ability to nest multigrid solves: matrix-free multigrid.
-  \item Extend approach to nonlinear preconditioning, DD (needs PyOP2++)
+  \item Can write complex preconditioners for each diagonal block then
+    glue them together as necessary.
+
+  \item The model formulation doesn't need to know about the solver
+    configuration.
+
+  \item Composes with nonlinear solvers that need linearisations.
+
+  \item Automatically takes advantage of any improvements in Firedrake
+    (fast matrix actions, etc...)
+
+  \item No need to worry about parallel!
   \end{itemize}
-  \begin{center}
-    All of this is available right now
-
-    \url{http://www.firedrakeproject.org/}
-  \end{center}
 \end{frame}
 
-\begin{frame}[standout]
-  Questions?
-\end{frame}
 
 \appendix
-\begin{frame}[t,allowframebreaks]
+\begin{frame}
   \frametitle{References}
   \printbibliography[heading=none]
 \end{frame}
