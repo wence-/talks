@@ -11,6 +11,7 @@
 \pgfplotsset{compat=1.12}
 \usepackage{appendixnumberbeamer}
 \usepackage{amsmath}
+\usepackage[utf8]{inputenc}
 \date{28th March 2017}
 \usetheme{firedrake}
 
@@ -384,23 +385,36 @@ while t < tEnd:
 
 \begin{frame}
   \frametitle{A tree of solvers}
-  \begin{tikzpicture}[
-    ksp/.style={
-      rectangle,
-      minimum size=6mm,
-      draw=black!50,
-      font=\ttfamily},
-    pc/.style={rounded rectangle,
-      minimum size=6mm,
-      draw=black!50,
-      font=\ttfamily}]
-    \node (outer) [ksp] {$P^{-1}$};
-    \node (ainv.pc) [ksp, below left of=outer] {$A^{-1}$};
-    \node (sinv.pc) [ksp, below right of=outer] {$S^{-1}$};
-    \node (sainv.pc) [pc, below right of=sinv.pc]
-    {$\hat{S}^{-1}M\hat{S}^{-1}$};
-    \node (sainv.ksp) [ksp, below left of=sinv.pc] {$C A^{-1}B$};
-  \end{tikzpicture}
+  \footnotesize
+  \begin{equation*}
+    J \triangleq \begin{bmatrix}
+      (1 + \Delta t \theta \sigma)M  & \Delta t\theta K \\
+      -\epsilon^2 K - M_E & M
+    \end{bmatrix} \triangleq
+    \begin{bmatrix}
+      A & B \\
+      C & M
+    \end{bmatrix}
+  \end{equation*}
+  \begin{equation*}
+    J^{-1} \approx \mathcal{K}\left(\begin{bmatrix}
+        A  & B \\
+        C & M
+      \end{bmatrix},
+      \begin{bmatrix}
+        \mathcal{K}(A, A_p) & 0\\
+        0 & \mathcal{K}(S, S_p)
+      \end{bmatrix}
+      \begin{bmatrix}
+        I & 0\\
+        -C\mathcal{K}(A, A_p) & I
+      \end{bmatrix}\right)
+  \end{equation*}
+  \begin{align*}
+    S &\triangleq M - C\mathcal{K}(A, A_p)B\\
+    S_p &\triangleq \mathcal{K}(\hat{S}, \hat{S}_p)M\mathcal{K}(\hat{S}, \hat{S}_p)\\
+    \hat{S} &\triangleq M + \epsilon\sqrt{(\Delta t \theta)/(1+\Delta t \theta\sigma)} K.
+  \end{align*}
 \end{frame}
 \begin{frame}[fragile]
   \frametitle{Implementation}
