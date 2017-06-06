@@ -78,12 +78,11 @@ London
 
 \maketitle
 
-\begin{frame}[fragile]
+\begin{frame}[fragile,t]
   \frametitle{UFL makes it easy to write complex PDEs}
   \begin{columns}
-    \begin{onlyenv}<1>
-      \begin{column}{0.47\framewidth}
-        \small
+    \begin{column}{0.47\framewidth}
+      \small
       \begin{block}{Rayleigh-B\'enard convection}
         \begin{equation*}
           \begin{split}
@@ -103,6 +102,8 @@ V = VectorFunctionSpace(mesh, "CG", 2)
 W = FunctionSpace(mesh, "CG", 1)
 Q = FunctionSpace(mesh, "CG", 1)
 Z = V * W * Q
+Ra = Constant(200)
+Pr = Constant(6.18)
 upT = Function(Z)
 u, p, T = split(upT)
 v, q, S = TestFunctions(Z)
@@ -121,66 +122,9 @@ F = (inner(grad(u), grad(v))
 solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
 \end{minted}
     \end{column}
-  \end{onlyenv}
   \end{columns}
 \end{frame}
 
-\begin{frame}[fragile]
-  \begin{columns}
-    \begin{column}{0.5\textwidth}
-      \begin{block}{Ohta-Kawasaki}
-        \small
-        \begin{align*}
-          u_t - \Delta w + \sigma(u - m) &= 0\\
-          w + \epsilon^2 \Delta u - u(u^2 - 1) &= 0
-        \end{align*}
-        Implicit timestepping + Newton
-        \begin{equation*}
-          \begin{bmatrix}
-            (1 + \Delta t \theta \sigma)M  & \Delta t\theta K \\
-            -\epsilon^2 K - M_E & M
-          \end{bmatrix}
-          \begin{bmatrix}
-            \delta u \\
-            \delta w
-          \end{bmatrix} =
-          \begin{bmatrix}
-            f_1 \\
-            f_2
-          \end{bmatrix}
-        \end{equation*}
-      \end{block}
-    \end{column}
-    \begin{column}{0.5\textwidth}
-\begin{minted}[fontsize=\tiny,escapeinside=||]{python}
-from firedrake import *
-|$\epsilon$| = Constant(0.02)
-|$\sigma$| = Constant(100)
-dt = Constant(eps**2)
-|$\theta$| = Constant(0.5)
-mesh = Mesh(...)
-V = FunctionSpace(mesh, "CG", 1)
-Z = V*V
-v, q = TestFunctions(Z)
-z = Function(Z)
-z0 = Function(Z)
-u, w = split(z)
-u0, w0 = split(z0)
-u|$_\theta$| = (1 - |$\theta$|)*u0 + |$\theta$|*u
-w|$_\theta$| = (1 - |$\theta$|)*w0 + |$\theta$|*w
-dfdu = u**3 - u
-L = ((u - u0)*v
-     + dt*dot(grad(w|$_\theta$|), grad(v))
-     + dt*|$\sigma$|*(u|$_\theta$| - m)*v
-     + w*q - dfdu*q
-     - |$\epsilon$|**2*dot(grad(u), grad(q)))*dx
-while t < Tend:
-   z0.assign(z)
-   solve(L == 0, z)
-\end{minted}
-    \end{column}
-  \end{columns}
-\end{frame}
 
 \begin{frame}[fragile]
   \begin{columns}
@@ -224,7 +168,64 @@ F = ((|$\phi_{n+1}$| - |$\phi_n$|)*q
      + dt*M*dot(grad(|$\mu_{n+\theta}$|), grad(q)) 
      + (|$\mu_{n+1}$| - dfdphi)*v
      -|$\lambda$|*dot(grad(|$\phi_{n+1}$|), grad(v)))*dx
-while t < tEnd:
+while t < ...:
+    z0.assign(z)
+    solve(F == 0, z)
+\end{minted}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}[fragile]
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      \begin{block}{Ohta-Kawasaki}
+        \small
+        \begin{align*}
+          u_t - \Delta w + \sigma(u - m) &= 0\\
+          w + \epsilon^2 \Delta u - u(u^2 - 1) &= 0
+        \end{align*}
+        Implicit timestepping + Newton
+        \begin{equation*}
+          \begin{bmatrix}
+            (1 + \Delta t \theta \sigma)M  & \Delta t\theta K \\
+            -\epsilon^2 K - M_E & M
+          \end{bmatrix}
+          \begin{bmatrix}
+            \delta u \\
+            \delta w
+          \end{bmatrix} =
+          \begin{bmatrix}
+            f_1 \\
+            f_2
+          \end{bmatrix}
+        \end{equation*}
+      \end{block}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+\begin{minted}[fontsize=\tiny,escapeinside=||]{python}
+from firedrake import *
+mesh = Mesh(...)
+V = FunctionSpace(mesh, "CG", 1)
+Z = V*V
+|$\epsilon$| = Constant(0.02)
+|$\sigma$| = Constant(100)
+dt = Constant(eps**2)
+|$\theta$| = Constant(0.5)
+v, q = TestFunctions(Z)
+z = Function(Z)
+z0 = Function(Z)
+u, w = split(z)
+u0, w0 = split(z0)
+u|$_\theta$| = (1 - |$\theta$|)*u0 + |$\theta$|*u
+w|$_\theta$| = (1 - |$\theta$|)*w0 + |$\theta$|*w
+dfdu = u**3 - u
+F = ((u - u0)*v
+     + dt*dot(grad(w|$_\theta$|), grad(v))
+     + dt*|$\sigma$|*(u|$_\theta$| - m)*v
+     + w*q - dfdu*q
+     - |$\epsilon$|**2*dot(grad(u), grad(q)))*dx
+while t < ...:
     z0.assign(z)
     solve(F == 0, z)
 \end{minted}
@@ -237,7 +238,7 @@ while t < tEnd:
   \begin{itemize}
   \item LU is alright for small problems
   \item \dots but quickly becomes untenable in 3D.
-  \item Instead we use iterative methods (e.g. Krylov methods)
+  \item Instead we use iterative methods (e.g.~Krylov methods)
   \item<2-> \dots but Krylov methods are \emph{not} solvers
   \item<3-> so we need \emph{preconditioners}.
   \end{itemize}
@@ -259,7 +260,7 @@ while t < tEnd:
           \end{bmatrix}^{-1}
           \begin{bmatrix}
             A & B^T \\
-            C & D = 0
+            C & 0
           \end{bmatrix}
         \end{equation*}
         has minimal polynomial $T(T - I)(T^2 - T - I) = 0$.
@@ -291,7 +292,7 @@ while t < tEnd:
   \begin{block}<2->{Firedrake \& PETSc to the rescue}
   \begin{itemize}
   \item PETSc already provides a highly runtime-configurable library
-    for \emph{algebraically} composing solvers \parencite{Brown:2012}.
+    for \emph{algebraically} composing solvers. \nocite{Brown:2012}
 
   \item Firedrake makes it straightforward to build auxiliary
     operators.
@@ -301,38 +302,84 @@ while t < tEnd:
   \end{itemize}
   \end{block}
 \end{frame}
-\begin{frame}
+\begin{frame}[fragile,t]
   \frametitle{Two new pieces}
- 
-  \begin{onlyenv}<1>
-    \begin{block}{A new matrix type}
-      A PETSc shell matrix that implements matrix-free actions using
-      Firedrake, and contains the UFL of the bilinear form.
+  \begin{block}{A new matrix type}
+    A PETSc shell matrix that implements matrix-free actions using
+    Firedrake, and contains the UFL of the bilinear form.
+    \begin{columns}
+      \begin{column}{0.5\textwidth}
       \begin{equation*}
         y \leftarrow A x
       \end{equation*}
-    \end{block}
-  
-    \begin{block}{Custom preconditioners}
-      These matrices do not have entries, so we create preconditioners
-      that can inspect the UFL and do the appropriate thing.
-      \begin{equation*}
-        y \leftarrow \tilde{A}^{-1} x
-      \end{equation*}
-    \end{block}
-  \end{onlyenv}
-  \begin{onlyenv}<2>
-    \begin{center}
-      \includegraphics[width=0.8\textwidth]{underhand}
-    \end{center}
-  \end{onlyenv}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+\begin{minted}[fontsize=\scriptsize]{python}
+A = assemble(a, mat_type="matfree")
+\end{minted}
+    \end{column}
+    \end{columns}
+  \end{block}
+  \vspace{1.5\baselineskip}
+  \begin{block}{Custom preconditioners}
+    These matrices do not have entries, so we create preconditioners
+    that can inspect the UFL and do the appropriate thing.
+    \begin{columns}
+      \begin{column}{0.5\textwidth}
+    \begin{equation*}
+      y \leftarrow \tilde{A}^{-1} x
+    \end{equation*}
+  \end{column}
+  \begin{column}{0.5\textwidth}
+\begin{minted}[fontsize=\scriptsize]{python}
+solve(a == L, x, 
+      {"pc_type": "python",
+       "pc_python_type": "AssembledPC"})
+\end{minted}
+  \end{column}
+  \end{columns}
+  \end{block}
 \end{frame}
+\begin{frame}[fragile]
+  \frametitle{A simple example}
+\begin{minted}[fontsize=\scriptsize]{python}
+solve(a == L, x, solver_parameters={"mat_type": "matfree",
+                                    "pc_type": "python",
+                                    "pc_python_type": "firedrake.AssembledPC",
+                                    "assembled_pc_type": "hypre"})
+\end{minted}
+  \begin{tikzpicture}[ufl/.style={circle,draw,black, minimum size=6mm, inner sep=2pt},
+    assemble/.style={diamond,draw,black, minimum size=6mm, inner sep=0pt},
+    petsc/.style={rectangle,draw,black, minimum size=6mm, inner sep=2pt},
+    firedrake/.style={rounded rectangle,draw,black, minimum size=6mm, inner sep=2pt},
+    arrow/.style={-stealth,line width=1}]
+    \node[petsc] (ainv) {\small$A^{-1} \approx \mathcal{K}(A, A_p^{-1})$};
+    \node[ufl, below left=of ainv] (Ax) {\small$Ax$};
+    \node[firedrake,below=of Ax] (ax) {\scriptsize\texttt{assemble(action(a, x))}};
+    \node[assemble,below right=of ainv] (ap) {\small$A_p^{-1}$};
+    \node[firedrake,below=of ap] (Ap) {\small$A_p \leftarrow$\raisebox{1pt}{\scriptsize\texttt{assemble(a)}}};
+    \node[petsc,below=of Ap] (Apinv) {\scriptsize\texttt{hypre($A_p$)}};
+
+    \draw[arrow] (ainv) -- (Ax);
+    \draw[arrow] (Ax) -- (ax);
+    \draw[arrow] (ainv) -- (ap);
+    \draw[arrow] (ap) -- (Ap);
+    \draw[arrow] (Ap) -- (Apinv);
+  \end{tikzpicture}
+\end{frame}
+\bgroup
+\setbeamertemplate{background}{}
+\begin{frame}[plain]
+  \begin{tikzpicture}[remember picture,overlay]
+    \node[at=(current page.center)] {\includegraphics[width=\paperwidth]{underhand}};
+  \end{tikzpicture}
+\end{frame}
+\egroup
 
 \begin{frame}[allowframebreaks]
-  \frametitle{An example}
+  \frametitle{Something more complicated}
   A preconditioner for the Ohta--Kawasaki
   equation \parencite{Farrell:2016}
-
   \begin{equation*}
     \begin{split}
       u_t - \Delta w + \sigma(u - m) &= 0\\
@@ -357,85 +404,57 @@ while t < tEnd:
 
   \pagebreak
   
-  Preconditioning
+  Preconditioning strategy:
   \begin{equation*}
-    P^{-1} = 
+    \scriptsize
     \begin{bmatrix}
-      (1 + \Delta t \theta \sigma)M  & 0 \\
-      -\epsilon^2 K - M_E & S
-    \end{bmatrix}^{-1} =
-    \begin{bmatrix}
-      A^{-1}  & 0 \\
+      \left[(1 + \Delta t \theta \sigma)M\right]^{-1}  & 0 \\
       0 & S^{-1}
     \end{bmatrix}
     \begin{bmatrix}
-      I & 0 \\
-      -C A^{-1}  & I
+      I & 0\\
+      (\epsilon^2 K + M_E)\left[(1 + \Delta t \theta
+        \sigma)M\right]^{-1} & I\\
+    \end{bmatrix}
+    \begin{bmatrix}
+      (1 + \Delta t \theta \sigma)M  & \Delta t\theta K \\
+      -\epsilon^2 K - M_E & M
     \end{bmatrix}.
   \end{equation*}
-  Use
+  Where
   \begin{equation*}
-    S^{-1} \approx \hat{S}^{-1}M\hat{S}^{-1}
+    S = M + (\epsilon^2 K + M_E) \left[(1 + \Delta t\theta\sigma)M\right]^{-1} \Delta t \theta K
   \end{equation*}
-  where
+  is inverted iteratively, preconditioned by
+  \begin{equation*}
+    S^{-1} \approx S_p^{-1} = \hat{S}^{-1}M\hat{S}^{-1}
+  \end{equation*}
+  with
   \begin{equation*}
     \hat{S} = M + \epsilon\sqrt{(\Delta t \theta)/(1+\Delta t \theta\sigma)} K.
   \end{equation*}
 \end{frame}
 
-\begin{frame}
-  \frametitle{A tree of solvers}
-  \footnotesize
-  \begin{equation*}
-    J \triangleq \begin{bmatrix}
-      (1 + \Delta t \theta \sigma)M  & \Delta t\theta K \\
-      -\epsilon^2 K - M_E & M
-    \end{bmatrix} \triangleq
-    \begin{bmatrix}
-      A & B \\
-      C & M
-    \end{bmatrix}
-  \end{equation*}
-  \begin{equation*}
-    J^{-1} \approx \mathcal{K}\left(\begin{bmatrix}
-        A  & B \\
-        C & M
-      \end{bmatrix},
-      \begin{bmatrix}
-        \mathcal{K}(A, A_p) & 0\\
-        0 & \mathcal{K}(S, S_p)
-      \end{bmatrix}
-      \begin{bmatrix}
-        I & 0\\
-        -C\mathcal{K}(A, A_p) & I
-      \end{bmatrix}\right)
-  \end{equation*}
-  \begin{align*}
-    S &\triangleq M - C\mathcal{K}(A, A_p)B\\
-    S_p &\triangleq \mathcal{K}(\hat{S}, \hat{S}_p)M\mathcal{K}(\hat{S}, \hat{S}_p)\\
-    \hat{S} &\triangleq M + \epsilon\sqrt{(\Delta t \theta)/(1+\Delta t \theta\sigma)} K.
-  \end{align*}
-\end{frame}
 \begin{frame}[fragile]
   \frametitle{Implementation}
 \begin{minted}[fontsize=\tiny,mathescape,escapeinside=||]{python}
 class OKPC(PCBase):
 
     def initialize(self, pc):
-        # Approximate $S^{-1} \sim \hat{S}^{-1} M \hat{S}^{-1}$ where $\hat{S} = \inner{q, w} + \epsilon\sqrt{c}\inner{\nabla q, \nabla w}$
+        # Approximate $S^{-1} \sim \hat{S}^{-1} M \hat{S}^{-1}$ where $\hat{S} = \inner{q, w} + \epsilon\sqrt{c}\inner{\nabla q, \nabla w}$, $c = \frac{\Delta t \theta}{1 + \Delta t \theta \sigma}$
         _, P = pc.getOperators()
         ctx = P.getPythonContext()
         # User information about $\Delta t$, $\theta$, etc...
         dt, |$\theta$|, |$\epsilon$|, |$\sigma$| = ctx.appctx["parameters"]
         V = ctx.a.arguments()[0].function_space()
-        c = (dt * |$\theta$| * |$\epsilon$|**2)/(1 + dt * |$\theta$| * |$\sigma$|)
+        c = (dt * |$\theta$|)/(1 + dt * |$\theta$| * |$\sigma$|)
         w = TrialFunction(V)
         q = TestFunction(V)
-        op = assemble(inner(w, q)*dx + |$\epsilon$|*sqrt(c) * inner(grad(w), grad(q))*dx)
+        op = assemble(inner(w, q)*dx + |$\epsilon$|*sqrt(c)*inner(grad(w), grad(q))*dx)
         self.ksp = KSP().create(comm=pc.comm)
         self.ksp.setOptionsPrefix(pc.getOptionsPrefix + "shat_")
         self.ksp.setOperators(op.petscmat, op.petscmat)
-        [...] # boilerplate elided
+        self.ksp.setFromOptions()
         mass = assemble(w*q*dx)
         self.mass = mass.petscmat
         work = self.mass.createVecLeft()
@@ -460,7 +479,6 @@ opts = {"snes_lag_preconditioner": -1,
         "pc_type": "fieldsplit",
         "pc_fieldsplit_type": "schur",
         "pc_fieldsplit_schur_factorization_type": "lower",
-
         "fieldsplit_0": {"ksp_type": "chebyshev",
                          "ksp_max_it": 10,
                          "pc_type": "python",
@@ -481,25 +499,34 @@ solve(L == 0, z, solver_parameters=opts, appctx=appctx)
 \end{minted}
 \end{frame}
 
+\setbeamertemplate{background}{}
 \begin{frame}
-  \frametitle{Runtime composability}
+  \frametitle{Conclusions}
 
   \begin{itemize}
-  \item Can write complex preconditioners for each diagonal block then
-    glue them together as necessary.
+  \item Composable, extensible method using UFL to build block
+    preconditioners.
 
-  \item The model formulation doesn't need to know about the solver
+  \item Model formulation doesn't need to know about the solver
     configuration.
 
-  \item Composes with nonlinear solvers that need linearisations.
+  \item Composes with nonlinear solvers that need linearisations: no
+    need to write your own special Newton iteration to get data in.
 
   \item Automatically takes advantage of any improvements in Firedrake
     (fast matrix actions, etc...)
 
-  \item No need to worry about parallel!
   \end{itemize}
 
-  \textcite{Kirby:2017} \arxivlink{1706.01346}{cs.MS}.
+  \begin{center}
+    \textcite{Kirby:2017} \arxivlink{1706.01346}{cs.MS}
+
+    \url{www.firedrakeproject.org}
+  \end{center}
+  \begin{tikzpicture}[remember picture,overlay]
+    \node[at=(current page.south east), anchor=south east] {\includegraphics[width=2.5cm]{epsrc-logo}};
+  \end{tikzpicture}
+
 \end{frame}
 
 
