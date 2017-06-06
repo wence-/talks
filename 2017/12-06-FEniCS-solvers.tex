@@ -49,6 +49,10 @@ London
 \setbeamertemplate{bibliography item}{}
 \renewcommand{\bibfont}{\fontsize{7}{7}\selectfont}
 \addbibresource{references.bib}
+\newcommand{\arxivlink}[2]{%
+  \href{http://www.arxiv.org/abs/#1}%
+  {{\small\texttt{arXiv:\,#1\,[#2]}}}%
+}
 
 \setlength{\bibitemsep}{1ex}
 \setlength{\fboxsep}{1pt}
@@ -92,6 +96,7 @@ London
     \end{column}
     \begin{column}{0.52\framewidth}
 \begin{minted}[fontsize=\tiny]{python}
+from firedrake import *
 mesh = Mesh(...)
 V = VectorFunctionSpace(mesh, "CG", 2)
 W = FunctionSpace(mesh, "CG", 1)
@@ -147,6 +152,7 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
     \end{column}
     \begin{column}{0.5\textwidth}
 \begin{minted}[fontsize=\tiny,escapeinside=||]{python}
+from firedrake import *
 |$\epsilon$| = Constant(0.02)
 |$\sigma$| = Constant(100)
 dt = Constant(eps**2)
@@ -196,6 +202,7 @@ while t < Tend:
     \end{column}
     \begin{column}{0.5\textwidth}
 \begin{minted}[fontsize=\tiny,escapeinside=||]{python}
+from firedrake import *
 mesh = Mesh(...)
 V = FunctionSpace(mesh, "CG", 1)
 Z = V*V
@@ -375,6 +382,26 @@ while t < tEnd:
   \end{equation*}
 \end{frame}
 
+\begin{frame}
+  \frametitle{A tree of solvers}
+  \begin{tikzpicture}[
+    ksp/.style={
+      rectangle,
+      minimum size=6mm,
+      draw=black!50,
+      font=\ttfamily},
+    pc/.style={rounded rectangle,
+      minimum size=6mm,
+      draw=black!50,
+      font=\ttfamily}]
+    \node (outer) [ksp] {$P^{-1}$};
+    \node (ainv.pc) [ksp, below left of=outer] {$A^{-1}$};
+    \node (sinv.pc) [ksp, below right of=outer] {$S^{-1}$};
+    \node (sainv.pc) [pc, below right of=sinv.pc]
+    {$\hat{S}^{-1}M\hat{S}^{-1}$};
+    \node (sainv.ksp) [ksp, below left of=sinv.pc] {$C A^{-1}B$};
+  \end{tikzpicture}
+\end{frame}
 \begin{frame}[fragile]
   \frametitle{Implementation}
 \begin{minted}[fontsize=\tiny,mathescape,escapeinside=||]{python}
@@ -410,7 +437,7 @@ class OKPC(PCBase):
 
 \begin{frame}[fragile]
   \frametitle{Usage}
-\begin{minted}[fontsize=\tiny,highlightlines={3,12-13,17-18}]{py}
+\begin{minted}[fontsize=\tiny]{py}
 ...
 opts = {"snes_lag_preconditioner": -1,
         "mat_type": "matfree",
@@ -457,6 +484,8 @@ solve(L == 0, z, solver_parameters=opts, appctx=appctx)
 
   \item No need to worry about parallel!
   \end{itemize}
+
+  \textcite{Kirby:2017} \arxivlink{1706.01346}{cs.MS}.
 \end{frame}
 
 
