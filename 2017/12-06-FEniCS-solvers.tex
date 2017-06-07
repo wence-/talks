@@ -1,17 +1,19 @@
-\documentclass[presentation]{beamer}
+\documentclass[presentation,aspectratio=43]{beamer}
 
 \usepackage{tikz}
 \usetikzlibrary{positioning,calc}
 \usetikzlibrary{shapes.geometric}
 \usetikzlibrary{backgrounds}% only to show the bounding box
 \usetikzlibrary{shapes,arrows}
-\usepackage{pgfplots}
-\usepackage{pgfplotstable}
-\usetikzlibrary{pgfplots.groupplots}
-\pgfplotsset{compat=1.12}
 \usepackage{appendixnumberbeamer}
 \usepackage{amsmath}
+\usepackage{ifxetex}
+\ifxetex
+\else
 \usepackage[utf8]{inputenc}
+\fi
+\newif\ifwidescreen
+\widescreenfalse
 \date{12th June 2017}
 \usetheme{firedrake}
 
@@ -120,7 +122,7 @@ u, p, T = split(upT)
 v, q, S = TestFunctions(Z)
 bcs = [...] # no-flow + temp gradient
 nullspace = MixedVectorSpaceBasis(
-   Z, [Z.sub(0), VectorSpaceBasis(constant=True), 
+   Z, [Z.sub(0), VectorSpaceBasis(constant=True),
        Z.sub(2)])
 F = (inner(grad(u), grad(v))
      + inner(dot(grad(u), u), v)
@@ -175,8 +177,8 @@ f = 10*(|$\phi_{n+1}$|**2 - 1)**2
 dfdphi = diff(f, |$\phi_{n+1}$|)
 |$\mu_{n+\theta}$| = (1-|$\theta$|)*|$\mu_n$| + |$\theta$|*|$\mu_{n+1}$|
 dt = 5e-6
-F = ((|$\phi_{n+1}$| - |$\phi_n$|)*q 
-     + dt*M*dot(grad(|$\mu_{n+\theta}$|), grad(q)) 
+F = ((|$\phi_{n+1}$| - |$\phi_n$|)*q
+     + dt*M*dot(grad(|$\mu_{n+\theta}$|), grad(q))
      + (|$\mu_{n+1}$| - dfdphi)*v
      -|$\lambda$|*dot(grad(|$\phi_{n+1}$|), grad(v)))*dx
 while t < ...:
@@ -278,7 +280,6 @@ while t < ...:
         \nocite{Murphy:2000,Ipsen:2001,Benzi:2005}
       \end{block}
     \end{column}
-    \hspace{1em}
     \begin{column}{0.5\textwidth}
       \begin{block}{Function space}
         If $\mathcal{A} : W \rightarrow W^*$, then
@@ -324,7 +325,8 @@ while t < ...:
         y \leftarrow A x
       \end{equation*}
     \end{column}
-    \begin{column}{0.5\textwidth}
+    \hspace{-0.1\textwidth}
+    \begin{column}{0.7\textwidth}
 \begin{minted}[fontsize=\scriptsize]{python}
 A = assemble(a, mat_type="matfree")
 \end{minted}
@@ -333,17 +335,18 @@ A = assemble(a, mat_type="matfree")
   \end{block}
   \vspace{1.5\baselineskip}
   \begin{block}{Custom preconditioners}
-    These matrices do not have entries, so we create preconditioners
-    that can inspect the UFL and do the appropriate thing.
+    Such matrices do not have entries, we create preconditioners
+    that inspect the UFL and do the appropriate thing.
     \begin{columns}
       \begin{column}{0.5\textwidth}
     \begin{equation*}
       y \leftarrow \tilde{A}^{-1} x
     \end{equation*}
   \end{column}
-  \begin{column}{0.5\textwidth}
+  \hspace{-0.1\textwidth}
+  \begin{column}{0.7\textwidth}
 \begin{minted}[fontsize=\scriptsize]{python}
-solve(a == L, x, 
+solve(a == L, x,
       {"pc_type": "python",
        "pc_python_type": "AssembledPC"})
 \end{minted}
@@ -351,13 +354,13 @@ solve(a == L, x,
   \end{columns}
   \end{block}
 \end{frame}
-\begin{frame}[fragile]
+\begin{frame}[fragile,t]
   \frametitle{A simple example}
+  Matrix-free actions with AMG on the assembled operator.
+  \vspace{2\baselineskip}
   \begin{columns}
-    \hspace{-1cm}
-    \begin{column}{0.5\textwidth}
+    \begin{column}[b]{0.5\textwidth}
 \begin{minted}[fontsize=\tiny,escapeinside=||]{python}
-...
 a = u*v*dx + dot(grad(u), grad(v)*dx)
 opts = {|\colourpetsc{”ksp\_type”: ”cg”}|,
         |\colourfiredrake{”mat\_type”: ”matfree”}|,
@@ -367,8 +370,12 @@ opts = {|\colourpetsc{”ksp\_type”: ”cg”}|,
 solve(a == L, x, solver_parameters=opts)
 \end{minted}
     \end{column}
-    \hspace{-2cm}
+    \ifwidescreen
     \begin{column}{0.5\textwidth}
+    \else
+    \hspace{-0.1\textwidth}
+    \begin{column}{0.6\textwidth}
+    \fi
       \begin{tikzpicture}[scale=0.7, every node/.style={transform shape},
         firedrake/.style={rounded rectangle,draw,black, fill=red!20, minimum size=6mm, inner sep=2pt},
         petsc/.style={rectangle,draw,black, minimum size=6mm,
@@ -404,56 +411,49 @@ solve(a == L, x, solver_parameters=opts)
 
 \begin{frame}[allowframebreaks]
   \frametitle{Something more complicated}
-  \begin{columns}
-    \hspace{-1cm}
-    \begin{column}{\textwidth}
-      A preconditioner for the Ohta--Kawasaki equation
-      \parencite{Farrell:2016}
-      \begin{equation*}
-        \begin{split}
-          u_t - \Delta w + \sigma(u - m) &= 0\\
-          w + \epsilon^2 \Delta u - u(u^2 - 1) &= 0
-        \end{split}
-      \end{equation*}
-      Newton iteration at each timestep solves
-      \begin{equation*}
-        \begin{bmatrix}
-          (1 + \Delta t \theta \sigma)M  & \Delta t\theta K \\
-          -\epsilon^2 K - M_E & M
-        \end{bmatrix}
-        \begin{bmatrix}
-          \delta u \\
-          \delta w
-        \end{bmatrix} =
-        \begin{bmatrix}
-          f_1 \\
-          f_2
-        \end{bmatrix}
-      \end{equation*}
-    \end{column}
-  \end{columns}
-  \pagebreak
-  
-  \begin{columns}
-    \hspace{-1cm}
-    \begin{column}{\textwidth}
-  Preconditioning strategy:
+  A preconditioner for the Ohta--Kawasaki equation
+  \parencite{Farrell:2016}
   \begin{equation*}
-    \scriptsize
-    \begin{bmatrix}
-      \left[(1 + \Delta t \theta \sigma)M\right]^{-1}  & 0 \\
-      0 & S^{-1}
-    \end{bmatrix}
-    \begin{bmatrix}
-      I & 0\\
-      (\epsilon^2 K + M_E)\left[(1 + \Delta t \theta
-        \sigma)M\right]^{-1} & I\\
-    \end{bmatrix}
+    \begin{split}
+      u_t - \Delta w + \sigma(u - m) &= 0\\
+      w + \epsilon^2 \Delta u - u(u^2 - 1) &= 0
+    \end{split}
+  \end{equation*}
+  Newton iteration at each timestep solves
+  \begin{equation*}
     \begin{bmatrix}
       (1 + \Delta t \theta \sigma)M  & \Delta t\theta K \\
       -\epsilon^2 K - M_E & M
-    \end{bmatrix}.
+    \end{bmatrix}
+    \begin{bmatrix}
+      \delta u \\
+      \delta w
+    \end{bmatrix} =
+    \begin{bmatrix}
+      f_1 \\
+      f_2
+    \end{bmatrix}
   \end{equation*}
+  \pagebreak
+
+  Preconditioning strategy:
+  {\scriptsize
+    \begin{equation*}
+      \begin{bmatrix}
+        \left[(1 + \Delta t \theta \sigma)M\right]^{-1}  & 0 \\
+        0 & S^{-1}
+      \end{bmatrix}
+      \begin{bmatrix}
+        I & 0\\
+        (\epsilon^2 K + M_E)\left[(1 + \Delta t \theta
+          \sigma)M\right]^{-1} & I\\
+      \end{bmatrix}
+      \begin{bmatrix}
+        (1 + \Delta t \theta \sigma)M  & \Delta t\theta K \\
+        -\epsilon^2 K - M_E & M
+      \end{bmatrix}.
+    \end{equation*}
+  }
   Where
   \begin{equation*}
     S = M + (\epsilon^2 K + M_E) \left[(1 + \Delta t\theta\sigma)M\right]^{-1} \Delta t \theta K
@@ -466,8 +466,6 @@ solve(a == L, x, solver_parameters=opts)
   \begin{equation*}
     \hat{S} = M + \epsilon\sqrt{(\Delta t \theta)/(1+\Delta t \theta\sigma)} K.
   \end{equation*}
-\end{column}
-\end{columns}
 \end{frame}
 
 \begin{frame}[fragile]
@@ -513,10 +511,13 @@ class OKPC(PCBase):
 \begin{frame}[fragile]
   \frametitle{Usage}
   \begin{columns}
+    \ifwidescreen
+    \begin{column}{0.5\textwidth}
+    \else
     \hspace{-0.8cm}
     \begin{column}{0.35\textwidth}
+    \fi
 \begin{minted}[fontsize=\tiny,escapeinside=||]{py}
-...
 opts = {
   "snes_lag_preconditioner": -1,
   |\colourfiredrake{”mat\_type”: ”matfree”}|,
@@ -539,20 +540,26 @@ opts = {
      "shat_ksp_max_it": 5,
      |\colourpetsc{”shat\_pc\_type”: ”hypre”}|
  }
+
 appctx = {"parameters": (dt, theta, eps, sigma)}
 solve(L == 0, z, solver_parameters=opts, appctx=appctx)
 \end{minted}
-    \end{column}
-    \begin{column}{0.65\textwidth}
+  \end{column}
+  \ifwidescreen
+  \hspace{-0.05\textwidth}
+  \begin{column}{0.55\textwidth}
+  \else
+  \begin{column}{0.65\textwidth}
+  \fi
   \begin{tikzpicture}[scale=0.55, every node/.style={transform shape},
     firedrake/.style={rounded rectangle,draw,black, fill=red!20, minimum size=6mm, inner sep=2pt},
     petsc/.style={rectangle,draw,black, fill=blue!20, minimum size=6mm, inner sep=2pt},
     arrow/.style={-stealth,line width=0.8}]
     \node[petsc] (Jinv) {$J^{-1} \approx \mathcal{K}(J,
       J_p^{-1})$};
-    \node[firedrake, below left=0.2mm of ainv.south west] (Jx) {$Jx$};
+    \node[firedrake, below left=0.1cm and 0.3cm of ainv.south west] (Jx) {$Jx$};
     \node[firedrake,below=0.5cm of Jx.south] (jx) {\texttt{assemble(action(J, x))}};
-    \node[petsc,below right=0.5cm and -0.3cm of Jinv] (Jpinv) {$J_p^{-1} =%
+    \node[petsc,below right=0.5cm and -0.1cm of Jinv] (Jpinv) {$J_p^{-1} =%
       \left[%
         \begin{smallmatrix}
           A^{-1} & 0\\
@@ -569,13 +576,13 @@ solve(L == 0, z, solver_parameters=opts, appctx=appctx)
     \node[petsc, below left=0.8cm and -1cm of Jpinv] (Ainv)  {$A^{-1}\approx \mathcal{K}(A,A_p^{-1})$};
     \node[firedrake, below left=1cm and 1.5cm of Ainv] (Ax) {$Ax$};
     \node[firedrake, below=3cm of Ax] (ax) {\texttt{assemble(action(A, x))}};
-    \node[firedrake, below=of Ainv] (Ap)
+    \node[firedrake, below=1.5cm of Ainv] (Ap)
     {$A_p \leftarrow \text{\raisebox{0.5pt}{\texttt{assemble(A\_p)}}}$};
     \node[petsc, below=of Ap] (Apinv) {\texttt{SOR($A_p$)}};
 
     \node[petsc, below=1.3cm of Jpinv.south east, anchor=north] (Sinv) {$S^{-1} \approx \mathcal{K}(S,
       S_p^{-1})$};
-    \node[petsc, below left=2cm and 0.6cm of Sinv, anchor=north] (S) {$Sx = (M - C A^{-1} B)x$};
+    \node[petsc, below left=2cm and 0.3cm of Sinv, anchor=north] (S) {$Sx = (M - C A^{-1} B)x$};
     \node[firedrake, below=of S] (Cx) {$Cx$};
     \node[firedrake, right=of Cx] (Mx) {$Mx$};
     \node[firedrake, left=of Cx] (Bx) {$Bx$};
