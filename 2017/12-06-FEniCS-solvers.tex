@@ -12,7 +12,7 @@
 \usepackage{appendixnumberbeamer}
 \usepackage{amsmath}
 \usepackage[utf8]{inputenc}
-\date{28th March 2017}
+\date{12th June 2017}
 \usetheme{firedrake}
 
 \renewcommand{\vec}[1]{\ensuremath{\boldsymbol{#1}}}
@@ -25,7 +25,8 @@
 \newcommand{\KSP}[2]{\ensuremath{\mathcal{K}\left(#1, \mathbb{#2}\right)}}
 \newcommand{\ksp}[1]{\KSP{#1}{#1}}
 
-\newcommand{\highlight}[1]{\colorbox{red!20}{\color{black} #1}}
+\newcommand{\colourfiredrake}[1]{\colorbox{red!20}{#1}}
+\newcommand{\colourpetsc}[1]{\colorbox{blue!20}{#1}}
 
 \author{Lawrence Mitchell\inst{1,*} \and Rob Kirby\inst{2}}
 \institute{
@@ -38,6 +39,16 @@ London
 }
 
 \graphicspath{{./\jobname.figures/}}
+\newenvironment{changemargin}[2]{%
+  \begin{list}{}{%
+    \setlength{\topsep}{0pt}%
+    \setlength{\leftmargin}{#1}%
+    \setlength{\rightmargin}{#2}%
+    \setlength{\listparindent}{\parindent}%
+    \setlength{\itemindent}{\parindent}%
+    \setlength{\parsep}{\parskip}%
+  }%
+  \item[]}{\end{list}}
 
 \usepackage[url=false,
             doi=true,
@@ -342,30 +353,45 @@ solve(a == L, x,
 \end{frame}
 \begin{frame}[fragile]
   \frametitle{A simple example}
-\begin{minted}[fontsize=\scriptsize]{python}
-solve(a == L, x, solver_parameters={"mat_type": "matfree",
-                                    "pc_type": "python",
-                                    "pc_python_type": "firedrake.AssembledPC",
-                                    "assembled_pc_type": "hypre"})
+  \begin{columns}
+    \hspace{-1cm}
+    \begin{column}{0.5\textwidth}
+\begin{minted}[fontsize=\tiny,escapeinside=||]{python}
+...
+a = u*v*dx + dot(grad(u), grad(v)*dx)
+opts = {|\colourpetsc{”ksp\_type”: ”cg”}|,
+        |\colourfiredrake{”mat\_type”: ”matfree”}|,
+        |\colourfiredrake{”pc\_type”: ”python”}|,
+        |\colourfiredrake{”pc\_python\_type”: ”AssembledPC”}|,
+        |\colourpetsc{”assembled\_pc\_type”: ”hypre”}|}
+solve(a == L, x, solver_parameters=opts)
 \end{minted}
-  \begin{tikzpicture}[ufl/.style={circle,draw,black, minimum size=6mm, inner sep=2pt},
-    assemble/.style={diamond,draw,black, minimum size=6mm, inner sep=0pt},
-    petsc/.style={rectangle,draw,black, minimum size=6mm, inner sep=2pt},
-    firedrake/.style={rounded rectangle,draw,black, minimum size=6mm, inner sep=2pt},
-    arrow/.style={-stealth,line width=1}]
-    \node[petsc] (ainv) {\small$A^{-1} \approx \mathcal{K}(A, A_p^{-1})$};
-    \node[ufl, below left=of ainv] (Ax) {\small$Ax$};
-    \node[firedrake,below=of Ax] (ax) {\scriptsize\texttt{assemble(action(a, x))}};
-    \node[assemble,below right=of ainv] (ap) {\small$A_p^{-1}$};
-    \node[firedrake,below=of ap] (Ap) {\small$A_p \leftarrow$\raisebox{1pt}{\scriptsize\texttt{assemble(a)}}};
-    \node[petsc,below=of Ap] (Apinv) {\scriptsize\texttt{hypre($A_p$)}};
+    \end{column}
+    \hspace{-2cm}
+    \begin{column}{0.5\textwidth}
+      \begin{tikzpicture}[scale=0.7, every node/.style={transform shape},
+        firedrake/.style={rounded rectangle,draw,black, fill=red!20, minimum size=6mm, inner sep=2pt},
+        petsc/.style={rectangle,draw,black, minimum size=6mm,
+          fill=blue!20, inner sep=2pt},
+        arrow/.style={-stealth,line width=1}]
+        \node[petsc] (ainv)
+        {$A^{-1} \approx \mathcal{K}(A, A_p^{-1})$};
+        \node[firedrake, below left=of ainv] (Ax) {$Ax$};
+        \node[firedrake,below=of Ax] (ax)
+        {\texttt{assemble(action(a, x))}};
+        \node[petsc,below right=of ainv] (ap) {$A_p^{-1}$};
+        \node[firedrake,below=of ap] (Ap)
+        {$A_p
+          \leftarrow$\raisebox{0.75pt}{\texttt{assemble(a)}}};
+        \node[petsc,below=of Ap] (Apinv)
+        {\texttt{hypre($A_p$)}};
 
-    \draw[arrow] (ainv) -- (Ax);
-    \draw[arrow] (Ax) -- (ax);
-    \draw[arrow] (ainv) -- (ap);
-    \draw[arrow] (ap) -- (Ap);
-    \draw[arrow] (Ap) -- (Apinv);
-  \end{tikzpicture}
+        \draw[arrow] (ainv) -- (Ax); \draw[arrow] (Ax) -- (ax);
+        \draw[arrow] (ainv) -- (ap); \draw[arrow] (ap) -- (Ap);
+        \draw[arrow] (Ap) -- (Apinv);
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
 \end{frame}
 \bgroup
 \setbeamertemplate{background}{}
@@ -378,32 +404,39 @@ solve(a == L, x, solver_parameters={"mat_type": "matfree",
 
 \begin{frame}[allowframebreaks]
   \frametitle{Something more complicated}
-  A preconditioner for the Ohta--Kawasaki
-  equation \parencite{Farrell:2016}
-  \begin{equation*}
-    \begin{split}
-      u_t - \Delta w + \sigma(u - m) &= 0\\
-      w + \epsilon^2 \Delta u - u(u^2 - 1) &= 0
-    \end{split}
-  \end{equation*}
-  Newton iteration at each timestep solves
-  \begin{equation*}
-    \begin{bmatrix}
-      (1 + \Delta t \theta \sigma)M  & \Delta t\theta K \\
-      -\epsilon^2 K - M_E & M
-    \end{bmatrix}
-    \begin{bmatrix}
-      \delta u \\
-      \delta w
-    \end{bmatrix} =
-    \begin{bmatrix}
-      f_1 \\
-      f_2
-    \end{bmatrix}
-  \end{equation*}
-
+  \begin{columns}
+    \hspace{-1cm}
+    \begin{column}{\textwidth}
+      A preconditioner for the Ohta--Kawasaki equation
+      \parencite{Farrell:2016}
+      \begin{equation*}
+        \begin{split}
+          u_t - \Delta w + \sigma(u - m) &= 0\\
+          w + \epsilon^2 \Delta u - u(u^2 - 1) &= 0
+        \end{split}
+      \end{equation*}
+      Newton iteration at each timestep solves
+      \begin{equation*}
+        \begin{bmatrix}
+          (1 + \Delta t \theta \sigma)M  & \Delta t\theta K \\
+          -\epsilon^2 K - M_E & M
+        \end{bmatrix}
+        \begin{bmatrix}
+          \delta u \\
+          \delta w
+        \end{bmatrix} =
+        \begin{bmatrix}
+          f_1 \\
+          f_2
+        \end{bmatrix}
+      \end{equation*}
+    \end{column}
+  \end{columns}
   \pagebreak
   
+  \begin{columns}
+    \hspace{-1cm}
+    \begin{column}{\textwidth}
   Preconditioning strategy:
   \begin{equation*}
     \scriptsize
@@ -433,6 +466,8 @@ solve(a == L, x, solver_parameters={"mat_type": "matfree",
   \begin{equation*}
     \hat{S} = M + \epsilon\sqrt{(\Delta t \theta)/(1+\Delta t \theta\sigma)} K.
   \end{equation*}
+\end{column}
+\end{columns}
 \end{frame}
 
 \begin{frame}[fragile]
@@ -468,38 +503,123 @@ class OKPC(PCBase):
 \end{minted}
 \end{frame}
 
+\bgroup
+\setbeamertemplate{background}{}
+\setbeamercolor{footline}{
+  use=normal text,
+  fg=normal text.fg
+}
+
 \begin{frame}[fragile]
   \frametitle{Usage}
-\begin{minted}[fontsize=\tiny]{py}
+  \begin{columns}
+    \hspace{-0.8cm}
+    \begin{column}{0.35\textwidth}
+\begin{minted}[fontsize=\tiny,escapeinside=||]{py}
 ...
-opts = {"snes_lag_preconditioner": -1,
-        "mat_type": "matfree",
-        "ksp_type": "gmres",
-        "ksp_rtol": 1.0e-8,
-        "pc_type": "fieldsplit",
-        "pc_fieldsplit_type": "schur",
-        "pc_fieldsplit_schur_factorization_type": "lower",
-        "fieldsplit_0": {"ksp_type": "chebyshev",
-                         "ksp_max_it": 10,
-                         "pc_type": "python",
-                         "pc_python_type": "firedrake.AssembledPC",
-                         "assembled_pc_type": "sor"},
-        "fieldsplit_1": {"ksp_type": "richardson",
-                         "ksp_max_it": 2,
-                         "pc_type": "python",
-                         "pc_python_type": "OKPC",
-                         "shat_ksp_type": "richardson",
-                         "shat_ksp_max_it": 5,
-                         "shat_pc_type": "hypre"}
-       }
-
+opts = {
+  "snes_lag_preconditioner": -1,
+  |\colourfiredrake{”mat\_type”: ”matfree”}|,
+  |\colourpetsc{”ksp\_type”: ”gmres”}|,
+  |\colourpetsc{”pc\_type”: ”fieldsplit”}|,
+  |\colourpetsc{”pc\_fieldsplit\_type”: ”schur”}|,
+  |\colourpetsc{”pc\_fieldsplit\_schur\_factorization\_type”: ”lower”}|,
+  |\colourpetsc{”fieldsplit\_0”}|: {
+     |\colourpetsc{”ksp\_type”: ”chebyshev”}|,
+     "ksp_max_it": 10,
+     |\colourfiredrake{”pc\_type”: ”python”}|,
+     |\colourfiredrake{”pc\_python\_type”: ”firedrake.AssembledPC”}|,
+     |\colourpetsc{”assembled\_pc\_type”: ”sor”}|},
+  |\colourpetsc{”fieldsplit\_1”}|: {
+     |\colourpetsc{”ksp\_type”: ”richardson”}|,
+     "ksp_max_it": 2,
+     |\colourfiredrake{”pc\_type”: ”python”}|,
+     |\colourfiredrake{”pc\_python\_type”: ”OKPC”}|,
+     |\colourpetsc{”shat\_ksp\_type”: ”richardson”}|,
+     "shat_ksp_max_it": 5,
+     |\colourpetsc{”shat\_pc\_type”: ”hypre”}|
+ }
 appctx = {"parameters": (dt, theta, eps, sigma)}
-
 solve(L == 0, z, solver_parameters=opts, appctx=appctx)
 \end{minted}
-\end{frame}
+    \end{column}
+    \begin{column}{0.65\textwidth}
+  \begin{tikzpicture}[scale=0.55, every node/.style={transform shape},
+    firedrake/.style={rounded rectangle,draw,black, fill=red!20, minimum size=6mm, inner sep=2pt},
+    petsc/.style={rectangle,draw,black, fill=blue!20, minimum size=6mm, inner sep=2pt},
+    arrow/.style={-stealth,line width=0.8}]
+    \node[petsc] (Jinv) {$J^{-1} \approx \mathcal{K}(J,
+      J_p^{-1})$};
+    \node[firedrake, below left=0.2mm of ainv.south west] (Jx) {$Jx$};
+    \node[firedrake,below=0.5cm of Jx.south] (jx) {\texttt{assemble(action(J, x))}};
+    \node[petsc,below right=0.5cm and -0.3cm of Jinv] (Jpinv) {$J_p^{-1} =%
+      \left[%
+        \begin{smallmatrix}
+          A^{-1} & 0\\
+          0 & S^{-1}
+        \end{smallmatrix}%
+      \right]
+      \left[%
+      \begin{smallmatrix}
+        I & 0 \\
+        -CA^{-1} & 0 \\
+      \end{smallmatrix}%
+      \right]
+      $};
+    \node[petsc, below left=0.8cm and -1cm of Jpinv] (Ainv)  {$A^{-1}\approx \mathcal{K}(A,A_p^{-1})$};
+    \node[firedrake, below left=1cm and 1.5cm of Ainv] (Ax) {$Ax$};
+    \node[firedrake, below=3cm of Ax] (ax) {\texttt{assemble(action(A, x))}};
+    \node[firedrake, below=of Ainv] (Ap)
+    {$A_p \leftarrow \text{\raisebox{0.5pt}{\texttt{assemble(A\_p)}}}$};
+    \node[petsc, below=of Ap] (Apinv) {\texttt{SOR($A_p$)}};
 
-\setbeamertemplate{background}{}
+    \node[petsc, below=1.3cm of Jpinv.south east, anchor=north] (Sinv) {$S^{-1} \approx \mathcal{K}(S,
+      S_p^{-1})$};
+    \node[petsc, below left=2cm and 0.6cm of Sinv, anchor=north] (S) {$Sx = (M - C A^{-1} B)x$};
+    \node[firedrake, below=of S] (Cx) {$Cx$};
+    \node[firedrake, right=of Cx] (Mx) {$Mx$};
+    \node[firedrake, left=of Cx] (Bx) {$Bx$};
+
+    \node[firedrake, below=1.5cm of Cx] (actionx) {\texttt{assemble(action($\cdot$, x))}};
+
+    \node[firedrake, below right=0.8cm and -0.2cm of Sinv, anchor=north] (Spinv) {$S_p^{-1} = \hat{S}^{-1} M
+      \hat{S}^{-1}$};
+    \node[petsc, below=3.25cm of Spinv] (Shatinv) {$\hat{S}^{-1}
+      \approx \mathcal{K}(\hat{S}, \hat{S}_p^{-1})$};
+    \node[firedrake, below=1.5cm of Shatinv] (Shat)
+    {$\hat{S}\text{\raisebox{0.5pt}{ $\leftarrow$ \texttt{assemble(s\_hat)}}}$};
+    \node[petsc, below=1cm of Shat] (Shathypre) {\texttt{hypre($\hat{S}$)}};
+
+    \draw[arrow] (Jinv.south west) -- (Jx);
+    \draw[arrow] (Jx) -- (jx);
+    \draw[arrow] (Jinv.south east) -- (Jpinv);
+
+    \draw[arrow] (Jpinv.south west) -- (Ainv.north);
+    \draw[arrow] (Ainv.south west) -- (Ax);
+    \draw[arrow] (Ax) -- (ax);
+    \draw[arrow] (Ainv) -- (Ap);
+    \draw[arrow] (Ap) -- (Apinv);
+    \draw[arrow] (Jpinv) -- (Sinv);
+    \draw[arrow] (Sinv) -- (S);
+    \draw[arrow] (S) -- (Ainv.south east);
+
+    \draw[arrow] (S) -- (Bx);
+    \draw[arrow] (S) -- (Cx);
+    \draw[arrow] (S) -- (Mx);
+
+    \draw[arrow] (Bx) -- (actionx);
+    \draw[arrow] (Cx) -- (actionx);
+    \draw[arrow] (Mx) -- (actionx);
+
+    \draw[arrow] (Sinv) -- (Spinv);
+    \draw[arrow] (Spinv) -- (Mx);
+    \draw[arrow] (Spinv) -- (Shatinv);
+    \draw[arrow] (Shatinv) -- (Shat);
+    \draw[arrow] (Shat) -- (Shathypre);
+  \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
 \begin{frame}
   \frametitle{Conclusions}
 
@@ -535,4 +655,6 @@ solve(L == 0, z, solver_parameters=opts, appctx=appctx)
   \frametitle{References}
   \printbibliography[heading=none]
 \end{frame}
+\egroup
+
 \end{document}
