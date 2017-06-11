@@ -105,6 +105,24 @@ London
             - \frac{1}{\text{Pr}} \Delta T + u\cdot \nabla T &= 0
           \end{split}
         \end{equation*}
+        Newton
+        \begin{equation*}
+          \begin{bmatrix}
+            F   & B^T & M_1 \\
+            C   & 0   & 0   \\
+            M_2 & 0   & K
+          \end{bmatrix}
+          \begin{bmatrix}
+            \delta u \\
+            \delta p \\
+            \delta T
+          \end{bmatrix} =
+          \begin{bmatrix}
+            f_1 \\
+            f_2 \\
+            f_3
+          \end{bmatrix}
+        \end{equation*}
       \end{block}
     \end{column}
     \begin{column}{0.52\framewidth}
@@ -138,23 +156,29 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
   \end{columns}
 \end{frame}
 
-
 \begin{frame}[fragile]
   \begin{columns}
     \begin{column}{0.5\textwidth}
       \begin{block}{Cahn-Hilliard}
         \small
         \begin{align*}
-          \phi_t - \nabla \cdot M \nabla \mu &= 0\\
-          \mu - \frac{\text{d} f}{\text{d} \phi} + \lambda \Delta \phi &= 0\\
+          \phi_t - \nabla \cdot \rho \nabla \mu &= 0\\
+          \mu + \lambda \Delta \phi - \phi(\phi^2 - 1) &= 0\\
         \end{align*}
-        Implicit timestepping
+        Implicit timestepping + Newton
         \begin{equation*}
           \begin{bmatrix}
-            \frac{\phi_{n+1} - \phi_n}{\Delta t} - \nabla \cdot M \nabla \mu_{n+\theta}\\
-            \mu_{n+1} - \frac{\text{d} f_{n+1}}{\text{d} \phi_{n+1}} -
-            \lambda \nabla^2\phi_{n+1}
-          \end{bmatrix} = 0
+            M & \Delta t \theta \rho K \\
+            -\lambda K - M_\phi & M
+          \end{bmatrix}
+          \begin{bmatrix}
+            \delta\phi \\
+            \delta\mu
+          \end{bmatrix} =
+          \begin{bmatrix}
+            f_1 \\
+            f_2
+          \end{bmatrix}
         \end{equation*}
       \end{block}
     \end{column}
@@ -173,7 +197,7 @@ z0 = Function(Z)
 |$\phi_{n+1}$|, |$\mu_{n+1}$| = split(z)
 |$\phi_n$|, |$\mu_n$| = split(z0)
 |$\phi_{n+1}$| = variable(|$\phi_{n+1}$|)
-f = 10*(|$\phi_{n+1}$|**2 - 1)**2
+f = (1.0/4)*(|$\phi_{n+1}$|**2 - 1)**2
 dfdphi = diff(f, |$\phi_{n+1}$|)
 |$\mu_{n+\theta}$| = (1-|$\theta$|)*|$\mu_n$| + |$\theta$|*|$\mu_{n+1}$|
 dt = 5e-6
@@ -297,7 +321,7 @@ while t < ...:
   \frametitle{A problem}
   \begin{itemize}
   \item Such preconditioners often need auxiliary matrices not
-    appearing the original operator.
+    appearing in the original operator.
   \item How do we provide these to the solver library in a composable
     manner?
   \end{itemize}
@@ -472,9 +496,7 @@ solve(a == L, x, solver_parameters=opts)
   \frametitle{Implementation}
 \begin{minted}[fontsize=\tiny,mathescape,escapeinside=||]{python}
 class OKPC(PCBase):
-
     def initialize(self, pc):
-        # Approximate $S^{-1} \sim \hat{S}^{-1} M \hat{S}^{-1}$ where $\hat{S} = \inner{q, w} + \epsilon\sqrt{c}\inner{\nabla q, \nabla w}$, $c = \frac{\Delta t \theta}{1 + \Delta t \theta \sigma}$
         _, P = pc.getOperators()
         ctx = P.getPythonContext()
         # User information about $\Delta t$, $\theta$, etc...
@@ -483,6 +505,7 @@ class OKPC(PCBase):
         c = (dt * |$\theta$|)/(1 + dt * |$\theta$| * |$\sigma$|)
         w = TrialFunction(V)
         q = TestFunction(V)
+        # $\hat{S} = \inner{q, w} + \epsilon\sqrt{c}\inner{\nabla q, \nabla w}$, $c = \frac{\Delta t \theta}{1 + \Delta t \theta \sigma}$
         op = assemble(inner(w, q)*dx + |$\epsilon$|*sqrt(c)*inner(grad(w), grad(q))*dx)
         self.ksp = KSP().create(comm=pc.comm)
         self.ksp.setOptionsPrefix(pc.getOptionsPrefix + "shat_")
@@ -492,12 +515,14 @@ class OKPC(PCBase):
         self.mass = mass.petscmat
         work = self.mass.createVecLeft()
         self.work = (work, work.duplicate())
-
     def apply(self, pc, x, y):
-        tmp1, tmp2 = self.work
-        self.ksp.solve(x, tmp1)
-        self.mass.mult(tmp1, tmp2)
-        self.ksp.solve(tmp2, y)
+        t1, t2 = self.work
+        # $t_1 \leftarrow \hat{S}^{-1}x$
+        self.ksp.solve(x, t1)
+        # $t_2 \leftarrow M t_1$
+        self.mass.mult(t1, t2)
+        # $y \leftarrow \hat{S}^{-1}t_2 = \hat{S}^{-1} M \hat{S}^{-1} x$
+        self.ksp.solve(t2, y)
 \end{minted}
 \end{frame}
 
