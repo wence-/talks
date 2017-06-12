@@ -652,6 +652,36 @@ solve(L == 0, z, solver_parameters=opts, appctx=appctx)
     \end{column}
   \end{columns}
 \end{frame}
+
+\begin{frame}
+  \frametitle{Performance: Rayleigh-B\'enard}
+  Limited by performance of algebraic solvers on subblocks.
+  \begin{center}
+    \scriptsize
+  \begin{tabular}{c|c|c|c|c}
+DoFs ($\times 10^{6}$) & MPI processes & Newton its & Krylov its & Time (s)\\
+\hline
+0.7405 & 24 & 3 & 16 & 31.7\\
+2.973 & 96 & 3 & 17 & 43.9\\
+11.66 & 384 & 3 & 17 & 56\\
+45.54 & 1536 & 3 & 18 & 85.2\\
+185.6 & 6144 & 3 & 19 & 167\\
+  \end{tabular}
+
+  \begin{uncoverenv}<2>
+  \begin{tabular}{c|c|c|c|c}
+    DoFs ($\times 10^{6}$) & \multicolumn{2}{|c|}{Navier-Stokes iterations} & \multicolumn{2}{|c}{Temperature iterations}\\
+    & Total & per solve & Total & per solve\\
+\hline
+0.7405 & 329 & 20.6 & 107 & 6.7 \\
+2.973  & 365 & 21.5 & 132 & 7.8 \\
+11.66  & 373 & 21.9 & 137 & 8.1 \\
+45.54  & 403 & 22.4 & 151 & 8.4 \\
+185.6  & 463 & 24.4 & 174 & 9.2 \\
+  \end{tabular}
+\end{uncoverenv}
+  \end{center}
+\end{frame}
 \begin{frame}
   \frametitle{Conclusions}
 
