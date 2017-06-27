@@ -1,0 +1,318 @@
+\documentclass[presentation]{beamer}
+
+\usepackage{tikz}
+\usetikzlibrary{positioning,calc}
+\usetikzlibrary{shapes.geometric}
+\usetikzlibrary{backgrounds}% only to show the bounding box
+\usetikzlibrary{shapes,arrows}
+\usepackage{pgf}
+\usepackage{pgfplots}
+\usepackage{pgfplotstable}
+\usepackage{appendixnumberbeamer}
+\usepackage{amsmath}
+\DeclareMathOperator{\tr}{tr}
+\date{6th July 2017}
+\usetheme{metropolis}
+\metroset{progressbar=frametitle}
+
+\renewcommand{\vec}[1]{\ensuremath{\boldsymbol{#1}}}
+\newcommand{\ddt}[1]{\frac{\partial #1}{\partial t}}
+\newcommand{\zhat}{\hat{\vec{z}}}
+\newcommand{\W}{\ensuremath{\mathbb{W}}}
+
+\newcommand{\inner}[1]{\left\langle #1 \right \rangle}
+
+\newcommand{\KSP}[2]{\ensuremath{\mathcal{K}\left(#1, \mathbb{#2}\right)}}
+\newcommand{\ksp}[1]{\KSP{#1}{#1}}
+
+\newcommand{\highlight}[1]{\colorbox{red!20}{\color{black} #1}}
+\newcommand{\arxivlink}[2]{%
+  \href{http://www.arxiv.org/abs/#1}%
+  {{\small\texttt{arXiv:\,#1\,[#2]}}}%
+}
+\newcommand{\doilink}[1]{%
+  \href{http://dx.doi.org/#1}%
+  {{\small\texttt{doi:\,#1}{}}}%
+}
+
+\author{Lawrence Mitchell\inst{1,*}}
+\institute{
+\inst{1}Departments of Computing and Mathematics, Imperial College
+London
+
+\inst{*}\texttt{lawrence.mitchell@imperial.ac.uk}
+}
+
+\graphicspath{{./\jobname.figures/}}
+
+\usepackage[url=false,
+            doi=true,
+            isbn=false,
+            style=authoryear,
+            firstinits=true,
+            uniquename=init,
+            backend=biber]{biblatex}
+
+\setbeamertemplate{bibliography item}{}
+
+\renewcommand{\bibfont}{\footnotesize}
+\addbibresource{references.bib}
+
+\setlength{\bibitemsep}{1ex}
+\setlength{\fboxsep}{1pt}
+
+\renewbibmacro{in:}{}
+\DeclareFieldFormat[article]{volume}{\textbf{#1}}
+\DeclareFieldFormat{doi}{%
+  doi\addcolon%
+  {\scriptsize\ifhyperref{\href{http://dx.doi.org/#1}{\nolinkurl{#1}}}
+    {\nolinkurl{#1}}}}
+\AtEveryBibitem{%
+\clearfield{pages}%
+\clearfield{issue}%
+\clearfield{number}%
+}
+
+\usepackage{minted}
+\RecustomVerbatimEnvironment{Verbatim}{BVerbatim}{}
+
+\title{Firedrake: symbolic numerical computing}
+\begin{document}
+\maketitle
+
+% \setbeamertemplate{background}{}
+% \setbeamercolor{footline}{
+%   use=normal text,
+%   fg=normal text.fg,
+% }
+
+\section{Introduction}
+\begin{frame}
+  \frametitle{Finite element crash course}
+  \begin{align*}
+    F(u) &= 0 \text{ in $\Omega$}\\
+    u &= g \text{ on $\Gamma_1$}\\
+    \frac{\partial u}{\partial n} &= h \text{ on $\Gamma_2$}
+  \end{align*}
+  Seek \emph{weak} solution in some space of functions $V(\Omega)$.
+
+  Now we need to solve the (infinite dimensional) problem, find $u\in V$ s.t.
+  \begin{equation*}
+    \int_\Omega \!F(u) v\, \text{d}x = 0 \quad \forall\, v \in V
+  \end{equation*}
+\end{frame}
+\begin{frame}
+  \frametitle{Finite element crash course}
+  Choose finite dimensional $V_h \subset V$, and seek a solution in
+  that subspace: find $u_h \in V_h$ s.t.
+  \begin{equation*}
+    \int_\Omega \!F(u_h) v_h\, \text{d}x = 0 \quad \forall\, v_h \in V_h
+  \end{equation*}
+\end{frame}
+\begin{frame}
+  \frametitle{Finite element crash course}
+  \begin{overprint}
+    \only<1>{Divide domain $\Omega$\dots
+    \begin{center}
+      \begin{tikzpicture}
+        \draw[very thick, line cap=rect] (0,0) -- (5, 0) (0, 0) arc
+        (180:360:2.5);
+      \end{tikzpicture}
+    \end{center}}
+  \only<2>{\dots{}into triangulation $\mathcal{T}$\dots
+    \begin{center}
+        \begin{tikzpicture}
+          \path (0,0) arc[radius=2.5, start angle=180, end angle=360]
+          node[name=E,pos=0,swap] {} node[name=F,pos=0.25,swap] {}
+          node[name=G,pos=0.5,swap] {} node[name=H,pos=0.82,swap] {}
+          node[name=I,pos=1,swap] {}; \node (A) at (2.5, 0) {}; \node
+          (B) at (1.4, -0.7) {}; \node (C) at (3.4, -1.2) {}; \node
+          (D) at (1.8, -1.5) {};
+
+          \draw[color=black, very thick, line cap=butt, line
+          join=round] (E.center) -- (A.center) -- (I.center) --
+          (H.center) -- (G.center) -- (F.center) -- (E.center) --
+          cycle; \draw[color=black, very thick, line cap=butt, line
+          join=round] (E.center) -- (B.center) -- (D.center) --
+          (F.center) -- (B.center); \draw[color=black, very thick,
+          line cap=butt, line join=round] (G.center) -- (D.center) --
+          (C.center) -- (G.center); \draw[color=black, very thick,
+          line cap=butt, line join=round] (B.center) -- (A.center) --
+          (C.center) -- (B.center); \draw[color=black, very thick,
+          line cap=butt, line join=round] (H.center) -- (C.center) --
+          (I.center);
+        \end{tikzpicture}
+    \end{center}
+  }
+  \only<3>{\dots{}and choose basis with finite support.
+    \begin{center}
+        \begin{tikzpicture}
+          \path (0,0) arc[radius=2.5, start angle=180, end angle=360]
+          node[name=E,pos=0,swap] {} node[name=F,pos=0.25,swap] {}
+          node[name=G,pos=0.5,swap] {} node[name=H,pos=0.82,swap] {}
+          node[name=I,pos=1,swap] {}; \node (A) at (2.5, 0) {}; \node
+          (B) at (1.4, -0.7) {}; \node (C) at (3.4, -1.2) {}; \node
+          (D) at (1.8, -1.5) {};
+
+        \path[fill=gray!50] (E.center) -- (A.center) -- (B.center) --
+        (F.center) --cycle;
+          \draw[color=black, very thick, line cap=butt, line
+          join=round] (E.center) -- (A.center) -- (I.center) --
+          (H.center) -- (G.center) -- (F.center) -- (E.center) --
+          cycle; \draw[color=black, very thick, line cap=butt, line
+          join=round] (E.center) -- (B.center) -- (D.center) --
+          (F.center) -- (B.center); \draw[color=black, very thick,
+          line cap=butt, line join=round] (G.center) -- (D.center) --
+          (C.center) -- (G.center); \draw[color=black, very thick,
+          line cap=butt, line join=round] (B.center) -- (A.center) --
+          (C.center) -- (B.center); \draw[color=black, very thick,
+          line cap=butt, line join=round] (H.center) -- (C.center) --
+          (I.center);
+        \end{tikzpicture}
+      \end{center}
+      }
+  \end{overprint}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Finite element crash course}
+  Integrals become sum over element integrals
+  \begin{equation*}
+    \int_\Omega\! F(u_h) v_h \, \text{d}x =
+    \sum_{e \in \mathcal{T}} \int_e\! F(u_h)v_h\, \text{d}x
+  \end{equation*}
+
+  (Usually) perform element integrals with numerical quadrature
+  \begin{equation*}
+    \int_e F(u_h)v_h\,\text{d}x = \sum_q w_q F(u_h(q)) v_h(q)
+  \end{equation*}
+
+  Replace $u_h(q), v_h(q)$ with expansion in finite element basis
+  \begin{align*}
+    u_h(q) &= \sum_i u_h^i \phi_i(q)\\
+    v_h(q) &= \phi_j(q)\\
+  \end{align*}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Abstractly}
+  \begin{itemize}
+  \item Mathematics says ``here is the integral to compute on each
+    element, do that everywhere''
+  \item Doesn't specify \emph{how} to compute the integral
+  \item Doesn't specify \emph{how} to gather the element contributions
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Replacing humans with computers}
+  \begin{block}{Assertion}
+    Once we pick the discretisation, writing the code for $\sum_q w_q
+    F(u_h(q)) v_h(q)$ is mechanical.
+  \end{block}
+  \begin{corollary}
+    Computers are good at mechanical things, why don't we get the
+    computer to write the element integral?
+  \end{corollary}
+\end{frame}
+\begin{frame}
+  \frametitle{Firedrake}
+  An automated finite element system.
+
+  \begin{center}
+    \url{www.firedrakeproject.org}\\
+    \cite{Rathgeber:2016} \arxivlink{1501.01809}{cs.MS}
+  \end{center}
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{Exploiting abstractions}
+  \begin{itemize}
+  \item Firedrake builds on, and extends, embedded DSLs developed in
+    the FEniCS project \url{www.fenicsproject.org}
+  \item The \emph{Unified Form Language} \parencite{Alnaes:2014} to
+    specify variational forms
+  \item A symbolic problem description (generic) is woven together with
+    problem-specific data, and executed by a runtime Python library
+    that does JIT code compilation.
+  \end{itemize}
+\end{frame}
+
+- We make progress in science by building on the work of others
+
+- Sophisticated reasoning about complex algorithms in computational
+science is possible due to creation of appropriate abstractions.
+
+- Yet often, these abstractions are not mirrored in the computational
+implementation
+
+- Status quo
+
+- Multigrid solver
+
+- Solver composition
+
+
+\section{Lecture excerpt}
+
+\begin{frame}[fragile]
+\frametitle{The dangers of numerical computation}
+  \begin{quote}
+    On February 25, 1991, a Patriot missile defense system operating
+    at Dhahran, Saudi Arabia, during Operation Desert Storm failed to
+    track and intercept an incoming Scud. This Scud subsequently hit
+    an army barracks, killing 28 Americans.
+  \end{quote}
+
+  ``Count to 360000s in steps of 0.1s''
+
+  But 0.1 is represented in 24bit floating point, so we actually get
+  to store (1 - 0.000000095).
+
+  Error in count is 3600000*0.000000095 = 0.34s.
+
+  Missiles travel at 1700m/s so the tracking system missed by ~570m,
+  and lost the missile.
+
+  We should be aware that when computing with floating point numbers,
+  the results are \emph{inaccurate}.  Not every real number is
+  representable as a floating point number.
+Computing with numbers is difficult
+
+\begin{minted}[fontsize=\small]{java}
+public class Add {
+    public static void main(String argv[]) {
+        double foo = 4200.53;
+        float bar = 4200.53f;
+        System.out.println(foo - bar);
+    }
+}
+$ java Add
+=> 0.0002148
+\end{minted}
+
+
+  But how inaccurate?
+
+  A core concept here is that of numerical \emph{conditioning} of an
+  algorithm.  Intuitively, if I have a function $f(x)$, and make an
+  error $\epsilon$ in the input $x$, what happens to the relative
+  error in $f(x+\epsilon)$?
+
+  Example:
+
+  $f(x) = x - 1000$
+
+  $x = 1000.01$
+
+  $f(x) = 0.01$
+
+  Let us say $\epsilon = 1e-3$
+
+  $x + \epsilon = 1000.011$
+  $f(x + \epsilon) = 0.011$ a 10\% relative error!
+
+\end{frame}
+
+\end{document}
