@@ -204,26 +204,67 @@ London
   \end{itemize}
 \end{frame}
 
-\begin{frame}
-  \frametitle{Replacing humans with computers}
+\begin{frame}[fragile]
+  \frametitle{Mechanical translation}
   \begin{block}{Assertion}
     Once we pick the discretisation, writing the code for $\sum_q w_q
     F(u_h(q)) v_h(q)$ is mechanical.
   \end{block}
-  \begin{corollary}
-    Computers are good at mechanical things, why don't we get the
-    computer to write the element integral?
-  \end{corollary}
+  \begin{center}
+    \begin{overlayarea}{\textwidth}{0.8\textheight}
+      \begin{onlyenv}<1>
+\begin{minted}[fontsize=\tiny]{cpp}
+template<typename EG, typename LFSU, typename X, typename LFSV, typename M>
+void jacobian_volume(const EG& eg, const LFSU& lfsu, const X& x,
+                     const LFSV& lfsv, M& mat) const {
+  const auto geo = eg.geometry();
+  const auto S = geo.jacobianInverseTransposed(qp);
+  RF factor = weight*geo.integrationElement(qp);
+  double grad[dim][n] = {{0.0}};
+  for (int i=0; i<dim; i++)
+    for (int k=0; k<dim; k++)
+      for (int j=0; j<n; j++)
+        grad[i][j] += S[i][k] * gradhat[k][j];
+  double A[n][n] = {{0.0}};
+  for (int i=0; i<n; i++)
+    for (int k=0; k<dim; k++)
+      for (int j=0; j<n; j++)
+        A[i][j] += grad[k][i]*grad[k][j];
+  for (int i=0; i<n; i++)
+    for (int j=0; j<n; j++)
+      mat.accumulate(lfsu,i,lfsu,j,A[i][j]*factor);
+}
+\end{minted}
+      \end{onlyenv}
+      \begin{onlyenv}<2>
+        \begin{equation*}
+          \int_\Omega \nabla u \cdot \nabla v\,\text{d}x
+        \end{equation*}
+      \end{onlyenv}
+      \begin{onlyenv}<3>
+        \begin{corollary}
+          Computers are good at mechanical things, why don't we get the
+          computer to write the element integral?
+        \end{corollary}
+      \end{onlyenv}
+    \end{overlayarea}
+\end{center}
 \end{frame}
 \begin{frame}
   \frametitle{Firedrake}
+
   An automated finite element system.
 
   \begin{center}
     \url{www.firedrakeproject.org}\\
-    \cite{Rathgeber:2016} \arxivlink{1501.01809}{cs.MS}
   \end{center}
 
+  \begin{flushright}
+    {\footnotesize F. Rathgeber, D.A. Ham, \textbf{LM}, M. Lange,
+      F. Luporini, A.T.T. McRae, G.-T. Bercea, G.R. Markall,
+      P.H.J. Kelly. ACM Transactions on Mathematical Software,
+      2016. \arxivlink{1501.01809}{cs.MS}}
+  \end{flushright}
 \end{frame}
 
 \begin{frame}
@@ -237,6 +278,61 @@ London
     problem-specific data, and executed by a runtime Python library
     that does JIT code compilation.
   \end{itemize}
+\end{frame}
+\begin{frame}[fragile]
+  \frametitle{UFL: a DSL for variational problems}
+  \begin{equation*}
+    \int_\Omega \nabla u \cdot \nabla v\,\text{d}x
+  \end{equation*}
+
+\begin{minted}[fontsize=\scriptsize]{python}
+V = FiniteElement("Lagrange", triangle, 1)
+u = TrialFunction(V)
+v = TestFunction(V)
+a = dot(grad(u), grad(v))*dx
+\end{minted}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Not just toy models}
+  \begin{columns}
+    \begin{column}{0.4\textwidth}
+      \begin{align*}
+        \mathbf{F} &= \mathbf{I} + \nabla \mathbf{u}\\
+        \mathbf{C} &= \mathbf{F}^T \mathbf{F}\\
+        \mathbf{E} &= (\mathbf{C} - \mathbf{I}) / 2\\
+        \Psi &= \frac{\lambda}{2}[\tr(\mathbf{E})]^2 + \mu \tr(\mathbf{E}^2)\\
+        \mathbf{S} &= \frac{\partial \Psi}{\partial \mathbf{E}}\\
+        \mathbf{P} &= \mathbf{F} \mathbf{S}\\
+        r &= \int_\Omega \mathbf{P} : \nabla \mathbf{v} - \mathbf{b} \cdot \mathbf{v}\,\text{d}x\\
+        a &= \lim_{\epsilon \to 0} \frac{r(\mathbf{u} + \epsilon \delta \mathbf{u}) - r(\mathbf{u})}{\epsilon}
+      \end{align*}
+    \end{column}
+    \begin{column}{0.6\textwidth}
+\begin{minted}[fontsize=\tiny]{python}
+V = VectorElement("Lagrange", triangle, 2)
+v = TestFunction(V)
+du = TrialFunction(V) # Incremental displacement
+u = Coefficient(V)    # Displacement
+B = Coefficient(V)    # Body force per unit mass
+I = Identity(V.cell().topological_dimension())
+F = I+grad(u)  # Deformation gradient
+C = F.T*F      # Right Cauchy-Green tensor
+E = (C - I)/2
+E = variable(E)
+# Material constants
+mu = Constant(triangle)
+lmbda = Constant(triangle)
+# Strain energy function (material model)
+psi = lmbda/2*(tr(E)**2) + mu*tr(E*E)
+S = diff(psi, E) # Second Piola-Kirchhoff stress tensor
+P = F*S          # First Piola-Kirchoff stress tensor
+# Variational problem
+r = (inner(PK, grad(v)) - inner(B, v))*dx
+a = derivative(r, u, du)
+\end{minted}
+    \end{column}
+  \end{columns}  
 \end{frame}
 
 - We make progress in science by building on the work of others
@@ -257,7 +353,47 @@ implementation
 \section{Lecture excerpt}
 
 \begin{frame}[fragile]
-\frametitle{The dangers of numerical computation}
+  \frametitle{The dangers of numerical computation}
+
+  Exemplars:
+
+  Vancouver Stock Exchange (1982)
+
+  New index launched in January with nominal value 1000.000.
+
+  By November, it had fallen to c. 520, despite the economy being
+  in a bull market.
+
+  Problem: index calculation truncated to three decimal digits.  This
+  error was large enough to counteract index growth.  When
+  recalculated, it was revalued at c. 1090.
+
+
+  Patriot missile defense system (1991).  Fails to intercept missiles if in
+  continuous operation for more than 20 hours.  Problem: tracking
+  system has a space window of ~100m.  Where to look was calculated
+  (in part) by converting uptime (counted as an integer number of
+  tenths of seconds) into 24bit floating point, by multiplying by
+  0.1.  But  0.1 is not exactly representable, so the error is
+  0.00000095s / s.
+
+  Boeing Dreamliner (2015).  ``The computer systems will hard crash if
+  in continuous operator for more than 248 days''.  Clock (time since
+  start) stored in signed 32bit integer (maximum representable value
+  $2^31 - 1$).  $\log_2 248 * 24 * 3600 * 100 = 30.997$.
+
+  Boeing Dreamliner (2016).  ``The guidance system will temporarily
+  lock up if in continuous operation for more than 22 days''.  $\log_2
+  22 * 24 * 3600 * 1000 = 30.824$ (oops again).
+
+  It is tempting to think that computers are perfect at calculating.
+  But there are many dragons here.
+
+  Integer overflow.
+
+  Floating point inaccuracies.
+  
+  
   \begin{quote}
     On February 25, 1991, a Patriot missile defense system operating
     at Dhahran, Saudi Arabia, during Operation Desert Storm failed to
