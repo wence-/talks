@@ -1,13 +1,10 @@
 \documentclass[presentation]{beamer}
 
 \usepackage{tikz}
-\usetikzlibrary{positioning,calc}
+\usetikzlibrary{positioning,calc,matrix}
 \usetikzlibrary{shapes.geometric}
 \usetikzlibrary{backgrounds}% only to show the bounding box
-\usetikzlibrary{shapes,arrows}
 \usepackage{pgf}
-\usepackage{pgfplots}
-\usepackage{pgfplotstable}
 \usepackage{appendixnumberbeamer}
 \usepackage{amsmath}
 \DeclareMathOperator{\tr}{tr}
@@ -332,7 +329,7 @@ r = (inner(PK, grad(v)) - inner(B, v))*dx
 a = derivative(r, u, du)
 \end{minted}
     \end{column}
-  \end{columns}  
+  \end{columns}
 \end{frame}
 
 - We make progress in science by building on the work of others
@@ -353,102 +350,228 @@ implementation
 \section{Lecture excerpt}
 
 \begin{frame}[fragile]
-  \frametitle{The dangers of numerical computation}
-
-  Exemplars:
-
-  Vancouver Stock Exchange (1982)
-
-  New index launched in January with nominal value 1000.000.
-
-  By November, it had fallen to c. 520, despite the economy being
-  in a bull market.
-
-  Problem: index calculation truncated to three decimal digits.  This
-  error was large enough to counteract index growth.  When
-  recalculated, it was revalued at c. 1090.
-
-
-  Patriot missile defense system (1991).  Fails to intercept missiles if in
-  continuous operation for more than 20 hours.  Problem: tracking
-  system has a space window of ~100m.  Where to look was calculated
-  (in part) by converting uptime (counted as an integer number of
-  tenths of seconds) into 24bit floating point, by multiplying by
-  0.1.  But  0.1 is not exactly representable, so the error is
-  0.00000095s / s.
-
-  Boeing Dreamliner (2015).  ``The computer systems will hard crash if
-  in continuous operator for more than 248 days''.  Clock (time since
-  start) stored in signed 32bit integer (maximum representable value
-  $2^31 - 1$).  $\log_2 248 * 24 * 3600 * 100 = 30.997$.
-
-  Boeing Dreamliner (2016).  ``The guidance system will temporarily
-  lock up if in continuous operation for more than 22 days''.  $\log_2
-  22 * 24 * 3600 * 1000 = 30.824$ (oops again).
-
-  It is tempting to think that computers are perfect at calculating.
-  But there are many dragons here.
-
-  Integer overflow.
-
-  Floating point inaccuracies.
-  
-  
-  \begin{quote}
-    On February 25, 1991, a Patriot missile defense system operating
-    at Dhahran, Saudi Arabia, during Operation Desert Storm failed to
-    track and intercept an incoming Scud. This Scud subsequently hit
-    an army barracks, killing 28 Americans.
-  \end{quote}
-
-  ``Count to 360000s in steps of 0.1s''
-
-  But 0.1 is represented in 24bit floating point, so we actually get
-  to store (1 - 0.000000095).
-
-  Error in count is 3600000*0.000000095 = 0.34s.
-
-  Missiles travel at 1700m/s so the tracking system missed by ~570m,
-  and lost the missile.
-
-  We should be aware that when computing with floating point numbers,
-  the results are \emph{inaccurate}.  Not every real number is
-  representable as a floating point number.
-Computing with numbers is difficult
-
-\begin{minted}[fontsize=\small]{java}
-public class Add {
-    public static void main(String argv[]) {
-        double foo = 4200.53;
-        float bar = 4200.53f;
-        System.out.println(foo - bar);
-    }
-}
-$ java Add
-=> 0.0002148
-\end{minted}
-
-
-  But how inaccurate?
-
-  A core concept here is that of numerical \emph{conditioning} of an
-  algorithm.  Intuitively, if I have a function $f(x)$, and make an
-  error $\epsilon$ in the input $x$, what happens to the relative
-  error in $f(x+\epsilon)$?
-
-  Example:
-
-  $f(x) = x - 1000$
-
-  $x = 1000.01$
-
-  $f(x) = 0.01$
-
-  Let us say $\epsilon = 1e-3$
-
-  $x + \epsilon = 1000.011$
-  $f(x + \epsilon) = 0.011$ a 10\% relative error!
-
+  \frametitle{Pitfalls when computing with numbers}
+  \begin{itemize}
+  \item Computers are an excellent way to build models of the physical
+    world.
+  \item But we have to be careful to remember that computer arithmetic
+    does not behave the same as mathematics.
+  \item We'll look at some examples from integer and real arithmetic
+  \end{itemize}
 \end{frame}
 
+\begin{frame}[plain,t]
+  \begin{flushright}
+      \tiny CC BY-SA 3.0
+      \url{https://commons.wikimedia.org/wiki/File:Boeing_787_Roll-out.jpg}
+  \end{flushright}
+  \begin{tikzpicture}[remember picture, overlay]
+    \node[at=(current page.center)] (dreamliner)
+    {\includegraphics[width=\paperwidth]{dreamliner}};
+    \uncover<2->{\node [below right=1cm of dreamliner.north west, anchor=north west]
+      {\includegraphics[width=1\framewidth]{dreamliner-bug-2015}};}
+    \uncover<3->{\node [above left=1cm of dreamliner.south east, anchor=south east]
+      {\includegraphics[width=1\framewidth]{dreamliner-bug-2016}};}
+  \end{tikzpicture}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{The pernicious \texttt{int}}
+  Integers are represented either \emph{signed} or \emph{unsigned}
+  using a fixed number of \emph{bits}.
+
+  Let's try computing $127+1$, represented as 8bit signed integers.
+
+  \begin{uncoverenv}<2>
+  \begin{tikzpicture}
+    \matrix (m) [matrix of nodes,
+    nodes={minimum size=0.75cm, draw, anchor=center},
+    column sep=0pt,
+    ]
+    { $-2^7$ & $2^6$ & $2^5$ & $2^4$ & $2^3$ & $2^2$ & $2^1$ & $2^0$
+      \\};
+    \matrix (mfull) [matrix of nodes, below=0.2cm of m,
+    nodes={minimum size=0.75cm, draw, anchor=center},
+    column sep=0pt,
+    ]
+    { $0$ & $1$ & $1$ & $1$ & $1$ & $1$ & $1$ & $1$
+      \\};
+    \node [left=0.1cm of mfull]  {$127$};
+    \matrix (mone) [matrix of nodes, below=0.2cm of mfull,
+    nodes={minimum size=0.75cm, draw, anchor=center},
+    column sep=0pt,
+    ]
+    { $0$ & $0$ & $0$ & $0$ & $0$ & $0$ & $0$ & $1$
+      \\};
+    \node [left=0.1cm of mone] {$1$};
+    \node [above left=0.1cm and 0.3cm of mone.north west, anchor=center] {$+$};
+
+    \matrix (moops) [matrix of nodes, below=0.2cm of mone,
+    nodes={minimum size=0.75cm, draw, anchor=center},
+    column sep=0pt,
+    ]
+    { $1$ & $0$ & $0$ & $0$ & $0$ & $0$ & $0$ & $0$
+      \\};
+    \node [left=0.1cm of moops] {$-128$};
+    \node [above left=0.1cm and 0.3cm of moops.north west, anchor=center] {$=$};
+  \end{tikzpicture}
+  \end{uncoverenv}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{The pernicious \texttt{int}}
+  Let's go back and look at the Dreamliner numbers again.
+
+  \begin{equation*}
+    248\,\text{days} = 248 \times 24 \times 3600 \times 100 =
+    2142720000 \,\text{centiseconds}
+  \end{equation*}
+  \begin{equation*}
+    22\,\text{days} = 22 \times 24 \times 3600 \times 1000 =
+    1900800000 \,\text{milliseconds}
+  \end{equation*}
+
+
+  \begin{uncoverenv}<2>
+    \begin{equation*}
+      \log_2{2142720000} \approx 30.997
+    \end{equation*}
+  \begin{equation*}
+    \log_2{1900800000} \approx 30.824
+  \end{equation*}
+
+  Both of these failures are almost certainly due to \emph{integer
+    overflow} of a signed 32bit integer.
+\end{uncoverenv}
+\end{frame}
+
+\begin{frame}[plain,t]
+  \begin{flushright}
+    \tiny \url{https://cve.mitre.org/cgi-bin/cvekey.cgi?keyword=integer+overflow}
+  \end{flushright}
+  \begin{tikzpicture}[remember picture, overlay]
+    \node[at=(current page.center)]
+    {\includegraphics[width=\paperwidth]{cve-overflow}};
+  \end{tikzpicture}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Should you trust your calculation?}
+
+  Computing with real values provides a whole new class of ways to get
+  the wrong answer.
+
+  \begin{center}
+    \includegraphics[height=0.6\textheight]{vancouver-index}
+  \end{center}
+  \begin{flushright}
+    \tiny McCullogh \& Vinod, Journal of Economic Literature
+    37(2):633--665 (1999)
+  \end{flushright}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Floating point}
+  \begin{itemize}
+  \item Represent a number as $\alpha \times 10^\beta$.  $\alpha$ the
+    \emph{significand} or \emph{mantissa}; $\beta$ the
+    \emph{exponent}.
+  \item \emph{Floating} because the value of the exponent tells us
+    where in the mantissa the decimal point is.
+  \item Can only use a \emph{finite} amount of memory for each number,
+    which destroys our intuition about how arithmetic behaves.
+  \item I will show a few simple examples to rebuild some of that intuition.
+  \end{itemize}
+\end{frame}
+\begin{frame}[fragile]
+  \frametitle{No associativity}
+  We expect that arithmetic operations \emph{associate}
+  \begin{equation*}
+    (a + b) - c = a + (b - c).
+  \end{equation*}
+
+  Floating point operations do not.
+
+  \begin{center}
+    \begin{onlyenv}<2>
+\begin{minted}[fontsize=\small]{c}
+float a = 1f;
+float b = 1e10f;
+print ((a + b) - b);
+print (a + (b - b));
+\end{minted}
+    \end{onlyenv}
+  \end{center}
+  \begin{center}
+    \begin{onlyenv}<3>
+\begin{minted}[fontsize=\small]{c}
+float a = 1f;
+float b = 1e10f;
+print ((a + b) - b); => 0.0
+print (a + (b - b)); => 1.0
+\end{minted}
+    \end{onlyenv}
+  \end{center}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Just add more precision, no?}
+
+  \begin{itemize}
+  \item a \emph{single precision} \texttt{float} has about 8 decimal
+    digits of precision.
+  \item So $1\times10^{10} + 1 = 1\times10^{10} + 0.000,000,000,1\times10^{10} = 1$.
+  \item We could have used a \emph{double precision} \texttt{double}
+    instead (16 decimal digits).
+  \item In this case we have enough digits so we end up with
+    $1.000,000,000,1\times10^{10}$.
+  \item Which suggests we should always calculate in double precision
+    for ``more accuracy''.
+  \end{itemize}
+
+  \begin{uncoverenv}<2->
+    \begin{columns}
+      \begin{column}{0.5\textwidth}
+        \begin{onlyenv}<2>
+\begin{minted}[fontsize=\scriptsize]{c}
+int count = 0;
+float x = 0;
+for (x=0; x<1.0f; x+=1.0f/6.0f)
+    count += 1
+printf("%d\n", count)
+\end{minted}
+        \end{onlyenv}
+        \begin{onlyenv}<3->
+\begin{minted}[fontsize=\scriptsize]{c}
+int count = 0;
+float x = 0;
+for (x=0; x<1.0f; x+=1.0f/6.0f)
+    count += 1
+printf("%d\n", count) => 6
+\end{minted}
+        \end{onlyenv}
+      \end{column}
+      \begin{column}{0.5\textwidth}
+        \begin{onlyenv}<2-3>
+\begin{minted}[fontsize=\scriptsize]{c}
+int count = 0;
+double x = 0;
+for (x=0; x<1.0; x+=1.0/6.0)
+    count += 1
+printf("%d\n", count)
+\end{minted}
+        \end{onlyenv}
+        \begin{onlyenv}<4->
+\begin{minted}[fontsize=\scriptsize]{c}
+int count = 0;
+double x = 0;
+for (x=0; x<1.0; x+=1.0/6.0)
+    count += 1
+printf("%d\n", count) => 7
+\end{minted}
+        \end{onlyenv}
+      \end{column}
+    \end{columns}
+  \end{uncoverenv}
+\end{frame}
 \end{document}
