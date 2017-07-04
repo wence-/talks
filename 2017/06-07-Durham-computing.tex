@@ -75,40 +75,37 @@ London
 \usepackage{minted}
 \RecustomVerbatimEnvironment{Verbatim}{BVerbatim}{}
 
-\title{Firedrake: symbolic numerical computing}
+\title{Symbolic numerical computing}
 \begin{document}
 \maketitle
 
-\begin{frame}
+\begin{frame}[t]
   \frametitle{A problem}
   \begin{itemize}
   \item Computational simulation of partial differential equations
     underpins much of modern science and engineering.
   \item Simulation models are ever more complex.
   \item The extra computational effort used to be offset by increased
-    hardware performance
-  \item But we have a problem \dots
+    hardware performance \ldots
   \end{itemize}
+  \begin{columns}
+    \begin{column}{0.95\paperwidth}
+      \includegraphics[height=4cm]{dome-entrainment}\hfill\includegraphics[height=4cm]{columbia-plume}
+    \end{column}
+  \end{columns}
 \end{frame}
 
 \begin{frame}
   \frametitle{The free lunch finished a long time ago}
+    \begin{center}
+      \includegraphics[height=0.5\textheight]{processor-trends}
+    \end{center}
+    \begin{flushright}
+      {\tiny Figure courtesy Karl Rupp (CC-BY 4.0) \url{https://www.karlrupp.net/2015/06/40-years-of-microprocessor-trend-data/}}
+    \end{flushright}
   \begin{itemize}
-  \item Prior to c.~2005, I could run a simulation faster simply by buying a
-    new computer.
-  \item Now, not so much:
-
-  \begin{tabular}{lccc}
-    Chip            & Cores & Clock & Vector width \\
-    \hline
-    NVidia P100     & 56    & 1.5   & 32           \\
-    Intel Broadwell & 22    & 2.2   & 4            \\
-    Intel Phi       & 72    & 1.5   & 8            \\
-    Intel Skylake   & 32    & 2.2   & 8            \\
-  \end{tabular}
-
-\item Today's simulation models will run \emph{slower}, not faster, on
-  tomorrow's hardware.
+  \item Today's simulation models will run probably \emph{slower}, not faster, on
+    tomorrow's hardware.
   \end{itemize}
 \end{frame}
 
@@ -121,9 +118,6 @@ London
     its \emph{implementation}.
   \item To apply program transformations, we have to unpick,
     understand, and reimplement.
-  \item This is empirically not possible for compilers.
-  \item Moreover, this approach requires that our model developers are
-    polymaths.
   \end{itemize}
 \end{frame}
 
@@ -186,13 +180,14 @@ London
 \begin{frame}
   \frametitle{Abstractions for PDE solvers}
   \begin{itemize}
-  \item For complex numerical models, Fortran alone is not sufficient
-  \item One answer is software libraries
+  \item For complex numerical models, Fortran alone is not sufficient.
+  \item One answer is software libraries.
   \item But these still put much of the burden on the model developer
-  \item For PDEs discretised using the \emph{finite element method},
-    the mathematical formalism is particularly strong
-  \item We mirror this in a domain specific language (DSL), and
-    use code generation to provide a high-performance implementation.
+  \item and transformations that cross library boundaries are hard.
+  \item Instead, we use a domain specific language for specifying PDE
+    solvers
+  \item by saying \emph{what}, not \emph{how}, we can synthesise
+    efficient implementations.
   \end{itemize}
 \end{frame}
 
@@ -217,70 +212,8 @@ London
   \begin{equation*}
     \int_\Omega \!F(u_h) v_h\, \text{d}x = 0 \quad \forall\, v_h \in V_h
   \end{equation*}
-\end{frame}
-\begin{frame}
-  \frametitle{Finite element crash course}
-  \begin{overprint}
-    \only<1>{Divide domain $\Omega$\dots
-    \begin{center}
-      \begin{tikzpicture}
-        \draw[very thick, line cap=rect] (0,0) -- (5, 0) (0, 0) arc
-        (180:360:2.5);
-      \end{tikzpicture}
-    \end{center}}
-  \only<2>{\dots{}into triangulation $\mathcal{T}$\dots
-    \begin{center}
-        \begin{tikzpicture}
-          \path (0,0) arc[radius=2.5, start angle=180, end angle=360]
-          node[name=E,pos=0,swap] {} node[name=F,pos=0.25,swap] {}
-          node[name=G,pos=0.5,swap] {} node[name=H,pos=0.82,swap] {}
-          node[name=I,pos=1,swap] {}; \node (A) at (2.5, 0) {}; \node
-          (B) at (1.4, -0.7) {}; \node (C) at (3.4, -1.2) {}; \node
-          (D) at (1.8, -1.5) {};
 
-          \draw[color=black, very thick, line cap=butt, line
-          join=round] (E.center) -- (A.center) -- (I.center) --
-          (H.center) -- (G.center) -- (F.center) -- (E.center) --
-          cycle; \draw[color=black, very thick, line cap=butt, line
-          join=round] (E.center) -- (B.center) -- (D.center) --
-          (F.center) -- (B.center); \draw[color=black, very thick,
-          line cap=butt, line join=round] (G.center) -- (D.center) --
-          (C.center) -- (G.center); \draw[color=black, very thick,
-          line cap=butt, line join=round] (B.center) -- (A.center) --
-          (C.center) -- (B.center); \draw[color=black, very thick,
-          line cap=butt, line join=round] (H.center) -- (C.center) --
-          (I.center);
-        \end{tikzpicture}
-    \end{center}
-  }
-  \only<3>{\dots{}and choose basis with finite support.
-    \begin{center}
-        \begin{tikzpicture}
-          \path (0,0) arc[radius=2.5, start angle=180, end angle=360]
-          node[name=E,pos=0,swap] {} node[name=F,pos=0.25,swap] {}
-          node[name=G,pos=0.5,swap] {} node[name=H,pos=0.82,swap] {}
-          node[name=I,pos=1,swap] {}; \node (A) at (2.5, 0) {}; \node
-          (B) at (1.4, -0.7) {}; \node (C) at (3.4, -1.2) {}; \node
-          (D) at (1.8, -1.5) {};
-
-        \path[fill=gray!50] (E.center) -- (A.center) -- (B.center) --
-        (F.center) --cycle;
-          \draw[color=black, very thick, line cap=butt, line
-          join=round] (E.center) -- (A.center) -- (I.center) --
-          (H.center) -- (G.center) -- (F.center) -- (E.center) --
-          cycle; \draw[color=black, very thick, line cap=butt, line
-          join=round] (E.center) -- (B.center) -- (D.center) --
-          (F.center) -- (B.center); \draw[color=black, very thick,
-          line cap=butt, line join=round] (G.center) -- (D.center) --
-          (C.center) -- (G.center); \draw[color=black, very thick,
-          line cap=butt, line join=round] (B.center) -- (A.center) --
-          (C.center) -- (B.center); \draw[color=black, very thick,
-          line cap=butt, line join=round] (H.center) -- (C.center) --
-          (I.center);
-        \end{tikzpicture}
-      \end{center}
-      }
-  \end{overprint}
+  Pick a \emph{basis} $\{\phi_i\}$ for $V_h$ with finite support.
 \end{frame}
 
 \begin{frame}
@@ -316,13 +249,20 @@ London
 \end{frame}
 
 \begin{frame}
-  \frametitle{Firedrake}
+  \frametitle{Firedrake \url{www.firedrakeproject.org}}
 
-  An automated finite element system.
+  \begin{quote}
+    {\normalfont [\ldots]} an automated system for the solution of partial
+    differential equations using the finite element method.
+  \end{quote}
 
-  \begin{center}
-    \url{www.firedrakeproject.org}\\
-  \end{center}
+  \begin{itemize}
+  \item Written in Python.
+  \item Finite element problems specified with \emph{embedded} domain
+    specific language.
+  \item \emph{Runtime} compilation to low-level (C) code.
+  \item Explicitly \emph{data parallel}: don't worry about MPI.
+  \end{itemize}
 
   \begin{flushright}
     {\scriptsize F.~Rathgeber, D.A.~Ham, \textbf{LM}, M.~Lange,
@@ -332,30 +272,32 @@ London
   \end{flushright}
 \end{frame}
 
-\begin{frame}
+\begin{frame}[fragile]
   \frametitle{Exploiting abstractions}
   \begin{itemize}
   \item Firedrake builds on, and extends, embedded DSLs developed in
     the FEniCS project.
   \item Particularly, the \emph{Unified Form Language} \parencite{Alnaes:2014} to
     specify variational forms
-  \item A symbolic problem description (generic) is woven together with
-    problem-specific data, and executed by a runtime Python library
-    that does JIT code compilation.
+  \item Synthesise efficient implementation from symbolic description
+    + problem-specific data.
   \end{itemize}
-\end{frame}
-\begin{frame}[fragile]
-  \frametitle{UFL: a DSL for variational problems}
-  \begin{equation*}
-    \int_\Omega \nabla u \cdot \nabla v\,\text{d}x
-  \end{equation*}
-
+  \begin{columns}
+    \begin{column}{0.4\textwidth}
+      \begin{equation*}
+        \int_\Omega \nabla u \cdot \nabla v\,\text{d}x
+      \end{equation*}
+    \end{column}
+    \hspace{-3em}
+    \begin{column}{0.6\textwidth}
 \begin{minted}[fontsize=\scriptsize]{python}
 V = FiniteElement("Lagrange", triangle, 1)
 u = TrialFunction(V)
 v = TestFunction(V)
 a = dot(grad(u), grad(v))*dx
 \end{minted}
+    \end{column}
+  \end{columns}
 \end{frame}
 
 \begin{frame}[fragile]
@@ -370,7 +312,7 @@ a = dot(grad(u), grad(v))*dx
         \mathbf{S} &= \frac{\partial \Psi}{\partial \mathbf{E}}\\
         \mathbf{P} &= \mathbf{F} \mathbf{S}\\
         r &= \int_\Omega \mathbf{P} : \nabla \mathbf{v} - \mathbf{b} \cdot \mathbf{v}\,\text{d}x\\
-        a &= \lim_{\epsilon \to 0} \frac{r(\mathbf{u} + \epsilon \delta \mathbf{u}) - r(\mathbf{u})}{\epsilon}
+        J &= \lim_{\epsilon \to 0} \frac{r(\mathbf{u} + \epsilon \delta \mathbf{u}) - r(\mathbf{u})}{\epsilon}
       \end{align*}
     \end{column}
     \begin{column}{0.6\textwidth}
@@ -394,30 +336,42 @@ S = diff(psi, E) # Second Piola-Kirchhoff stress tensor
 P = F*S          # First Piola-Kirchoff stress tensor
 # Variational problem
 r = (inner(PK, grad(v)) - inner(B, v))*dx
-a = derivative(r, u, du)
+# Linearisation wrt u in direction du
+J = derivative(r, u, du)
 \end{minted}
     \end{column}
   \end{columns}
 \end{frame}
 
 \begin{frame}[fragile]
-  \frametitle{Mechanical translation}
+  \frametitle{Compiling variational forms}
   \begin{itemize}
-  \item A \emph{form compiler} translates a symbolic description (UFL) into
+  \item A \emph{form compiler} translates UFL into
     low-level (C/C++/...) code for performing an element integral.
     \begin{flushright}
       {\scriptsize M.~Homolya, \textbf{LM}, F.~Luporini, D.A.~Ham. \arxivlink{1705.03667}{cs.MS}}
     \end{flushright}
   \end{itemize}
+  \begin{overlayarea}{\textwidth}{0.8\textheight}
   \begin{onlyenv}<1>
+  \begin{columns}
+    \begin{column}{0.4\textwidth}
+      \begin{equation*}
+        \int_\Omega \nabla u \cdot \nabla v\,\text{d}x
+      \end{equation*}
+    \end{column}
+    \hspace{-3em}
+    \begin{column}{0.6\textwidth}
 \begin{minted}[fontsize=\scriptsize]{python}
 V = FiniteElement("Lagrange", triangle, 1)
 u = TrialFunction(V)
 v = TestFunction(V)
 a = dot(grad(u), grad(v))*dx
 \end{minted}
+    \end{column}
+  \end{columns}
   \end{onlyenv}
-  \begin{uncoverenv}<2>
+  \begin{onlyenv}<2>
     \begin{columns}
       \begin{column}{0.5\textwidth}
 \begin{minted}[fontsize=\tiny]{c}
@@ -461,7 +415,8 @@ void cell_integral(double A[3][3],
 \end{minted}
       \end{column}
     \end{columns}
-  \end{uncoverenv}
+  \end{onlyenv}
+  \end{overlayarea}
 \end{frame}
 
 \begin{frame}[fragile]
@@ -489,9 +444,9 @@ for (i = 0; i < L; i++ )
   \begin{itemize}
   \item For a given kernel, can optimise by hand
   \item But this approach doesn't scale
-  \item \dots and the best strategy is problem-dependent.
+  \item \ldots and the best strategy is problem-dependent.
   \item Code generation allows us to package expertise, and provide it
-    to everyone.
+    to everyone, even for complex problems.
   \end{itemize}
 \end{frame}
 
@@ -505,9 +460,8 @@ for (i = 0; i < L; i++ )
     \mathcal{F}_q = \sum_i \phi_{i,q} f_i
   \end{equation*}
 
-  \item This matrix-vector product requires $\mathcal{O}(|i||q|) =
-    \mathcal{O}(p^{2d})$ operations for polynomial degree $p$ in $d$
-    dimensions.
+\item Requires $\mathcal{O}(|i||q|) = \mathcal{O}(p^{2d})$ operations
+  for polynomial degree $p$ in $d$ dimensions.
 \end{itemize}
 \end{frame}
 
@@ -523,40 +477,21 @@ for (i = 0; i < L; i++ )
                         &= \sum_{j,k} \varphi_{j,p}\varphi_{k,r} f_{j,k} \\
                         &= \sum_j \varphi_{j,p} \sum_k \varphi_{k,r} f_{j,k}
   \end{align*}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Large computational savings}
-  \begin{itemize}
-  \item Performing this transformation provides for \emph{optimal
-      complexity} evaluation of matrix-vector products.
-
-    \begin{center}
-      \begin{tabular}{c|c|c|c}
-        Method    & Build operator        & MatVec                  & Mem refs
-        \\
-                  & (FLOPs)               & (FLOPs)                 & (bytes)               \\
-        \hline
-        Assembled & $\mathcal{O}(p^{3d})$ & $\mathcal{O}(p^{2d})$   & $\mathcal{O}(p^{2d})$ \\
-        MF        & 0                     & $\mathcal{O}(p^{2d})$   & $\mathcal{O}(p^d)$    \\
-        MF + SF   & 0                     & $\mathcal{O}(dp^{d+1})$ & $\mathcal{O}(p^d)$
-      \end{tabular}
-    \end{center}
-    
-  \item This is necessary if we want high-order methods to be competitive.
-  \end{itemize}
-  
+  at the cost of some temporary storage, this requires only
+  $\mathcal{O}(d p^{d+1})$ operations.
 \end{frame}
 
 \begin{frame}[fragile]
   \frametitle{Automated sum factorisation}
   \begin{itemize}
-  \item C and Fortran compilers do not perform these transformations
+  \item General purpose compilers do not perform these
+    transformations, they have to ski uphill too far.
   \item You can, of course, perform them by hand.  But why not get a
     compiler to do it?
   \end{itemize}
 
   \begin{uncoverenv}<2>
+    \begin{center}
   \begin{tikzpicture}[scale=0.9]
     \begin{loglogaxis}[name=plot,
       small,
@@ -662,6 +597,7 @@ degree flops
       \node at (B) [anchor=north west] {$\mathcal{O}(p^4)$};
     \end{loglogaxis}
   \end{tikzpicture}
+  \end{center}
   \end{uncoverenv}
 \end{frame}
 
@@ -687,15 +623,44 @@ degree flops
   \frametitle{Performance}
   Fast prototyping is good, ``but I have to rewrite for performance''.
 
-  \begin{uncoverenv}<2>
-    \begin{itemize}
-    \item Firedrake provides computational performance often >50\%
-      achievable peak \parencite{Luporini:2015,Bercea:2016,Mitchell:2016}.
-    \item Hero-coding probably necessary if you want the rest.
-    \item ...but at what (person) cost?
-    \item Does the numericist have the expertise anyway?
-    \end{itemize}
-  \end{uncoverenv}
+  \begin{overlayarea}{\textwidth}{0.8\textheight}
+    \begin{onlyenv}<2>
+      \begin{itemize}
+      \item Firedrake provides computational performance often >50\%
+        achievable peak
+        \parencite{Luporini:2015,Bercea:2016,Mitchell:2016}.
+      \item Hero-coding probably necessary if you want the rest.
+      \item \ldots but at what (person) cost?
+      \item Does the modeller have the expertise anyway?
+      \end{itemize}
+    \end{onlyenv}
+    \begin{onlyenv}<3>
+      \begin{columns}[t]
+        \begin{column}{0.5\textwidth}
+          \begin{block}{Thetis}
+            {\scriptsize \url{thetisproject.org}}
+            \begin{itemize}
+            \item 3D unstructured coastal ocean model
+            \item 6400 LOC
+            \item 4-8x faster than previous code in group (same numerics)
+            \end{itemize}
+          \end{block}
+        \end{column}
+        \begin{column}{0.5\textwidth}
+          \begin{block}{Gusto}
+            {\scriptsize \url{www.firedrakeproject.org/gusto/}}
+            \begin{itemize}
+            \item 3D atmospheric dynamical core using compatible FE
+            \item 1600 LOC
+            \item Implements Met Office ``Gung Ho'' numerics, used for
+              studying numerical and computational performance in
+              ``agile'' codebase.
+            \end{itemize}
+          \end{block}
+        \end{column}
+      \end{columns}
+    \end{onlyenv}
+  \end{overlayarea}
 \end{frame}
 
 \begin{frame}
@@ -720,14 +685,15 @@ degree flops
 
 \section{Lecture excerpt}
 
-\begin{frame}[fragile]
-  \frametitle{Pitfalls when computing with numbers}
+\begin{frame}
+  \frametitle{Overview}
   \begin{itemize}
-  \item Computers are an excellent way to build models of the physical
-    world.
-  \item But we have to be careful to remember that computer arithmetic
-    does not behave the same as mathematics.
-  \item We'll look at some examples from integer and real arithmetic
+  \item Some cautionary tales
+  \item How computers represent real numbers
+  \item Some problems that arise due to finite range/precision
+  \item \ldots and problems that arise
+  \item How to tell when your answers are nonsense
+  \item Numerical \emph{conditioning}
   \end{itemize}
 \end{frame}
 
@@ -836,24 +802,67 @@ degree flops
     \includegraphics[height=0.6\textheight]{vancouver-index}
   \end{center}
   \begin{flushright}
-    \tiny McCullogh \& Vinod, Journal of Economic Literature
-    37(2):633--665 (1999)
+    {\scriptsize McCullogh \& Vinod, Journal of Economic Literature
+    37(2):633--665 (1999)}
   \end{flushright}
 \end{frame}
 
 \begin{frame}
   \frametitle{Floating point}
   \begin{itemize}
-  \item Represent a number as $\alpha \times 10^\beta$.  $\alpha$ the
-    \emph{significand} or \emph{mantissa}; $\beta$ the
-    \emph{exponent}.
-  \item \emph{Floating} because the value of the exponent tells us
-    where in the mantissa the decimal point is.
-  \item Can only use a \emph{finite} amount of memory for each number,
-    which destroys our intuition about how arithmetic behaves.
-  \item I will show a few simple examples to rebuild some of that intuition.
+  \item The real numbers are infinite and uncountable, which presents
+    problems on a computer.
+  \item We typically approximate real numbers using \emph{floating
+      point} numbers.
+  \item These take a fixed number of bits (64 for \emph{double
+      precision}, 32 for \emph{single}) and split between a
+    \emph{significand} and \emph{exponent}, with implicit \emph{base}.
+  \end{itemize}
+  \begin{equation*}
+    1015323 = \underbrace{1.015323}_{\text{significand}} \times \underbrace{10}_{\text{base}}\!\!\!\!\!\!^{\overbrace{6}^{\text{exponent}}}
+  \end{equation*}
+\end{frame}
+\begin{frame}
+  \frametitle{Floating point}
+  \begin{itemize}
+  \item Behaviour implemented in CPUs standardised in IEEE 754
+  \item Specifies how to interpret bit patterns as floating point
+    numbers
+  \item Also specifies \emph{rounding} for calculations that result in
+    values not exactly representable
+  \end{itemize}
+  \begin{tabular}{c|ccc|c}
+    Precision & Sign & Exponent & Significand & Total bits \\
+    \hline
+    single    & 1    & 8        & 23          & 32         \\
+    double    & 1    & 11       & 52          & 64         \\
+  \end{tabular}
+  \begin{tabular}{c|c}
+    Precision & Range                                                   \\
+    \hline
+    single    & {\small $[-3.4028235 \times 10^{38}, 3.4028235 \times 10^{38}]$} \\
+    double    & {\small $[-1.7976931348623157\times 10^{308}, 1.7976931348623157 \times 10^{308}]$}
+  \end{tabular}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Addition}
+  \begin{itemize}
+  \item How to add two numbers with different scales?
+    \begin{equation*}
+      1 \times 10^{6} + 2
+    \end{equation*}
+  \item \emph{Normalise} representation (so exponent is the same)
+  \item add significands
+    \begin{align*}
+      1 \times 10^{6} + 2 &= \\
+      1 \times 10^{6} + 0.000002 \times 10^{6} &= \\
+      1.000002 \times 10^{6}
+    \end{align*}
+  \item What happens if there are not enough bits in the significand?
   \end{itemize}
 \end{frame}
+
 \begin{frame}[fragile]
   \frametitle{No associativity}
   We expect that arithmetic operations \emph{associate}
