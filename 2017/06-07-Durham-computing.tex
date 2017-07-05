@@ -9,6 +9,9 @@
 \usepackage{pgfplotstable}
 \usepackage{appendixnumberbeamer}
 \usepackage{amsmath}
+\usepackage{pifont}
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
 \DeclareMathOperator{\tr}{tr}
 \date{6th July 2017}
 \usetheme{metropolis}
@@ -77,7 +80,13 @@ London
 
 \title{Symbolic numerical computing}
 \begin{document}
-\maketitle
+\begin{frame}[plain,noframenumbering]
+  \maketitle
+  \begin{tikzpicture}[remember picture,overlay]
+    \node[at=(current page.south west), anchor=south west] {\includegraphics[height=0.9cm]{epsrc-logo}};
+  \node[at=(current page.south east), anchor=south east] {\includegraphics[height=0.9cm]{imperial-two-tone}};
+\end{tikzpicture}
+\end{frame}
 
 \begin{frame}[t]
   \frametitle{A problem}
@@ -623,7 +632,7 @@ degree flops
   \frametitle{Performance}
   Fast prototyping is good, ``but I have to rewrite for performance''.
 
-  \begin{overlayarea}{\textwidth}{0.8\textheight}
+  \begin{overlayarea}{\textwidth}{0.6\textheight}
     \begin{onlyenv}<2>
       \begin{itemize}
       \item Firedrake provides computational performance often >50\%
@@ -635,30 +644,15 @@ degree flops
       \end{itemize}
     \end{onlyenv}
     \begin{onlyenv}<3>
-      \begin{columns}[t]
-        \begin{column}{0.5\textwidth}
-          \begin{block}{Thetis}
-            {\scriptsize \url{thetisproject.org}}
-            \begin{itemize}
-            \item 3D unstructured coastal ocean model
-            \item 6400 LOC
-            \item 4-8x faster than previous code in group (same numerics)
-            \end{itemize}
-          \end{block}
-        \end{column}
-        \begin{column}{0.5\textwidth}
-          \begin{block}{Gusto}
-            {\scriptsize \url{www.firedrakeproject.org/gusto/}}
-            \begin{itemize}
-            \item 3D atmospheric dynamical core using compatible FE
-            \item 1600 LOC
-            \item Implements Met Office ``Gung Ho'' numerics, used for
-              studying numerical and computational performance in
-              ``agile'' codebase.
-            \end{itemize}
-          \end{block}
-        \end{column}
-      \end{columns}
+      \begin{block}{Thetis}
+        {\scriptsize \url{thetisproject.org}}
+        \begin{itemize}
+        \item 3D unstructured coastal ocean model
+        \item 6400 LOC
+        \item 4-8x faster than previous code in group (same numerics)
+        \item c. 18 person months (previous code, c. 12 person years)
+        \end{itemize}
+      \end{block}
     \end{onlyenv}
   \end{overlayarea}
 \end{frame}
@@ -689,11 +683,10 @@ degree flops
   \frametitle{Overview}
   \begin{itemize}
   \item Some cautionary tales
-  \item How computers represent real numbers
-  \item Some problems that arise due to finite range/precision
-  \item \ldots and problems that arise
-  \item How to tell when your answers are nonsense
-  \item Numerical \emph{conditioning}
+  \item How computers represent numbers
+  \item Difficulties due to finite range/precision
+  \item Numerical \emph{conditioning} and how to tell when you have
+    nonsense answers
   \end{itemize}
 \end{frame}
 
@@ -750,7 +743,9 @@ degree flops
     { $1$ & $0$ & $0$ & $0$ & $0$ & $0$ & $0$ & $0$
       \\};
     \node [left=0.1cm of moops] {$-128$};
-    \node [above left=0.1cm and 0.3cm of moops.north west, anchor=center] {$=$};
+    \node [above left=0.1cm and 0.3cm of moops.north west,
+    anchor=center] {$=$};
+    \node [right=0.1cm of moops] {(Probably)};
   \end{tikzpicture}
   \end{uncoverenv}
 \end{frame}
@@ -782,16 +777,6 @@ degree flops
 \end{uncoverenv}
 \end{frame}
 
-\begin{frame}[plain,t]
-  \begin{flushright}
-    \tiny \url{https://cve.mitre.org/cgi-bin/cvekey.cgi?keyword=integer+overflow}
-  \end{flushright}
-  \begin{tikzpicture}[remember picture, overlay]
-    \node[at=(current page.center)]
-    {\includegraphics[width=\paperwidth]{cve-overflow}};
-  \end{tikzpicture}
-\end{frame}
-
 \begin{frame}
   \frametitle{Should you trust your calculation?}
 
@@ -810,18 +795,18 @@ degree flops
 \begin{frame}
   \frametitle{Floating point}
   \begin{itemize}
-  \item The real numbers are infinite and uncountable, which presents
+  \item The set of real numbers is uncountable, which presents
     problems on a computer.
   \item We typically approximate real numbers using \emph{floating
-      point} numbers.
-  \item These take a fixed number of bits (64 for \emph{double
-      precision}, 32 for \emph{single}) and split between a
-    \emph{significand} and \emph{exponent}, with implicit \emph{base}.
+      point}.
+  \item Scientific notation with a fixed number of
+    \emph{significant figures}
   \end{itemize}
   \begin{equation*}
     1015323 = \underbrace{1.015323}_{\text{significand}} \times \underbrace{10}_{\text{base}}\!\!\!\!\!\!^{\overbrace{6}^{\text{exponent}}}
   \end{equation*}
 \end{frame}
+
 \begin{frame}
   \frametitle{Floating point}
   \begin{itemize}
@@ -829,7 +814,8 @@ degree flops
   \item Specifies how to interpret bit patterns as floating point
     numbers
   \item Also specifies \emph{rounding} for calculations that result in
-    values not exactly representable
+    values that not exactly representable
+  \item Defines \emph{base} to be 2.
   \end{itemize}
   \begin{tabular}{c|ccc|c}
     Precision & Sign & Exponent & Significand & Total bits \\
@@ -837,12 +823,78 @@ degree flops
     single    & 1    & 8        & 23          & 32         \\
     double    & 1    & 11       & 52          & 64         \\
   \end{tabular}
-  \begin{tabular}{c|c}
-    Precision & Range                                                   \\
-    \hline
-    single    & {\small $[-3.4028235 \times 10^{38}, 3.4028235 \times 10^{38}]$} \\
-    double    & {\small $[-1.7976931348623157\times 10^{308}, 1.7976931348623157 \times 10^{308}]$}
-  \end{tabular}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Bit representation}
+  \begin{tikzpicture}
+    \node[rectangle,draw,inner sep=0pt, minimum width=1cm, minimum
+    height=0.5cm, anchor=west] at (0, 0) (sign) {sign};
+    \node[rectangle,draw,inner sep=0pt, minimum width=3cm, minimum
+    height=0.5cm, anchor=west] at (1cm, 0) (exp) {exponent};
+    \node[rectangle,draw,inner sep=0pt, minimum width=5cm, minimum
+    height=0.5cm, anchor=west] at (4cm, 0) (sig) {significand};
+    \node[left=0.1cm of sign.west] {$\text{val} = $};
+
+    \node[above=0cm of sign.north west] {32};
+    \node[above=0cm of sign.north east] {31};
+    \node[above=0cm of exp.north east] {23};
+    \node[above=0cm of sig.north east] {0};
+  \end{tikzpicture}
+  \begin{equation*}
+    f = \begin{cases}
+      \phantom{-}1.sssssssss_2 \times 2^{\text{exp}} & \text{sign} = 0\\
+      -1.sssssssss_2 \times 2^{\text{exp}} & \text{sign} = 1\\
+     \end{cases}
+   \end{equation*}
+   note ``hidden'' bit of precision, so
+   \begin{equation*}
+     f = (1 + \sum_{i=1}^{23} \text{val}_{i-1} * 2^{-i})\times 2^{\text{exp}}
+   \end{equation*}
+\end{frame}
+
+\begin{frame}
+  \frametitle{What about zero?}
+  \begin{itemize}
+  \item We need to play some tricks, and do so by stealing some bits
+    in the exponent.
+  \end{itemize}
+  \begin{center}
+    {\small
+      \begin{tabular}{c|c|c}
+        \multicolumn{2}{c|}{Exponent} & Value represented\\
+        Binary & Decimal & \\
+        \hline
+        $00000000_2$ & $0_{10}$ & Zero if significand is zero \\
+        $00000001_2$ & $1_{10}$ & $1.sssssssss_2 \times 2^{-126}$ \\
+        \dots & \dots & \dots \\
+        $01111111_2$ & $127_{10}$ & $1.sssssssss_2 \times 2^{-0}$ \\
+        $10000000_2$ & $128_{10}$ & $1.sssssssss_2 \times 2^{1}$ \\
+        \dots & \dots & \dots \\
+        $11111110_2$ & $254_{10}$ & $1.sssssssss_2 \times 2^{127}$ \\
+        $11111111_2$ & $255_{10}$ & $\infty$ if significand is zero\\
+      \end{tabular}
+    }
+  \end{center}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Almost all numbers are represented inexactly}
+  \begin{itemize}
+  \item Any irrational number ($\sqrt{2}, \pi, \dots$) is not exact in
+    floating point
+  \item But many rational numbers are also not (after all they are
+    countable, but still infinite).
+  \item In the same way that $1/3$ is $0.333\overline{33}_{10}$.
+  \item $0.1 = 0.0001100\overline{1100}_2$
+  \item The result of a calculation may not be the closest
+    representable number to the exact result!
+  \end{itemize}
+  \begin{center}
+\begin{minted}[fontsize=\small]{c}
+print 0.01f - (0.1f*0.1f); => -9.31323e-10
+\end{minted}
+  \end{center}
 \end{frame}
 
 \begin{frame}
@@ -852,7 +904,7 @@ degree flops
     \begin{equation*}
       1 \times 10^{6} + 2
     \end{equation*}
-  \item \emph{Normalise} representation (so exponent is the same)
+  \item \emph{Shift} so exponent is the same
   \item add significands
     \begin{align*}
       1 \times 10^{6} + 2 &= \\
@@ -872,86 +924,56 @@ degree flops
 
   Floating point operations do not.
 
-  \begin{center}
-    \begin{onlyenv}<2>
+    \begin{center}
+      \begin{onlyenv}<2>
 \begin{minted}[fontsize=\small]{c}
-float a = 1f;
-float b = 1e10f;
-print ((a + b) - b);
-print (a + (b - b));
+print ((1f + 1e10f) - 1e10f);
+print (1f + (1e10f - 1e10f));
 \end{minted}
-    \end{onlyenv}
-  \end{center}
-  \begin{center}
-    \begin{onlyenv}<3>
+      \end{onlyenv}
+    \end{center}
+    \begin{center}
+      \begin{onlyenv}<3>
 \begin{minted}[fontsize=\small]{c}
-float a = 1f;
-float b = 1e10f;
-print ((a + b) - b); => 0.0
-print (a + (b - b)); => 1.0
+print ((1f + 1e10f) - 1e10f); => 0.0f
+print (1f + (1e10f - 1e10f)); => 1.0f
 \end{minted}
-    \end{onlyenv}
-  \end{center}
+      \end{onlyenv}
+    \end{center}
 \end{frame}
 
 \begin{frame}[fragile]
-  \frametitle{Just add more precision, no?}
+  \frametitle{No distributivity}
+  We expect that multiplication \emph{distributes} over addition
+  \begin{equation*}
+    (a + b)*c = a*c + b*c
+  \end{equation*}
 
+  Again, this does not occur in floating point.
+
+  \begin{center}
+    \begin{uncoverenv}<2>
+\begin{minted}[fontsize=\small]{c}
+float a = 1234.5678f;
+float b = 1.2345678f;
+float c = 3.3333333f;
+print (a+b)*c; => 4119.3413f
+print (a*c) + (b*c); => 4119.3408f
+\end{minted}
+    \end{uncoverenv}
+  \end{center}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Sensitivity of numerical algorithms}
   \begin{itemize}
-  \item a \emph{single precision} \texttt{float} has about 8 decimal
-    digits of precision.
-  \item So $1\times10^{10} + 1 = 1\times10^{10} + 0.000,000,000,1\times10^{10} = 1$.
-  \item We could have used a \emph{double precision} \texttt{double}
-    instead (16 decimal digits).
-  \item In this case we have enough digits so we end up with
-    $1.000,000,000,1\times10^{10}$.
-  \item Which suggests we should always calculate in double precision
-    for ``more accuracy''.
+  \item The study of the accuracy and stability of numerical algorithms is as old
+    as computers.
+  \item Concerned with how errors propagate through an algorithm.
+  \item A core concept here is \emph{conditioning}.
   \end{itemize}
 
-  \begin{uncoverenv}<2->
-    \begin{columns}
-      \begin{column}{0.5\textwidth}
-        \begin{onlyenv}<2>
-\begin{minted}[fontsize=\scriptsize]{c}
-int count = 0;
-float x = 0;
-for (x=0; x<1.0f; x+=1.0f/6.0f)
-    count += 1
-printf("%d\n", count)
-\end{minted}
-        \end{onlyenv}
-        \begin{onlyenv}<3->
-\begin{minted}[fontsize=\scriptsize]{c}
-int count = 0;
-float x = 0;
-for (x=0; x<1.0f; x+=1.0f/6.0f)
-    count += 1
-printf("%d\n", count) => 6
-\end{minted}
-        \end{onlyenv}
-      \end{column}
-      \begin{column}{0.5\textwidth}
-        \begin{onlyenv}<2-3>
-\begin{minted}[fontsize=\scriptsize]{c}
-int count = 0;
-double x = 0;
-for (x=0; x<1.0; x+=1.0/6.0)
-    count += 1
-printf("%d\n", count)
-\end{minted}
-        \end{onlyenv}
-        \begin{onlyenv}<4->
-\begin{minted}[fontsize=\scriptsize]{c}
-int count = 0;
-double x = 0;
-for (x=0; x<1.0; x+=1.0/6.0)
-    count += 1
-printf("%d\n", count) => 7
-\end{minted}
-        \end{onlyenv}
-      \end{column}
-    \end{columns}
-  \end{uncoverenv}
+  Intuitively, conditioning tells us how sensitive the output of a
+  function is to small changes in its inputs.
 \end{frame}
 \end{document}
