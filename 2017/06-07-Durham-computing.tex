@@ -57,7 +57,7 @@ London
 
 \setbeamertemplate{bibliography item}{}
 
-\renewcommand{\bibfont}{\footnotesize}
+\renewcommand{\bibfont}{\fontsize{7}{7}\selectfont}
 \addbibresource{references.bib}
 
 \setlength{\bibitemsep}{1ex}
@@ -193,9 +193,9 @@ London
   \item One answer is software libraries.
   \item But these still put much of the burden on the model developer
   \item and transformations that cross library boundaries are hard.
-  \item Instead, we use a domain specific language for specifying PDE
+  \item Instead, use a domain specific language for specifying PDE
     solvers
-  \item by saying \emph{what}, not \emph{how}, we can synthesise
+  \item by saying \emph{what}, not \emph{how}, can synthesise
     efficient implementations.
   \end{itemize}
 \end{frame}
@@ -277,7 +277,7 @@ London
     {\scriptsize F.~Rathgeber, D.A.~Ham, \textbf{LM}, M.~Lange,
       F.~Luporini, A.T.T.~McRae, G.-T.~Bercea, G.R.~Markall,
       P.H.J.~Kelly. ACM Transactions on Mathematical Software,
-      2016. \arxivlink{1501.01809}{cs.MS}}
+      2016. \arxivlink{1501.01809}{cs.MS}\nocite{Rathgeber:2016}}
   \end{flushright}
 \end{frame}
 
@@ -975,5 +975,11 @@ print (a*c) + (b*c); => 4119.3408f
 
   Intuitively, conditioning tells us how sensitive the output of a
   function is to small changes in its inputs.
+\end{frame}
+
+\appendix
+\begin{frame}[allowframebreaks]
+  \frametitle{References}
+  \printbibliography[heading=none]
 \end{frame}
 \end{document}
