@@ -154,18 +154,50 @@
   In fact, it is \emph{entity}-dependent
 \end{frame}
 
-\begin{frame}
-  Let's draw some pictures:
-
-  Things to note.
-
-  We now have more classes of entities.  Need to think about how to
-  treat the exposed ``interior'' facets.
-
-  Most of the fun is in building these data structures.  You can
-  probably do it up front.
+\begin{frame}[plain]
+  \begin{columns}
+    \begin{column}{\textwidth}
+      \only<1>{\includegraphics[width=\textwidth]{topology-2d}}
+      \only<2>{\includegraphics[width=\textwidth]{topology-2d-cells}}
+      \only<3>{\includegraphics[width=\textwidth]{topology-2d-vertices}}
+      \only<4>{\includegraphics[width=\textwidth]{topology-3d}}
+    \end{column}
+  \end{columns}
 \end{frame}
 
+\begin{frame}[fragile]
+  \frametitle{Datatype extension}
+Iteration sets need \emph{four} values per entry.
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      Before
+\begin{minted}[fontsize=\tiny]{python}
+cells = ExtrudedSet(ncell, layers=10)
+efacets = ExtrudedSet(nefacet, layers=10)
+ifacets = ExtrudedSet(nifacet, layers=10)
+\end{minted}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+\begin{minted}[fontsize=\tiny]{python}
+cells = ExtrudedSet(ncell, layers=[[0, 10, 0, 10], 
+                                   [1, 10, 1, 10],
+                                   ...,
+                                   [13, 27, 13, 27]])
+efacets = ExtrudedSet(nefacet, layers=[[0, 10, 0, 10],
+                                       ...])
+ifacets = ExtrudedSet(nifacet, layers=[[1, 10, 1, 9],
+                                       ...])
+\end{minted}
+    \end{column}
+  \end{columns}
+\end{frame}
+\begin{frame}[plain]
+  \begin{columns}
+    \begin{column}{\textwidth}
+      \only<1>{\includegraphics[width=\textwidth]{topology-2d-facets}}
+    \end{column}
+  \end{columns}
+\end{frame}
 \begin{frame}
   Preliminary support in Firedrake
 
