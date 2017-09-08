@@ -8,10 +8,10 @@
 \usepackage{pgfplots}
 \usepackage{pgfplotstable}
 \usetikzlibrary{pgfplots.groupplots}
-\pgfplotsset{compat=1.12}
 \usepackage{appendixnumberbeamer}
 \usepackage{amsmath}
-\date{27th March 2017}
+\DeclareMathOperator{\tr}{tr}
+\date{12th September 2017}
 \usetheme{firedrake}
 
 \pgfplotscreateplotcyclelist{decent cycle}{%
@@ -34,6 +34,8 @@
     cycle list name=decent cycle,
   }
 }
+\newcommand{\colourfiredrake}[1]{\colorbox{red!20}{#1}}
+\newcommand{\colourpetsc}[1]{\colorbox{blue!20}{#1}}
 \renewcommand{\vec}[1]{\ensuremath{\boldsymbol{#1}}}
 \newcommand{\ddt}[1]{\frac{\partial #1}{\partial t}}
 \newcommand{\zhat}{\hat{\vec{z}}}
@@ -51,15 +53,15 @@
 London
 }
 
-\graphicspath{{./\jobname.figures/}}
+\graphicspath{{./\jobname.figures/}{../pictures/}}
 
 \newcommand{\arxivlink}[2]{%
   \href{http://www.arxiv.org/abs/#1}%
-  {{\small\texttt{arXiv:\,#1\,[#2]}}}%
+  {\texttt{arXiv:\,#1\,[#2]}}%
 }
 \newcommand{\doilink}[1]{%
   \href{http://dx.doi.org/#1}%
-  {{\small\texttt{doi:\,#1}{}}}%
+  {\texttt{doi:\,#1}}%
 }
 \usepackage[url=false,
             doi=true,
@@ -74,6 +76,7 @@ London
 \addbibresource{references.bib}
 
 \setlength{\bibitemsep}{1ex}
+\setlength{\fboxsep}{1pt}
 
 \renewbibmacro{in:}{}
 \DeclareFieldFormat[article]{volume}{\textbf{#1}}
@@ -96,28 +99,33 @@ London
 
 \maketitle
 
-\begin{abstract}
-  The development of complex numerical models requires a variety of
-  skills.  Including, but not limited to, problem-specific knowledge,
-  numerical methods, software engineering, and parallel computing.
-  Polymaths that tick all of these boxes are rare.  To combat this
-  complexity, traditional model design employs a separation of
-  concerns using software libraries.  This separation is
-  horizontal, and works best when the granularity of the API is
-  large, and one-way.  Finite element computations, that contain
-  user-specific variability in the inner loop, seem to preclude
-  such an approach.
+% \begin{abstract}
+%   The development of complex numerical models requires a variety of
+%   skills.  Including, but not limited to, problem-specific knowledge,
+%   numerical methods, software engineering, and parallel computing.
+%   Polymaths that tick all of these boxes are rare.  To combat this
+%   complexity, traditional model design employs a separation of
+%   concerns using software libraries.  This separation is
+%   horizontal, and works best when the granularity of the API is
+%   large, and one-way.  Finite element computations, that contain
+%   user-specific variability in the inner loop, seem to preclude
+%   such an approach.
 
-  In this talk, I will describe how, by teaching computers to
-  manipulate mathematical descriptions of PDE problems, we address
-  this problem, providing high performance finite element computations
-  without requiring that the model developer be an expert low-level
-  code optimisation.
+%   In this talk, I will describe how, by teaching computers to
+%   manipulate mathematical descriptions of PDE problems, we address
+%   this problem, providing high performance finite element computations
+%   without requiring that the model developer be an expert low-level
+%   code optimisation.
 
-  With an efficient model, we also need efficient solvers, and I will
-  also discuss recent work in Firedrake to simplify the development of
-  runtime-configurable block preconditioners using PETSc.
-\end{abstract}
+%   With an efficient model, we also need efficient solvers, and I will
+%   also discuss recent work in Firedrake to simplify the development of
+%   runtime-configurable block preconditioners using PETSc.
+% \end{abstract}
+\setbeamertemplate{background}{}
+\setbeamercolor{footline}{
+  use=normal text,
+  fg=normal text.fg
+}
 
 \begin{frame}
   \frametitle{Firedrake \url{www.firedrakeproject.org}}
@@ -138,11 +146,639 @@ London
   \begin{flushright}
     {\scriptsize F.~Rathgeber, D.A.~Ham, \textbf{LM}, M.~Lange,
       F.~Luporini, A.T.T.~McRae, G.-T.~Bercea, G.R.~Markall,
-      P.H.J.~Kelly. ACM Transactions on Mathematical Software,
+      P.H.J.~Kelly. TOMS,
       2016. \arxivlink{1501.01809}{cs.MS}\nocite{Rathgeber:2016}}
   \end{flushright}
 \end{frame}
 
+\begin{frame}[fragile]
+  \frametitle{A DSL for finite element computations}
+  \begin{columns}
+    \begin{column}{0.47\framewidth}
+      \small
+      \begin{block}{Rayleigh-B\'enard convection}
+        \begin{equation*}
+          \begin{split}
+            -\Delta u + u\cdot\nabla u + \nabla p +
+            \frac{\text{Ra}}{\text{Pr}} \hat{g}T &= 0 \\
+            \nabla \cdot u &= 0 \\
+            - \frac{1}{\text{Pr}} \Delta T + u\cdot \nabla T &= 0
+          \end{split}
+        \end{equation*}
+      \end{block}
+    \end{column}
+    \begin{column}{0.52\framewidth}
+\begin{minted}[fontsize=\tiny]{python}
+from firedrake import *
+mesh = Mesh(...)
+V = VectorFunctionSpace(mesh, "CG", 2)
+W = FunctionSpace(mesh, "CG", 1)
+Q = FunctionSpace(mesh, "CG", 1)
+Z = V * W * Q
+Ra = Constant(200)
+Pr = Constant(6.18)
+upT = Function(Z)
+u, p, T = split(upT)
+v, q, S = TestFunctions(Z)
+bcs = [...] # no-flow + temp gradient
+nullspace = MixedVectorSpaceBasis(
+   Z, [Z.sub(0), VectorSpaceBasis(constant=True),
+       Z.sub(2)])
+F = (inner(grad(u), grad(v))
+     + inner(dot(grad(u), u), v)
+     - inner(p, div(v))
+     + (Ra/Pr)*inner(T*g, v)
+     + inner(div(u), q)
+     + inner(dot(grad(T), u), S)
+     + (1/Pr) * inner(grad(T), grad(S)))*dx
+
+solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
+\end{minted}
+    \end{column}
+  \end{columns}  
+\end{frame}
+
+\begin{frame}
+  \frametitle{Automating expertise}
+  \begin{lemma}
+    Most research groups do not have the expertise to produce high
+    performance simulations.
+  \end{lemma}
+  \begin{corollary}
+    If we want high performance expertise to be available to all model
+    developers, we need a way of scaling the expertise.
+
+    In Firedrake, we do this by synthesising efficient code with
+    domain-specific compilers.
+  \end{corollary}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Maintainability}
+  With good abstractions, you write little code.
+  \begin{overlayarea}{\textwidth}{0.8\textheight}
+    \begin{onlyenv}<1>
+      \begin{block}{Library usability}
+        \begin{itemize}
+        \item High-level language enables rapid model development
+        \item Ease of experimentation
+        \item Small model code base
+        \end{itemize}
+      \end{block}
+
+      \begin{block}{Library development}
+        \begin{itemize}
+        \item Automation of complex optimisations
+        \item Exploit expertise across disciplines
+        \item Small library code base
+        \end{itemize}
+      \end{block}
+    \end{onlyenv}
+    \begin{onlyenv}<2>
+  \begin{columns}
+    \begin{column}[t]{0.5\textwidth}
+      \begin{block}{Core Firedrake}
+        \begin{table}
+          \centering
+          \begin{tabular}{lc}
+            Component & LOC   \\
+            \hline
+            Firedrake & 12000 \\
+            PyOP2     & 5200  \\
+            TSFC      & 4000  \\
+            finat     & 1300   \\
+            \hline
+            Total     & 22500
+          \end{tabular}
+        \end{table}
+      \end{block}
+    \end{column}
+    \begin{column}[t]{0.5\textwidth}
+      \begin{block}{Shared with FEniCS}
+        \begin{table}
+          \centering
+          \begin{tabular}{lc}
+            Component & LOC   \\
+            \hline
+            FIAT      & 4000  \\
+            UFL       & 13000 \\
+            \hline
+            Total     & 17000
+          \end{tabular}
+        \end{table}        
+      \end{block}
+    \end{column}
+  \end{columns}
+    \end{onlyenv}
+  \end{overlayarea}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Compiling finite element kernels}
+  Transforming an element integral to reference space.
+  \begin{equation*}
+    \int_e u v\, \text{d}x \rightarrow \int_e \tilde{u} \tilde{v} \det{\frac{\partial x}{\partial
+        X}}\,\text{d} X
+  \end{equation*}
+  With quadrature
+  \begin{equation*}
+    \sum_{q,i,j} w_q E_{q,i} E_{q,j} \det{%
+      \begin{bmatrix}
+        \sum_r C_{q,r}^{1}c_r & \sum_r C_{q,r}^{1}c_r \\
+        \sum_r C_{q,r}^{2}c_r & \sum_r C_{q,r}^{2}c_r
+      \end{bmatrix}
+    }
+  \end{equation*}
+  \begin{itemize}
+  \item $E$ the tabulation matrix of the finite element of $\tilde{v}$.
+  \item $c$ the vector of basis function coefficients of the
+    coordinate field.
+  \item $C^a$ the tabulation matrix of the first derivative of the
+    $a$th component of the coordinate element.
+  \end{itemize}
+\end{frame}
+\begin{frame}
+  \frametitle{Compiling finite element kernels}
+  \begin{equation*}
+    \sum_{q, i, j} w_q E_{q,i} E_{q,j} \det{%
+      \begin{bmatrix}
+        \sum_r C_{q,r}^{1}c_r & \sum_r C_{q,r}^{1}c_r \\
+        \sum_r C_{q,r}^{2}c_r & \sum_r C_{q,r}^{2}c_r
+      \end{bmatrix}
+    }
+  \end{equation*}
+
+  \begin{itemize}
+  \item Na\"ive code generation transforms this tensor algebra
+    expression into low-level C code.
+  \item But, there might be opportunities for optimisation.
+  \item For example, if $C_{q,r} = C_r$ (affine coordinates)
+  \begin{equation*}
+    \det{%
+      \begin{bmatrix}
+        \sum_r C_{r}^{1}c_r & \sum_r C_{r}^{1}c_r \\
+        \sum_r C_{r}^{2}c_r & \sum_r C_{r}^{2}c_r
+      \end{bmatrix}
+    }\sum_{q, i, j} w_q E_{q,i} E_{q,j}
+  \end{equation*}
+\item Others available, depending on structure in $E$, $C$, $\{q\}$.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Optimisations in TSFC}
+  \begin{block}{Generic}
+    \begin{itemize}
+    \item Flop reduction via factorisation, code motion, and CSE.
+      \begin{flushright}
+        {\scriptsize
+        Luporini, Ham, and Kelly.  TOMS
+        2017. \arxivlink{1604.05872}{cs.MS}\nocite{Luporini:2017}}
+      \end{flushright}
+    \item Alignment and padding for vectorisation (either intrinsics
+      or rely on C compiler).
+      \begin{flushright}
+        {\scriptsize
+        Luporini, Varbanescu, et al. TACO
+        2015. \doilink{10.1145/2687415}\nocite{Luporini:2015}}
+      \end{flushright}
+    \end{itemize}
+  \end{block}
+  \begin{block}{Structured basis}
+    \begin{itemize}
+    \item Structure (e.g.\@ tensor products) preserved in intermediate
+      representation in TSFC, enables new optimisation passes.
+      \begin{flushright}
+        {\scriptsize Homolya, \textbf{LM}, Luporini, Ham. \arxivlink{1705.03667}{cs.MS}\nocite{Homolya:2017}}
+      \end{flushright}
+    \item Sum factorisation and spectral underintegration
+      \begin{flushright}
+        {\scriptsize Homolya, Kirby, Ham. In preparation.}
+      \end{flushright}
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Sum factorisation}
+  On many elements, there is \emph{structure} in the basis functions:
+  \begin{equation*}
+    \phi_{i,q} := \phi_{(j,k),(p,r)} = \varphi_{j,p}\varphi_{k,r}
+  \end{equation*}
+  and so
+  \begin{align*}
+    \mathcal{F}_{(p,r)} &= \sum_{j,k} \phi_{(j,k),(p,r)} f_{j,k} \\
+                        &= \sum_{j,k} \varphi_{j,p}\varphi_{k,r} f_{j,k} \\
+                        &= \sum_j \varphi_{j,p} \sum_k \varphi_{k,r} f_{j,k}
+  \end{align*}
+  Automating this transformation is enabled by providing
+  \emph{symbolic code} for the tabulation
+  $\varphi_{j,p}\varphi_{k,r}$.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Sum factorisation II}
+  \begin{itemize}
+  \item Gives \emph{optimal complexity} evaluation of
+    matrix-vector products (and residual evaluation)
+  \item For a degree $p$ approximation on a $d$-dimensional tensor
+    product cell we have
+
+    \begin{tabular}{c|c|c|c}
+      Method              & Build operator            & MatVec                 & Mem refs              \\
+                          & (FLOPs)                   & (FLOPs)                & (bytes)               \\
+      \hline
+
+      Na\"ive assembled   & $\mathcal{O}(p^{3d})$     & $\mathcal{O}(p^{2d})$  & $\mathcal{O}(p^{2d})$ \\ 
+      SF assembled        & $\mathcal{O}(p^{2d + 1})$ & $\mathcal{O}(p^{2d})$  & $\mathcal{O}(p^{2d})$ \\
+      Na\"ive matrix free & 0                         & $\mathcal{O}(p^{2d})$  & $\mathcal{O}(p^d)$    \\
+      SF matrix free      & 0                         & $\mathcal{O}(p^{d+1})$ & $\mathcal{O}(p^d)$    \\
+    \end{tabular}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Not just for toy problems}
+  \begin{columns}
+    \begin{column}{0.4\textwidth}
+      \begin{align*}
+        \mathbf{F} &= \mathbf{I} + \nabla \mathbf{u}\\
+        \mathbf{C} &= \mathbf{F}^T \mathbf{F}\\
+        \mathbf{E} &= (\mathbf{C} - \mathbf{I}) / 2\\
+        \Psi &= \frac{\lambda}{2}[\tr(\mathbf{E})]^2 + \mu \tr(\mathbf{E}^2)\\
+        \mathbf{S} &= \frac{\partial \Psi}{\partial \mathbf{E}}\\
+        \mathbf{P} &= \mathbf{F} \mathbf{S}\\
+        r &= \int_\Omega \mathbf{P} : \nabla \mathbf{v} - \mathbf{b} \cdot \mathbf{v}\,\text{d}x\\
+      \end{align*}
+    \end{column}
+    \begin{column}{0.6\textwidth}
+\begin{minted}[fontsize=\tiny]{python}
+V = VectorElement("Lagrange", hexahedron, p)
+v = TestFunction(V)
+u = Coefficient(V)    # Displacement
+B = Coefficient(V)    # Body force per unit mass
+I = Identity(3)
+F = I+grad(u)  # Deformation gradient
+C = F.T*F      # Right Cauchy-Green tensor
+E = (C - I)/2
+E = variable(E)
+# Material constants
+mu = Constant(hexahedron)
+lmbda = Constant(hexahedron)
+# Strain energy function (material model)
+psi = lmbda/2*(tr(E)**2) + mu*tr(E*E)
+S = diff(psi, E) # Second Piola-Kirchhoff stress tensor
+P = F*S          # First Piola-Kirchoff stress tensor
+# Residual
+r = (inner(P, grad(v)) - inner(B, v))*dx
+\end{minted}
+    \end{column}
+  \end{columns}
+\end{frame}
+\begin{frame}
+  \frametitle{Does it work?}
+  \begin{itemize}
+  \item TSFC obtains optimal \emph{complexity} evaluation
+  \item In progress: is the constant factor good?
+  \end{itemize}
+  \begin{center}
+    \begin{tikzpicture}[scale=0.9]
+      \begin{loglogaxis}[name=plot, small, title=FLOPs to evaluate
+        hyperelastic residual on single hexahedron,
+        xlabel=Polynomial degree,
+        ylabel=FLOPs, xtick={1,2,4,8,16,32},
+        xticklabels={$1$,$2$,$4$,$8$,$16$,$32$}, axis lines=left, axis
+        line style={-}, log basis x=2, legend entries={Na\"ive (no sum
+          fact), With sum factorisation}, legend
+        style={cells={anchor=east}, legend pos=outer north east,
+          draw=none}, ]
+        \pgfplotstableread[row sep=crcr]{
+          degree flopsvanilla flopsopt\\
+          1 5.79910e+04 1.08850e+04  \\
+          2 8.98053e+05 6.57980e+04  \\
+          3 5.69583e+06 2.12963e+05  \\
+          4 2.33856e+07 5.06767e+05  \\
+          5 7.33951e+07 1.02529e+06  \\
+          6 1.91831e+08 1.85850e+06  \\
+          7 4.39133e+08 3.11104e+06  \\
+          8 9.09180e+08 4.90226e+06  \\
+          9 1.73986e+09 7.36619e+06  \\
+          10 3.12508e+09 1.06515e+07 \\
+          11 5.32827e+09 1.49217e+07 \\
+          12 8.69730e+09 2.03548e+07 \\
+          13 1.36809e+10 2.71436e+07 \\
+          14 2.08464e+10 3.54955e+07 \\
+          15 3.08992e+10 4.56328e+07 \\
+          16 4.47036e+10 5.77922e+07 \\
+          17 6.33046e+10 7.22253e+07 \\
+          18 8.79521e+10 8.91984e+07 \\
+          19 1.20126e+11 1.08992e+08 \\
+          20 1.61561e+11 1.31903e+08 \\
+          21 2.14280e+11 1.58239e+08 \\
+          22 2.80615e+11 1.88328e+08 \\
+          23 3.63248e+11 2.22508e+08 \\
+          24 4.65233e+11 2.61134e+08 \\
+          25 5.90039e+11 3.04574e+08 \\
+          26 7.41582e+11 3.53213e+08 \\
+          27 9.24258e+11 4.07449e+08 \\
+          28 1.14299e+12 4.67694e+08 \\
+          29 1.40325e+12 5.34378e+08 \\
+          30 1.71113e+12 6.07941e+08 \\
+          31 2.07336e+12 6.88842e+08 \\
+          32 2.49735e+12 7.77553e+08 \\
+        }\data; \pgfplotstableset{create on use/vanilla/.style={create
+            col/expr={1e4*pow(\thisrow{degree},6)}}};
+        \pgfplotstableset{create on use/spectral/.style={create
+            col/expr={5e2*pow(\thisrow{degree},4)}}};
+  
+        \addplot+[mark=none, color=black, line width=1.5pt] table
+        [x=degree,y=flopsvanilla] \data; \addplot+[mark=none,
+        color=black, dashed, line width=1.5pt] table
+        [x=degree,y=flopsopt] \data; \addplot+[mark=none, color=black,
+        dotted, line width=1pt] table [x=degree,y=vanilla] \data
+        coordinate [pos=0.67] (A); \node at (A) [anchor=south east]
+        {$\mathcal{O}(p^6)$}; \addplot+[mark=none, color=black,
+        dotted, line width=1pt] table [x=degree,y=spectral] \data
+        coordinate [pos=0.67] (B); \node at (B) [anchor=north west]
+        {$\mathcal{O}(p^4)$};
+      \end{loglogaxis}
+    \end{tikzpicture}
+  \end{center}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Maintainable models}
+  \begin{onlyenv}<1>
+    \begin{block}{Thetis}
+      \begin{center}
+        \url{github.com/thetisproject/thetis}
+      \end{center}
+      \begin{itemize}
+      \item 3D unstructured coastal ocean model written with Firedrake
+      \item 6400 LOC
+      \item 4-8x faster than previous code in group (same numerics)
+      \end{itemize}
+    \end{block}
+  \end{onlyenv}
+  \begin{onlyenv}<2>
+    \begin{block}{Gusto}
+      \begin{center}
+        \url{www.firedrakeproject.org/gusto/}
+      \end{center}
+      \begin{itemize}
+      \item 3D atmospheric dynamical core using compatible FE
+      \item Implements Met Office ``Gung Ho'' numerics
+      \item 1600 LOC
+      \end{itemize}
+    \end{block}
+  \end{onlyenv}
+\end{frame}
+
+\begin{frame}
+  \frametitle{What about solvers?}
+  \begin{itemize}
+  \item Firedrake tightly coupled with PETSc for solvers
+  \item For coupled implicit systems use \texttt{fieldsplit} (block
+    factorisation) preconditioners.
+  \item But how to provide all the necessary auxiliary operators?
+  \item Want to disentangle solver setup from problem (so we can plug
+    solvers into more complex problems).
+  \end{itemize}
+  \begin{block}{Idea}
+    Allow preconditioners access to same domain language that we use
+    to formulate the problem.
+
+    So PETSc PC calls back to Firedrake to assemble and invert any
+    auxiliary operators.
+  \end{block}
+\end{frame}
+\begin{frame}
+  \frametitle{An example: Navier-Stokes}
+  Newton iteration at each timestep solves
+  \begin{equation*}
+    \begin{bmatrix}
+      F & B^T\\
+      C & 0 \\
+    \end{bmatrix}
+    \begin{bmatrix}
+      \delta u\\
+      \delta p
+    \end{bmatrix}
+    = \begin{bmatrix}
+      f_1\\
+      f_2
+    \end{bmatrix}.
+  \end{equation*}
+  Preconditioning (Pressure-Convection-Diffusion e.g.~\textcite{Elman:2014})
+  \begin{equation*}
+    \begin{bmatrix}
+      F^{-1} & 0 \\
+      0 & S^{-1}
+    \end{bmatrix}
+    \begin{bmatrix}
+      I & 0\\
+      -CF^{-1} & I
+    \end{bmatrix}
+    \begin{bmatrix}
+      F & B^T \\
+      C & 0
+    \end{bmatrix}.
+  \end{equation*}
+  Where
+  \begin{equation*}
+    S = -C F^{-1} B^T
+  \end{equation*}
+  is inverted iteratively, preconditioned by
+  \begin{equation*}
+    S^{-1} \approx S_p^{-1} = L_p^{-1} F_p M_p^{-1}.
+  \end{equation*}
+\end{frame}
+\begin{frame}[fragile]
+  \frametitle{Implementation}
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+\begin{minted}[fontsize=\tiny,mathescape,escapeinside=||]{python}
+class PCDPC(PCBase):
+    def initialize(self, pc):
+        _, P = pc.getOperators()
+        context = P.getPythonContext()
+        test, trial = context.a.arguments()
+        Q = test.function_space()
+        p = TrialFunction(Q)
+        q = TestFunction(Q)
+        mass = p*q*dx
+        stiffness = inner(grad(p), grad(q))*dx
+        Mp = assemble(mass)
+        Kp = assemble(stiffness)
+        Mksp = PETSc.KSP().create(comm=pc.comm)
+        Mksp.setOperators(Mp.petscmat)
+        self.Mksp = Mksp
+        Kksp = PETSc.KSP().create(comm=pc.comm)
+        Kksp.setOperators(Kp.petscmat)
+        self.Kksp = Kksp
+        # User information about $\text{Re}$, current newton iterate
+        state = context.appctx["state"]
+        Re = context.appctx.get("Re", 1.0)
+        velid = context.appctx["velocity_space"]
+        u0 = split(state)[velid]
+        fp = 1.0/Re * inner(grad(p), grad(q))*dx + inner(u0, grad(p))*q*dx
+        self.Re = Re
+        self.Fp = assemble(fp)
+        Fpmat = self.Fp.petscmat
+\end{minted}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+\begin{minted}[fontsize=\tiny,mathescape,escapeinside=||]{python}
+
+    def apply(self, pc, x, y):
+        a, b = self.workspace
+        self.Mksp.solve(x, a)
+        self.Fp.petscmat.mult(a, b)
+        self.Kksp.solve(b, y)
+
+\end{minted}
+    \end{column}
+  \end{columns}
+\end{frame}
+\begin{frame}[fragile]
+  \frametitle{Configuration: back and forth across the great divide}
+  \begin{columns}
+    \hspace{-0.8cm}
+    \begin{column}{0.35\textwidth}
+\begin{minted}[fontsize=\tiny,escapeinside=||]{python}
+opts = {
+  |\colourfiredrake{”mat\_type”: ”matfree”}|,
+  |\colourpetsc{”ksp\_type”: ”gmres”}|,
+  |\colourpetsc{”pc\_type”: ”fieldsplit”}|,
+  |\colourpetsc{”pc\_fieldsplit\_type”: ”schur”}|,
+  |\colourpetsc{”pc\_fieldsplit\_schur\_factorization\_type”: ”lower”}|,
+  |\colourpetsc{”fieldsplit\_0”}|: {
+    |\colourpetsc{”ksp\_type”: ”preonly”}|,
+    |\colourfiredrake{”pc\_type”: ”python”}|,
+    |\colourfiredrake{”pc\_python\_type”: ”AssembledPC”}|,
+    |\colourpetsc{”assembled\_pc\_type”: ”hypre”}|,
+  }
+  |\colourpetsc{”fieldsplit\_1”}|: {
+    |\colourpetsc{”ksp\_type”: ”preonly”}|,
+    |\colourfiredrake{”pc\_type”: ”python”}|,
+    |\colourfiredrake{”pc\_python\_type”: ”PCDPC”}|,
+    |\colourfiredrake{”pcd\_Fp\_mat\_type”: ”matfree”}|,
+    |\colourpetsc{”pcd\_Mp\_ksp\_type”: ”preonly”}|,
+    |\colourpetsc{”pcd\_Mp\_pc\_type”: ”ilu”}|,
+    |\colourpetsc{”pcd\_Kp\_ksp\_type”: ”preonly”}|,
+    |\colourpetsc{”pcd\_Kp\_pc\_type”: ”hypre”}|
+  }
+}
+appctx = {"Re": Re, "velocity_space": 0}
+solve(F == 0, u, solver_parameters=opts, appctx=appctx)
+\end{minted}
+    \end{column} 
+    \begin{column}{0.65\textwidth}
+  \begin{tikzpicture}[scale=0.55, every node/.style={transform shape},
+    firedrake/.style={rounded rectangle,draw,black, fill=red!20, minimum size=6mm, inner sep=2pt},
+    petsc/.style={rectangle,draw,black, fill=blue!20, minimum size=6mm, inner sep=2pt},
+    arrow/.style={-stealth,line width=0.8}]
+    \node[petsc] (Jinv) {$J^{-1} \approx \mathcal{K}(J,
+      J_p^{-1})$};
+    \node[firedrake, below right=0.2cm and 3.5cm of Jinv.south east] (Jx) {$Jx$};
+    \node[firedrake,below=0.5cm of Jx.south] (jx) {\texttt{assemble(action(J, x))}};
+    \node[petsc,below right=2.5cm and -1cm of Jinv.south east] (Jpinv) {$J_p^{-1} =%
+      \left[%
+        \begin{smallmatrix}
+          F^{-1} & 0\\
+          0 & S^{-1}
+        \end{smallmatrix}%
+      \right]
+      \left[%
+      \begin{smallmatrix}
+        I & 0 \\
+        -CF^{-1} & 0 \\
+      \end{smallmatrix}%
+      \right]
+      $};
+    \node[petsc, below left=0.8cm and -0.5cm of Jpinv] (Ainv)  {$F^{-1}\approx \mathcal{K}(F,F_p^{-1})$};
+    \node[firedrake, below left=1cm and 1.5cm of Ainv] (Ax) {$Ax$};
+    \node[firedrake, below=3cm of Ax] (ax) {\texttt{assemble(action(F, x))}};
+    \node[firedrake, below=1.5cm of Ainv] (Ap)
+    {$F \leftarrow \text{\raisebox{0.5pt}{\texttt{assemble(F)}}}$};
+    \node[petsc, below=of Ap] (Apinv) {\texttt{hypre($F$)}};
+
+    \node[petsc, below=1.3cm of Jpinv.south east, anchor=north] (Sinv) {$S^{-1} \approx \mathcal{K}(S, S_p^{-1})$};
+    \node[petsc, below left=2cm and 0.5cm of Sinv, anchor=north] (S) {$Sx = (C F^{-1} B^T)x$};
+    \node[firedrake, below=of S] (Cx) {$Cx$};
+    \node[firedrake, left=of Cx] (Bx) {$B^Tx$};
+
+    \node[firedrake, below=1.5cm of Cx] (actionx) {\texttt{assemble(action($\cdot$, x))}};
+
+    \node[firedrake, below right=0.8cm and -0.2cm of Sinv,
+    anchor=north] (Spinv) {$S_p^{-1} = L_p^{-1} F_p M_p^{-1}$};
+    \node[firedrake, below=1.5cm of Spinv,align=center] (Lp)
+    {$L_p \text{\raisebox{0.5pt}{ $\leftarrow$ \texttt{assemble(L\_p)}}}$\\
+    $M_p \text{\raisebox{0.5pt}{ $\leftarrow$ \texttt{assemble(M\_p)}}}$};
+    \node[petsc, below left=0.7cm and -1.5cm of Lp] (Lphypre) {\texttt{hypre($L_p$)}};
+    \node[petsc, below right=0.7cm and -1.5cm of Lp] (Mpilu) {\texttt{ILU($M_p$)}};
+
+    \draw[arrow] (Jinv) -- (Jx);
+    \draw[arrow] (Jx) -- (jx);
+    \draw[arrow] (Jinv) -- (Jpinv);
+
+    \draw[arrow] (Jpinv.south west) -- (Ainv.north);
+    \draw[arrow] (Ainv.south west) -- (Ax);
+    \draw[arrow] (Ax) -- (ax);
+    \draw[arrow] (Ainv) -- (Ap);
+    \draw[arrow] (Ap) -- (Apinv);
+    \draw[arrow] (Jpinv) -- (Sinv);
+    \draw[arrow] (Sinv) -- (S);
+    \draw[arrow] (S) -- (Ainv.south east);
+
+    \draw[arrow] (S) -- (Bx);
+    \draw[arrow] (S) -- (Cx);
+
+    \draw[arrow] (Bx) -- (actionx);
+    \draw[arrow] (Cx) -- (actionx);
+
+    \draw[arrow] (Sinv) -- (Spinv);
+    \draw[arrow] (Spinv) -- (Lp);
+    \draw[arrow] (Lp) -- (Lphypre);
+    \draw[arrow] (Lp) -- (Mpilu);
+  \end{tikzpicture}
+    \end{column} 
+  \end{columns}
+\end{frame}
+\begin{frame}
+  \frametitle{Composable \emph{implementation} of block preconditioners}
+  \begin{itemize}
+  \item Disentangles implementation of preconditioner from model
+  \item Can embed inside larger solves (e.g.\@ Navier-Stokes inside Rayleigh-B\'enard)
+  \item Automatically takes advantage of improvements in Firedrake (fast matrix actions, etc...)
+  \end{itemize} 
+  \begin{flushright}
+    {\scriptsize
+    \textcite{Kirby:2017} \arxivlink{1706.01346}{cs.MS}}
+\end{flushright}
+\end{frame}
+\begin{frame}
+  \frametitle{Conclusions}
+  \begin{itemize}
+  \item Firedrake provides a layered set of abstractions for finite
+    element computations.
+  \item By capturing mathematical structure in code, we can
+    \emph{automate} many transformations that people do by hand.
+  \item Enables automated provision of ``HPC expertise'' to model
+    developers.
+  \item Good for experimentation from laptop to supercomputer.
+  \end{itemize}
+  \begin{block}{Future developments}
+    \begin{itemize}
+    \item Better support for subdomains and domain-decomposition PCs
+    \item Code generation for wide vector lanes
+    \item ...
+    \end{itemize}
+  \end{block}
+  \begin{tikzpicture}[remember picture,overlay]
+    \node[at=(current page.south east), anchor=south east] {\includegraphics[width=2.5cm]{epsrc-logo}};
+  \end{tikzpicture}
+\end{frame}
 
 \appendix
 \begin{frame}[t]
