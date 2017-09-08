@@ -582,7 +582,7 @@ solve(L == 0, z, solver_parameters=opts, appctx=appctx)
     arrow/.style={-stealth,line width=0.8}]
     \node[petsc] (Jinv) {$J^{-1} \approx \mathcal{K}(J,
       J_p^{-1})$};
-    \node[firedrake, below left=0.1cm and 0.3cm of ainv.south west] (Jx) {$Jx$};
+    \node[firedrake, below left=0.1cm and 0.3cm of Jinv.south west] (Jx) {$Jx$};
     \node[firedrake,below=0.5cm of Jx.south] (jx) {\texttt{assemble(action(J, x))}};
     \node[petsc,below right=0.5cm and -0.1cm of Jinv] (Jpinv) {$J_p^{-1} =%
       \left[%
@@ -708,7 +708,6 @@ DoFs ($\times 10^{6}$) & MPI processes & Newton its & Krylov its & Time (s)\\
   \begin{tikzpicture}[remember picture,overlay]
     \node[at=(current page.south east), anchor=south east] {\includegraphics[width=2.5cm]{epsrc-logo}};
   \end{tikzpicture}
-
 \end{frame}
 
 
