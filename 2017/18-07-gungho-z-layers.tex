@@ -2,7 +2,7 @@
 
 \usepackage{appendixnumberbeamer}
 \usepackage{amsmath}
-\date{3rd March 2017}
+\date{18th July 2017}
 \usetheme{firedrake}
 
 \author{Lawrence Mitchell\inst{1}}
@@ -48,40 +48,54 @@
 \begin{frame}[plain]
   \begin{columns}
     \begin{column}{\textwidth}
-      \only<1>{\includegraphics[width=\textwidth]{topology-2d}}
-      \only<2>{Provide number of cell layers per base cell}
-      \only<3>{\includegraphics[width=\textwidth]{topology-2d-cells}}
-      \only<4>{Bootstrap layers for other entities}
-      \only<5>{\includegraphics[width=\textwidth]{topology-2d-vertices}}
-      \only<6>{Similar for 3d, but it's harder to draw}
-      \only<7>{\includegraphics[width=\textwidth]{topology-3d}}
+      \begin{center}
+        \only<1>{\includegraphics[width=0.9\textwidth]{topology-2d}}
+        \only<2>{Provide number of cell layers per base cell
+
+          \includegraphics[width=0.8\textwidth]{topology-2d-cells}}
+        \only<3>{Bootstrap layers for other entities
+
+          \includegraphics[width=0.8\textwidth]{topology-2d-vertices}}
+        \only<4>{\includegraphics[width=0.9\textwidth]{topology-3d}}
+      \end{center}
     \end{column}
   \end{columns}
 \end{frame}
 
+\begin{frame}[fragile]
+  \frametitle{Mesh construction}
+  \begin{itemize}
+  \item On each base cell, provide:
+    \begin{enumerate}
+    \item Start layer (bottom is zero)
+    \item Number of cells
+    \end{enumerate}
+  \end{itemize}
+  \begin{columns}
+    \hspace{-2em}
+    \begin{column}{0.5\textwidth}
+      \begin{center}
+        \includegraphics[height=0.5\textheight]{mesh3d}
+      \end{center}
+    \end{column}
+    \begin{column}{0.4\textwidth}
+\begin{minted}[fontsize=\tiny]{python}
+mesh2d = Mesh(...)
+mesh = ExtrudedMesh(mesh2d, [[0, 3],
+                             [1, 2],
+                             [2, 3],
+                             [3, 4]],
+                    layer_height=0.25)
+\end{minted}
+    \end{column}
+  \end{columns}
+\end{frame}
 \begin{frame}[fragile]
   \frametitle{Datatype extension}
   Iteration sets need \emph{four} values per entry.
 
   \begin{overlayarea}{\textwidth}{0.7\textheight}
     \begin{onlyenv}<1>
-      \begin{center}
-        \includegraphics[height=0.7\textheight]{topology-2d-facets}
-      \end{center}
-    \end{onlyenv}
-    \begin{onlyenv}<2>
-\begin{minted}[fontsize=\scriptsize]{python}
-cells = ExtrudedSet(4, layers=[[0, 3, 0, 3], 
-                               [1, 3, 1, 3],
-                               [1, 2, 1, 2],
-                               [0, 1, 0, 1]])
-efacets = ExtrudedSet(2, layers=[[0, 3, 0, 3],
-                                 [0, 1, 0, 1]])
-ifacets = ExtrudedSet(2, layers=[[0, 3, 1, 3],
-                                 [1, 3, 1, 2]])
-\end{minted}
-    \end{onlyenv}
-    \begin{onlyenv}<3>
       \begin{itemize}
       \item \textbf{allocation} First two entries control allocation of dofs.
 
@@ -91,7 +105,25 @@ ifacets = ExtrudedSet(2, layers=[[0, 3, 1, 3],
 
         When iterating over entities, we can't iterate over ``exposed''
         interior facets.
+
+      \item Need to attach these to \emph{all} base mesh entities.
       \end{itemize}
+    \end{onlyenv}
+    \begin{onlyenv}<2>
+      \begin{columns}
+        \begin{column}{0.6\textwidth}
+          \begin{center}
+            \includegraphics[width=\textwidth]{topology-2d-facets}
+          \end{center}
+        \end{column}
+        \begin{column}{0.5\textwidth}
+\begin{minted}[fontsize=\tiny]{python}
+interior_facets = ExtrudedSet(2,
+                   layers=[[0, 3, 1, 3],
+                           [1, 3, 1, 2]])
+\end{minted}
+        \end{column}
+      \end{columns}
     \end{onlyenv}
   \end{overlayarea}
 \end{frame}
@@ -99,38 +131,54 @@ ifacets = ExtrudedSet(2, layers=[[0, 3, 1, 3],
 \begin{frame}[fragile]
   \frametitle{Kernel extension}
   \begin{itemize}
-  \item GungHo \emph{kernel} encodes iteration over layers
+  \item GungHo \emph{kernel} contains iteration over layers
   \item So now we need to provide this information at runtime
-  \item This is just a directly accessed data array
-  \item This needs to be part of kernel API.
+  \item Just a directly accessed data array
+  \item This needs to be part of kernel API
   \end{itemize}
-  \begin{overlayarea}{\textwidth}{0.5\textheight}
-    \begin{onlyenv}<1>
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
 \begin{minted}[fontsize=\tiny]{fortran}
-subroutine old_kernel(A, B, nlayers)
+subroutine old(A, B, nlayers)
    ...
    integer, intent(in) :: nlayers
 
    do k = 0, nlayers-1
     ...
    end do
-end subroutine old_kernel
+end subroutine old
 \end{minted}
-    \end{onlyenv}    
-    \begin{onlyenv}<2>
+    \end{column}
+    \begin{column}{0.5\textwidth}
 \begin{minted}[fontsize=\tiny]{fortran}
-subroutine new_kernel(A, B, layer_begin, layer_end)
+subroutine new(A, B, lstart, lend)
    ...
-   integer, intent(in) :: layer_begin, layer_end
+   integer, intent(in) :: lstart, lend
 
-   do k = layer_begin, layer_end
+   do k = lstart, lend-1
     ...
    end do
-end subroutine new_kernel
+end subroutine new
 \end{minted}
-    \end{onlyenv}
-  \end{overlayarea}
+    \end{column}
+  \end{columns}
 \end{frame}
+
+\begin{frame}
+  \frametitle{Boundary conditions}
+  \begin{itemize}
+  \item As ever, strong conditions are painful
+  \item It is no longer the case that only nodes on the bottom/top
+    cell are killed
+  \item I maintain a bitmask on each cell that marks which topological
+    entities on the cell are exposed
+  \item Then when assembling I can determine which dofs to drop on the
+    floor
+  \item This is easier if you never build sparse matrices: what's the
+    status here?
+  \end{itemize}
+\end{frame}
+
 \begin{frame}
   \frametitle{Firedrake support}
   \begin{itemize}
