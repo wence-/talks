@@ -47,9 +47,9 @@
 \DeclareMathOperator{\curl}{curl}
 \newcommand{\vsubset}[1]{\rotatebox[origin=c]{90}{\ensuremath{\subset}}}
 \newcommand{\inner}[2]{\ensuremath{\langle #1, #2 \rangle}}
-\author{Lawrence Mitchell\inst{1} \and Firedrake team}
+\author{Lawrence Mitchell\inst{1} $\in\text{ Firedrake team}$}
 \institute{
-\inst{1}Departments of Computing and Mathematics, Imperial College
+\inst{1}Department of Computing and Department of Mathematics, Imperial College
 London
 }
 
@@ -67,12 +67,13 @@ London
             doi=true,
             isbn=false,
             style=authoryear,
+            maxnames=10,
             firstinits=true,
             uniquename=init,
             backend=biber]{biblatex}
 
 \setbeamertemplate{bibliography item}{}
-\renewcommand{\bibfont}{\footnotesize}
+\renewcommand{\bibfont}{\fontsize{8}{8}\selectfont}
 \addbibresource{references.bib}
 
 \setlength{\bibitemsep}{1ex}
@@ -82,8 +83,8 @@ London
 \DeclareFieldFormat[article]{volume}{\textbf{#1}}
 \DeclareFieldFormat{doi}{%
   doi\addcolon%
-  {\scriptsize\ifhyperref{\href{http://dx.doi.org/#1}{\nolinkurl{#1}}}
-    {\nolinkurl{#1}}}}
+  \ifhyperref{\href{http://dx.doi.org/#1}{\nolinkurl{#1}}}
+  {\nolinkurl{#1}}}
 \AtEveryBibitem{%
 \clearfield{pages}%
 \clearfield{issue}%
@@ -138,9 +139,9 @@ London
   \begin{itemize}
   \item Written in Python.
   \item Finite element problems specified with \emph{embedded} domain
-    specific language.
+    specific language, UFL \parencite{Alnaes:2014} from the FEniCS project.
   \item \emph{Runtime} compilation to low-level (C) code.
-  \item Explicitly \emph{data parallel}: don't worry about MPI.
+  \item Explicitly \emph{data parallel}.
   \end{itemize}
 
   \begin{flushright}
@@ -155,17 +156,17 @@ London
   \frametitle{A DSL for finite element computations}
   \begin{columns}
     \begin{column}{0.47\framewidth}
-      \small
-      \begin{block}{Rayleigh-B\'enard convection}
-        \begin{equation*}
-          \begin{split}
-            -\Delta u + u\cdot\nabla u + \nabla p +
-            \frac{\text{Ra}}{\text{Pr}} \hat{g}T &= 0 \\
-            \nabla \cdot u &= 0 \\
-            - \frac{1}{\text{Pr}} \Delta T + u\cdot \nabla T &= 0
-          \end{split}
-        \end{equation*}
-      \end{block}
+      {\small
+        Find $(u, p, T) \in V\times W\times Q$ s.t.
+        \begin{align*}
+          \int\!\nabla u \cdot \nabla v + (u \cdot \nabla u) \cdot v \\
+          - p\nabla\cdot v + \frac{\text{Ra}}{\text{Pr}} Tg \hat{z} \cdot v\,\text{d}x &= 0 \\
+          \int\!\nabla\cdot u q\,\text{d}x&= 0\\
+          \int\! (u\cdot \nabla T) S + \text{Pr}^{-1} \nabla T \cdot \nabla
+          S\,\text{d}x &= 0\\
+          \quad \forall\, (v,q,T) \in V\times W \times Q
+        \end{align*}
+        }
     \end{column}
     \begin{column}{0.52\framewidth}
 \begin{minted}[fontsize=\tiny]{python}
@@ -208,9 +209,40 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
     If we want high performance expertise to be available to all model
     developers, we need a way of scaling the expertise.
 
-    In Firedrake, we do this by synthesising efficient code with
-    domain-specific compilers.
+    \uncover<2->{In Firedrake, we do this by synthesising
+    \uncover<3->{\alert{hopefully}} efficient code with
+    domain-specific compilers.}
   \end{corollary}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Two stages of compilation}
+  \begin{block}{Local kernels: TSFC}
+    Synthesise \emph{element local} kernel from weak form.
+  \end{block}
+  \begin{block}{Global iteration: PyOP2}
+    Weave together \emph{local kernel} with global iteration over some
+    set of mesh entities (e.g.\@ cells, exterior facets).
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Global iteration}
+  \begin{block}{Local computation}
+    Kernels do not know about global data layout.
+    \begin{itemize}
+    \item Kernel defines contract on local, packed, ordering.
+    \item Global-to-local reordering/packing applied by runtime library.
+    \end{itemize}
+  \end{block}
+  \begin{block}{Data parallel API}
+    Application code does not specify explicit iteration order.
+    \begin{itemize}
+    \item Define data structures, then just ``iterate''
+    \item Lazy evaluation, permits loop tiling and fusion without
+      changing application code.
+    \end{itemize}
+  \end{block}
 \end{frame}
 
 \begin{frame}
@@ -235,40 +267,69 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
       \end{block}
     \end{onlyenv}
     \begin{onlyenv}<2>
-  \begin{columns}
-    \begin{column}[t]{0.5\textwidth}
-      \begin{block}{Core Firedrake}
-        \begin{table}
-          \centering
-          \begin{tabular}{lc}
-            Component & LOC   \\
-            \hline
-            Firedrake & 12000 \\
-            PyOP2     & 5200  \\
-            TSFC      & 4000  \\
-            finat     & 1300   \\
-            \hline
-            Total     & 22500
-          \end{tabular}
-        \end{table}
-      \end{block}
-    \end{column}
-    \begin{column}[t]{0.5\textwidth}
-      \begin{block}{Shared with FEniCS}
-        \begin{table}
-          \centering
-          \begin{tabular}{lc}
-            Component & LOC   \\
-            \hline
-            FIAT      & 4000  \\
-            UFL       & 13000 \\
-            \hline
-            Total     & 17000
-          \end{tabular}
-        \end{table}        
-      \end{block}
-    \end{column}
-  \end{columns}
+      \begin{columns}
+        \begin{column}[t]{0.5\textwidth}
+          \begin{block}{Core Firedrake}
+            \begin{table}
+              \centering
+              \begin{tabular}{lc}
+                Component & LOC   \\
+                \hline
+                Firedrake & 12000 \\
+                PyOP2     & 5200  \\
+                TSFC      & 4000  \\
+                finat     & 1300   \\
+                \hline
+                Total     & 22500
+              \end{tabular}
+            \end{table}
+          \end{block}
+        \end{column}
+        \begin{column}[t]{0.5\textwidth}
+          \begin{block}{Shared with FEniCS}
+            \begin{table}
+              \centering
+              \begin{tabular}{lc}
+                Component & LOC   \\
+                \hline
+                FIAT      & 4000  \\
+                UFL       & 13000 \\
+                \hline
+                Total     & 17000
+              \end{tabular}
+            \end{table}        
+          \end{block}
+        \end{column}
+      \end{columns}
+    \end{onlyenv}
+    \begin{onlyenv}<3>
+      \begin{columns}
+        \begin{column}[t]{0.5\textwidth}
+          \begin{block}{Thetis}
+            {\small
+              {\scriptsize\url{github.com/thetisproject/thetis}}
+              \begin{itemize}
+              \item 3D unstructured coastal ocean model written with
+                Firedrake
+              \item 7000 LOC
+              \item 4-8x faster than previous code in group (same numerics)
+              \end{itemize}
+            }
+          \end{block}
+        \end{column}
+        \begin{column}[t]{0.5\textwidth}
+          \begin{block}{Gusto}
+            {\small
+              {\scriptsize\url{www.firedrakeproject.org/gusto/}}
+              \begin{itemize}
+              \item 3D atmospheric dynamical core using compatible FE
+              \item Implements Met Office ``Gung Ho'' numerics
+              \item 2000 LOC
+              \end{itemize}
+            }
+          \end{block}
+        \end{column}
+      \end{columns}
     \end{onlyenv}
   \end{overlayarea}
 \end{frame}
@@ -379,12 +440,13 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
 \begin{frame}
   \frametitle{Sum factorisation II}
   \begin{itemize}
-  \item Gives \emph{optimal complexity} evaluation of
-    matrix-vector products (and residual evaluation)
+  \item Improves complexity $\mathcal{O}((p+1)^{d-1})$-fold.
+  \item Gives \emph{optimal complexity} evaluation for matrix
+    assembly, matrix-vector products, and residual evaluation.
   \item For a degree $p$ approximation on a $d$-dimensional tensor
     product cell we have
-
-    \begin{tabular}{c|c|c|c}
+    \vskip\baselineskip
+    \begin{tabular}{l|c|c|c}
       Method              & Build operator            & MatVec                 & Mem refs              \\
                           & (FLOPs)                   & (FLOPs)                & (bytes)               \\
       \hline
@@ -398,103 +460,87 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
 \end{frame}
 
 \begin{frame}[fragile]
-  \frametitle{Not just for toy problems}
+  \frametitle{Not just for $Q$ and $dQ$}
   \begin{columns}
-    \begin{column}{0.4\textwidth}
-      \begin{align*}
-        \mathbf{F} &= \mathbf{I} + \nabla \mathbf{u}\\
-        \mathbf{C} &= \mathbf{F}^T \mathbf{F}\\
-        \mathbf{E} &= (\mathbf{C} - \mathbf{I}) / 2\\
-        \Psi &= \frac{\lambda}{2}[\tr(\mathbf{E})]^2 + \mu \tr(\mathbf{E}^2)\\
-        \mathbf{S} &= \frac{\partial \Psi}{\partial \mathbf{E}}\\
-        \mathbf{P} &= \mathbf{F} \mathbf{S}\\
-        r &= \int_\Omega \mathbf{P} : \nabla \mathbf{v} - \mathbf{b} \cdot \mathbf{v}\,\text{d}x\\
-      \end{align*}
-    \end{column}
-    \begin{column}{0.6\textwidth}
-\begin{minted}[fontsize=\tiny]{python}
-V = VectorElement("Lagrange", hexahedron, p)
-v = TestFunction(V)
-u = Coefficient(V)    # Displacement
-B = Coefficient(V)    # Body force per unit mass
-I = Identity(3)
-F = I+grad(u)  # Deformation gradient
-C = F.T*F      # Right Cauchy-Green tensor
-E = (C - I)/2
-E = variable(E)
-# Material constants
-mu = Constant(hexahedron)
-lmbda = Constant(hexahedron)
-# Strain energy function (material model)
-psi = lmbda/2*(tr(E)**2) + mu*tr(E*E)
-S = diff(psi, E) # Second Piola-Kirchhoff stress tensor
-P = F*S          # First Piola-Kirchoff stress tensor
-# Residual
-r = (inner(P, grad(v)) - inner(B, v))*dx
+    \begin{column}{0.5\textwidth}
+      \begin{block}{}
+        Find $u \in V \subset H(curl)$ s.t.
+        {\scriptsize \begin{equation*}
+          \int\!\!\curl u \cdot \curl v \,\text{d}x = \int\!\!B\cdot
+          v\,\text{d}x \quad \forall v \in V.
+        \end{equation*}}
+\begin{minted}[fontsize=\tiny,mathescape]{python}
+NCE = FiniteElement("NCE", hexahedron, degree)
+Q = VectorElement("Q", hexahedron, degree)
+u = Coefficient(NCE) # Solution variable
+B = Coefficient(Q)   # Coefficient in $H^1$
+v = TestFunction(NCE)
+F = (dot(curl(u), curl(v)) - dot(B, v))*dx
 \end{minted}
+    \end{block}
+    {\scriptsize
+      \begin{uncoverenv}<2>
+        \begin{itemize}
+        \item TSFC obtains optimal \emph{complexity} evaluation
+        \item In progress: is the constant factor good?
+        \item Much still to be done in terms of vectorisation.
+        \end{itemize}
+      \end{uncoverenv}
+      }
     \end{column}
-  \end{columns}
-\end{frame}
-\begin{frame}
-  \frametitle{Does it work?}
-  \begin{itemize}
-  \item TSFC obtains optimal \emph{complexity} evaluation
-  \item In progress: is the constant factor good?
-  \end{itemize}
+  \begin{column}{0.6\textwidth}
   \begin{center}
     \begin{tikzpicture}[scale=0.9]
-      \begin{loglogaxis}[name=plot, small, title=FLOPs to evaluate
-        hyperelastic residual on single hexahedron,
+      \begin{loglogaxis}[name=plot, small, title=FLOPs for single-cell residual,
         xlabel=Polynomial degree,
         ylabel=FLOPs, xtick={1,2,4,8,16,32},
         xticklabels={$1$,$2$,$4$,$8$,$16$,$32$}, axis lines=left, axis
-        line style={-}, log basis x=2, legend entries={Na\"ive (no sum
-          fact), With sum factorisation}, legend
-        style={cells={anchor=east}, legend pos=outer north east,
-          draw=none}, ]
+        line style={-}, log basis x=2,
+        legend entries={Na\"ive (no sum fact), With sum factorisation},
+        legend style={at={(0.5,-0.3)},anchor=north,draw=none}]
         \pgfplotstableread[row sep=crcr]{
-          degree flopsvanilla flopsopt\\
-          1 5.79910e+04 1.08850e+04  \\
-          2 8.98053e+05 6.57980e+04  \\
-          3 5.69583e+06 2.12963e+05  \\
-          4 2.33856e+07 5.06767e+05  \\
-          5 7.33951e+07 1.02529e+06  \\
-          6 1.91831e+08 1.85850e+06  \\
-          7 4.39133e+08 3.11104e+06  \\
-          8 9.09180e+08 4.90226e+06  \\
-          9 1.73986e+09 7.36619e+06  \\
-          10 3.12508e+09 1.06515e+07 \\
-          11 5.32827e+09 1.49217e+07 \\
-          12 8.69730e+09 2.03548e+07 \\
-          13 1.36809e+10 2.71436e+07 \\
-          14 2.08464e+10 3.54955e+07 \\
-          15 3.08992e+10 4.56328e+07 \\
-          16 4.47036e+10 5.77922e+07 \\
-          17 6.33046e+10 7.22253e+07 \\
-          18 8.79521e+10 8.91984e+07 \\
-          19 1.20126e+11 1.08992e+08 \\
-          20 1.61561e+11 1.31903e+08 \\
-          21 2.14280e+11 1.58239e+08 \\
-          22 2.80615e+11 1.88328e+08 \\
-          23 3.63248e+11 2.22508e+08 \\
-          24 4.65233e+11 2.61134e+08 \\
-          25 5.90039e+11 3.04574e+08 \\
-          26 7.41582e+11 3.53213e+08 \\
-          27 9.24258e+11 4.07449e+08 \\
-          28 1.14299e+12 4.67694e+08 \\
-          29 1.40325e+12 5.34378e+08 \\
-          30 1.71113e+12 6.07941e+08 \\
-          31 2.07336e+12 6.88842e+08 \\
-          32 2.49735e+12 7.77553e+08 \\
-        }\data; \pgfplotstableset{create on use/vanilla/.style={create
-            col/expr={1e4*pow(\thisrow{degree},6)}}};
+degree flops_vanilla flops_opt\\
+1 9.78100e+03 6.48100e+03\\
+2 1.05624e+05 2.78280e+04\\
+3 6.04110e+05 7.50860e+04\\
+4 2.36102e+06 1.63395e+05\\
+5 7.20724e+06 3.09060e+05\\
+6 1.85105e+07 5.33483e+05\\
+7 4.18644e+07 8.60322e+05\\
+8 8.59101e+07 1.31626e+06\\
+9 1.63287e+08 1.93100e+06\\
+10 2.91712e+08 2.73728e+06\\
+11 4.95190e+08 3.77084e+06\\
+12 8.05352e+08 5.07047e+06\\
+13 1.26293e+09 6.67796e+06\\
+14 1.91933e+09 8.63816e+06\\
+15 2.83841e+09 1.09989e+07\\
+16 4.09829e+09 1.38110e+07\\
+17 5.79335e+09 1.71285e+07\\
+18 8.03637e+09 2.10082e+07\\
+19 1.09608e+10 2.55101e+07\\
+20 1.47229e+10 3.06972e+07\\
+21 1.95048e+10 3.66353e+07\\
+22 2.55164e+10 4.33937e+07\\
+23 3.29987e+10 5.10443e+07\\
+24 4.22266e+10 5.96621e+07\\
+25 5.35115e+10 6.93253e+07\\
+26 6.72053e+10 8.01150e+07\\
+27 8.37026e+10 9.21153e+07\\
+28 1.03445e+11 1.05413e+08\\
+29 1.26924e+11 1.20099e+08\\
+30 1.54686e+11 1.36267e+08\\
+31 1.87334e+11 1.54011e+08\\
+32 2.25533e+11 1.73433e+08\\
+}\data; \pgfplotstableset{create on use/vanilla/.style={create
+            col/expr={1e3*pow(\thisrow{degree},6)}}};
         \pgfplotstableset{create on use/spectral/.style={create
             col/expr={5e2*pow(\thisrow{degree},4)}}};
   
         \addplot+[mark=none, color=black, line width=1.5pt] table
-        [x=degree,y=flopsvanilla] \data; \addplot+[mark=none,
+        [x=degree,y=flops_vanilla] \data; \addplot+[mark=none,
         color=black, dashed, line width=1.5pt] table
-        [x=degree,y=flopsopt] \data; \addplot+[mark=none, color=black,
+        [x=degree,y=flops_opt] \data; \addplot+[mark=none, color=black,
         dotted, line width=1pt] table [x=degree,y=vanilla] \data
         coordinate [pos=0.67] (A); \node at (A) [anchor=south east]
         {$\mathcal{O}(p^6)$}; \addplot+[mark=none, color=black,
@@ -503,260 +549,11 @@ r = (inner(P, grad(v)) - inner(B, v))*dx
         {$\mathcal{O}(p^4)$};
       \end{loglogaxis}
     \end{tikzpicture}
-  \end{center}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Maintainable models}
-  \begin{onlyenv}<1>
-    \begin{block}{Thetis}
-      \begin{center}
-        \url{github.com/thetisproject/thetis}
-      \end{center}
-      \begin{itemize}
-      \item 3D unstructured coastal ocean model written with Firedrake
-      \item 6400 LOC
-      \item 4-8x faster than previous code in group (same numerics)
-      \end{itemize}
-    \end{block}
-  \end{onlyenv}
-  \begin{onlyenv}<2>
-    \begin{block}{Gusto}
-      \begin{center}
-        \url{www.firedrakeproject.org/gusto/}
-      \end{center}
-      \begin{itemize}
-      \item 3D atmospheric dynamical core using compatible FE
-      \item Implements Met Office ``Gung Ho'' numerics
-      \item 1600 LOC
-      \end{itemize}
-    \end{block}
-  \end{onlyenv}
-\end{frame}
-
-\begin{frame}
-  \frametitle{What about solvers?}
-  \begin{itemize}
-  \item Firedrake tightly coupled with PETSc for solvers
-  \item For coupled implicit systems use \texttt{fieldsplit} (block
-    factorisation) preconditioners.
-  \item But how to provide all the necessary auxiliary operators?
-  \item Want to disentangle solver setup from problem (so we can plug
-    solvers into more complex problems).
-  \end{itemize}
-  \begin{block}{Idea}
-    Allow preconditioners access to same domain language that we use
-    to formulate the problem.
-
-    So PETSc PC calls back to Firedrake to assemble and invert any
-    auxiliary operators.
-  \end{block}
-\end{frame}
-\begin{frame}
-  \frametitle{An example: Navier-Stokes}
-  Newton iteration at each timestep solves
-  \begin{equation*}
-    \begin{bmatrix}
-      F & B^T\\
-      C & 0 \\
-    \end{bmatrix}
-    \begin{bmatrix}
-      \delta u\\
-      \delta p
-    \end{bmatrix}
-    = \begin{bmatrix}
-      f_1\\
-      f_2
-    \end{bmatrix}.
-  \end{equation*}
-  Preconditioning (Pressure-Convection-Diffusion e.g.~\textcite{Elman:2014})
-  \begin{equation*}
-    \begin{bmatrix}
-      F^{-1} & 0 \\
-      0 & S^{-1}
-    \end{bmatrix}
-    \begin{bmatrix}
-      I & 0\\
-      -CF^{-1} & I
-    \end{bmatrix}
-    \begin{bmatrix}
-      F & B^T \\
-      C & 0
-    \end{bmatrix}.
-  \end{equation*}
-  Where
-  \begin{equation*}
-    S = -C F^{-1} B^T
-  \end{equation*}
-  is inverted iteratively, preconditioned by
-  \begin{equation*}
-    S^{-1} \approx S_p^{-1} = L_p^{-1} F_p M_p^{-1}.
-  \end{equation*}
-\end{frame}
-\begin{frame}[fragile]
-  \frametitle{Implementation}
-  \begin{columns}
-    \begin{column}{0.5\textwidth}
-\begin{minted}[fontsize=\tiny,mathescape,escapeinside=||]{python}
-class PCDPC(PCBase):
-    def initialize(self, pc):
-        _, P = pc.getOperators()
-        context = P.getPythonContext()
-        test, trial = context.a.arguments()
-        Q = test.function_space()
-        p = TrialFunction(Q)
-        q = TestFunction(Q)
-        mass = p*q*dx
-        stiffness = inner(grad(p), grad(q))*dx
-        Mp = assemble(mass)
-        Kp = assemble(stiffness)
-        Mksp = PETSc.KSP().create(comm=pc.comm)
-        Mksp.setOperators(Mp.petscmat)
-        self.Mksp = Mksp
-        Kksp = PETSc.KSP().create(comm=pc.comm)
-        Kksp.setOperators(Kp.petscmat)
-        self.Kksp = Kksp
-        # User information about $\text{Re}$, current newton iterate
-        state = context.appctx["state"]
-        Re = context.appctx.get("Re", 1.0)
-        velid = context.appctx["velocity_space"]
-        u0 = split(state)[velid]
-        fp = 1.0/Re * inner(grad(p), grad(q))*dx + inner(u0, grad(p))*q*dx
-        self.Re = Re
-        self.Fp = assemble(fp)
-        Fpmat = self.Fp.petscmat
-\end{minted}
-    \end{column}
-    \begin{column}{0.5\textwidth}
-\begin{minted}[fontsize=\tiny,mathescape,escapeinside=||]{python}
-
-    def apply(self, pc, x, y):
-        a, b = self.workspace
-        self.Mksp.solve(x, a)
-        self.Fp.petscmat.mult(a, b)
-        self.Kksp.solve(b, y)
-
-\end{minted}
-    \end{column}
+  \end{center}    
+  \end{column}
   \end{columns}
 \end{frame}
-\begin{frame}[fragile]
-  \frametitle{Configuration: back and forth across the great divide}
-  \begin{columns}
-    \hspace{-0.8cm}
-    \begin{column}{0.35\textwidth}
-\begin{minted}[fontsize=\tiny,escapeinside=||]{python}
-opts = {
-  |\colourfiredrake{”mat\_type”: ”matfree”}|,
-  |\colourpetsc{”ksp\_type”: ”gmres”}|,
-  |\colourpetsc{”pc\_type”: ”fieldsplit”}|,
-  |\colourpetsc{”pc\_fieldsplit\_type”: ”schur”}|,
-  |\colourpetsc{”pc\_fieldsplit\_schur\_factorization\_type”: ”lower”}|,
-  |\colourpetsc{”fieldsplit\_0”}|: {
-    |\colourpetsc{”ksp\_type”: ”preonly”}|,
-    |\colourfiredrake{”pc\_type”: ”python”}|,
-    |\colourfiredrake{”pc\_python\_type”: ”AssembledPC”}|,
-    |\colourpetsc{”assembled\_pc\_type”: ”hypre”}|,
-  }
-  |\colourpetsc{”fieldsplit\_1”}|: {
-    |\colourpetsc{”ksp\_type”: ”preonly”}|,
-    |\colourfiredrake{”pc\_type”: ”python”}|,
-    |\colourfiredrake{”pc\_python\_type”: ”PCDPC”}|,
-    |\colourfiredrake{”pcd\_Fp\_mat\_type”: ”matfree”}|,
-    |\colourpetsc{”pcd\_Mp\_ksp\_type”: ”preonly”}|,
-    |\colourpetsc{”pcd\_Mp\_pc\_type”: ”ilu”}|,
-    |\colourpetsc{”pcd\_Kp\_ksp\_type”: ”preonly”}|,
-    |\colourpetsc{”pcd\_Kp\_pc\_type”: ”hypre”}|
-  }
-}
-appctx = {"Re": Re, "velocity_space": 0}
-solve(F == 0, u, solver_parameters=opts, appctx=appctx)
-\end{minted}
-    \end{column} 
-    \begin{column}{0.65\textwidth}
-  \begin{tikzpicture}[scale=0.55, every node/.style={transform shape},
-    firedrake/.style={rounded rectangle,draw,black, fill=red!20, minimum size=6mm, inner sep=2pt},
-    petsc/.style={rectangle,draw,black, fill=blue!20, minimum size=6mm, inner sep=2pt},
-    arrow/.style={-stealth,line width=0.8}]
-    \node[petsc] (Jinv) {$J^{-1} \approx \mathcal{K}(J,
-      J_p^{-1})$};
-    \node[firedrake, below right=0.2cm and 3.5cm of Jinv.south east] (Jx) {$Jx$};
-    \node[firedrake,below=0.5cm of Jx.south] (jx) {\texttt{assemble(action(J, x))}};
-    \node[petsc,below right=2.5cm and -1cm of Jinv.south east] (Jpinv) {$J_p^{-1} =%
-      \left[%
-        \begin{smallmatrix}
-          F^{-1} & 0\\
-          0 & S^{-1}
-        \end{smallmatrix}%
-      \right]
-      \left[%
-      \begin{smallmatrix}
-        I & 0 \\
-        -CF^{-1} & 0 \\
-      \end{smallmatrix}%
-      \right]
-      $};
-    \node[petsc, below left=0.8cm and -0.5cm of Jpinv] (Ainv)  {$F^{-1}\approx \mathcal{K}(F,F_p^{-1})$};
-    \node[firedrake, below left=1cm and 1.5cm of Ainv] (Ax) {$Ax$};
-    \node[firedrake, below=3cm of Ax] (ax) {\texttt{assemble(action(F, x))}};
-    \node[firedrake, below=1.5cm of Ainv] (Ap)
-    {$F \leftarrow \text{\raisebox{0.5pt}{\texttt{assemble(F)}}}$};
-    \node[petsc, below=of Ap] (Apinv) {\texttt{hypre($F$)}};
 
-    \node[petsc, below=1.3cm of Jpinv.south east, anchor=north] (Sinv) {$S^{-1} \approx \mathcal{K}(S, S_p^{-1})$};
-    \node[petsc, below left=2cm and 0.5cm of Sinv, anchor=north] (S) {$Sx = (C F^{-1} B^T)x$};
-    \node[firedrake, below=of S] (Cx) {$Cx$};
-    \node[firedrake, left=of Cx] (Bx) {$B^Tx$};
-
-    \node[firedrake, below=1.5cm of Cx] (actionx) {\texttt{assemble(action($\cdot$, x))}};
-
-    \node[firedrake, below right=0.8cm and -0.2cm of Sinv,
-    anchor=north] (Spinv) {$S_p^{-1} = L_p^{-1} F_p M_p^{-1}$};
-    \node[firedrake, below=1.5cm of Spinv,align=center] (Lp)
-    {$L_p \text{\raisebox{0.5pt}{ $\leftarrow$ \texttt{assemble(L\_p)}}}$\\
-    $M_p \text{\raisebox{0.5pt}{ $\leftarrow$ \texttt{assemble(M\_p)}}}$};
-    \node[petsc, below left=0.7cm and -1.5cm of Lp] (Lphypre) {\texttt{hypre($L_p$)}};
-    \node[petsc, below right=0.7cm and -1.5cm of Lp] (Mpilu) {\texttt{ILU($M_p$)}};
-
-    \draw[arrow] (Jinv) -- (Jx);
-    \draw[arrow] (Jx) -- (jx);
-    \draw[arrow] (Jinv) -- (Jpinv);
-
-    \draw[arrow] (Jpinv.south west) -- (Ainv.north);
-    \draw[arrow] (Ainv.south west) -- (Ax);
-    \draw[arrow] (Ax) -- (ax);
-    \draw[arrow] (Ainv) -- (Ap);
-    \draw[arrow] (Ap) -- (Apinv);
-    \draw[arrow] (Jpinv) -- (Sinv);
-    \draw[arrow] (Sinv) -- (S);
-    \draw[arrow] (S) -- (Ainv.south east);
-
-    \draw[arrow] (S) -- (Bx);
-    \draw[arrow] (S) -- (Cx);
-
-    \draw[arrow] (Bx) -- (actionx);
-    \draw[arrow] (Cx) -- (actionx);
-
-    \draw[arrow] (Sinv) -- (Spinv);
-    \draw[arrow] (Spinv) -- (Lp);
-    \draw[arrow] (Lp) -- (Lphypre);
-    \draw[arrow] (Lp) -- (Mpilu);
-  \end{tikzpicture}
-    \end{column} 
-  \end{columns}
-\end{frame}
-\begin{frame}
-  \frametitle{Composable \emph{implementation} of block preconditioners}
-  \begin{itemize}
-  \item Disentangles implementation of preconditioner from model
-  \item Can embed inside larger solves (e.g.\@ Navier-Stokes inside Rayleigh-B\'enard)
-  \item Automatically takes advantage of improvements in Firedrake (fast matrix actions, etc...)
-  \end{itemize} 
-  \begin{flushright}
-    {\scriptsize
-    \textcite{Kirby:2017} \arxivlink{1706.01346}{cs.MS}}
-\end{flushright}
-\end{frame}
 \begin{frame}
   \frametitle{Conclusions}
   \begin{itemize}
@@ -771,6 +568,10 @@ solve(F == 0, u, solver_parameters=opts, appctx=appctx)
   \begin{block}{Future developments}
     \begin{itemize}
     \item Better support for subdomains and domain-decomposition PCs
+      \begin{flushright}
+        {\scriptsize
+          Extending ideas from Kirby and \textbf{LM}. \arxivlink{1706.01346}{cs.MS}\nocite{Kirby:2017}}
+      \end{flushright}
     \item Code generation for wide vector lanes
     \item ...
     \end{itemize}
@@ -781,7 +582,7 @@ solve(F == 0, u, solver_parameters=opts, appctx=appctx)
 \end{frame}
 
 \appendix
-\begin{frame}[t]
+\begin{frame}
   \frametitle{References}
   \printbibliography[heading=none]
 \end{frame}
