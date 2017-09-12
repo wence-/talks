@@ -141,7 +141,7 @@ London
   \item Finite element problems specified with \emph{embedded} domain
     specific language, UFL \parencite{Alnaes:2014} from the FEniCS project.
   \item \emph{Runtime} compilation to low-level (C) code.
-  \item Explicitly \emph{data parallel}.
+  \item Explicitly \emph{data parallel} API.
   \end{itemize}
 
   \begin{flushright}
@@ -309,8 +309,7 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
             {\small
               {\scriptsize\url{github.com/thetisproject/thetis}}
               \begin{itemize}
-              \item 3D unstructured coastal ocean model written with
-                Firedrake
+              \item (2+1)D unstructured coastal ocean model, equal order DG
               \item 7000 LOC
               \item 4-8x faster than previous code in group (same numerics)
               \end{itemize}
@@ -322,7 +321,7 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
             {\small
               {\scriptsize\url{www.firedrakeproject.org/gusto/}}
               \begin{itemize}
-              \item 3D atmospheric dynamical core using compatible FE
+              \item (2+1)D atmospheric dynamical core using compatible FE
               \item Implements Met Office ``Gung Ho'' numerics
               \item 2000 LOC
               \end{itemize}
@@ -336,12 +335,12 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
 
 \begin{frame}[fragile]
   \frametitle{Compiling finite element kernels}
-  Transforming an element integral to reference space.
+  We first transform to reference space
   \begin{equation*}
     \int_e u v\, \text{d}x \rightarrow \int_e \tilde{u} \tilde{v} \det{\frac{\partial x}{\partial
         X}}\,\text{d} X
   \end{equation*}
-  With quadrature
+  and then evaluate integrals with quadrature
   \begin{equation*}
     \sum_{q,i,j} w_q E_{q,i} E_{q,j} \det{%
       \begin{bmatrix}
@@ -412,7 +411,7 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
       \begin{flushright}
         {\scriptsize Homolya, \textbf{LM}, Luporini, Ham. \arxivlink{1705.03667}{cs.MS}\nocite{Homolya:2017}}
       \end{flushright}
-    \item Sum factorisation and spectral underintegration
+    \item Sum factorisation and spectral underintegration.
       \begin{flushright}
         {\scriptsize Homolya, Kirby, Ham. In preparation.}
       \end{flushright}
@@ -478,7 +477,7 @@ v = TestFunction(NCE)
 F = (dot(curl(u), curl(v)) - dot(B, v))*dx
 \end{minted}
     \end{block}
-    {\scriptsize
+    {\fontsize{9}{9}\selectfont
       \begin{uncoverenv}<2>
         \begin{itemize}
         \item TSFC obtains optimal \emph{complexity} evaluation
