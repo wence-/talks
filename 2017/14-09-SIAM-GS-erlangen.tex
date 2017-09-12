@@ -340,30 +340,31 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
     \int_e u v\, \text{d}x \rightarrow \int_e \tilde{u} \tilde{v} \det{\frac{\partial x}{\partial
         X}}\,\text{d} X
   \end{equation*}
-  and then evaluate integrals with quadrature
+  and then evaluate integrals with quadrature rule $\{(w_q, x_q)\}$.
   \begin{equation*}
-    \sum_{q,i,j} w_q E_{q,i} E_{q,j} \det{%
+    A_{i,j} = \sum_{q} w_q E_i(x_q) E_j(x_q) \det{%
       \begin{bmatrix}
-        \sum_r C_{q,r}^{1}c_r & \sum_r C_{q,r}^{1}c_r \\
-        \sum_r C_{q,r}^{2}c_r & \sum_r C_{q,r}^{2}c_r
+        \sum_r C_r^1(x_q) c_r & \sum_r C_r^1(x_q) c_r \\
+        \sum_r C_r^2(x_q) c_r & \sum_r C_r^2(x_q) c_r
       \end{bmatrix}
     }
   \end{equation*}
   \begin{itemize}
-  \item $E$ the tabulation matrix of the finite element of $\tilde{v}$.
+  \item $E_i(x_q)$ tabulation of $i$th basis function at $x_q$.
   \item $c$ the vector of basis function coefficients of the
     coordinate field.
-  \item $C^a$ the tabulation matrix of the first derivative of the
-    $a$th component of the coordinate element.
+  \item $C_r^a(x_q)$ the tabulation of the first derivative of the
+    $a$th component of the $r$th basis function of coordinate element
+    at $x_q$.
   \end{itemize}
 \end{frame}
 \begin{frame}
   \frametitle{Compiling finite element kernels}
   \begin{equation*}
-    \sum_{q, i, j} w_q E_{q,i} E_{q,j} \det{%
+    A_{i,j} = \sum_{q} w_q E_i(x_q) E_j(x_q) \det{%
       \begin{bmatrix}
-        \sum_r C_{q,r}^{1}c_r & \sum_r C_{q,r}^{1}c_r \\
-        \sum_r C_{q,r}^{2}c_r & \sum_r C_{q,r}^{2}c_r
+        \sum_r C_r^1(x_q) c_r & \sum_r C_r^1(x_q) c_r \\
+        \sum_r C_r^2(x_q) c_r & \sum_r C_r^2(x_q) c_r
       \end{bmatrix}
     }
   \end{equation*}
@@ -371,17 +372,9 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
   \begin{itemize}
   \item Na\"ive code generation transforms this tensor algebra
     expression into low-level C code.
-  \item But, there might be opportunities for optimisation.
-  \item For example, if $C_{q,r} = C_r$ (affine coordinates)
-  \begin{equation*}
-    \det{%
-      \begin{bmatrix}
-        \sum_r C_{r}^{1}c_r & \sum_r C_{r}^{1}c_r \\
-        \sum_r C_{r}^{2}c_r & \sum_r C_{r}^{2}c_r
-      \end{bmatrix}
-    }\sum_{q, i, j} w_q E_{q,i} E_{q,j}
-  \end{equation*}
-\item Others available, depending on structure in $E$, $C$, $\{q\}$.
+  \item But there are likely opportunities for optimisation.
+  \item For example, $\det J$ constant for affine geometries
+  \item Others available, depending on structure in $E$, $C$, $\{q\}$.
   \end{itemize}
 \end{frame}
 
@@ -421,19 +414,23 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
 
 \begin{frame}
   \frametitle{Sum factorisation}
-  On many elements, there is \emph{structure} in the basis functions:
-  \begin{equation*}
-    \phi_{i,q} := \phi_{(j,k),(p,r)} = \varphi_{j,p}\varphi_{k,r}
-  \end{equation*}
-  and so
+  \begin{itemize}
+  \item Consider evaluating residual
+    \begin{equation*}
+      \mathcal{F}_j = \sum_q w_q \phi_j(x_q) f_j
+    \end{equation*}
+  \item Form compiler obtains $\phi_j(x_q)$ from element library.
+  \item[\textbf{old}] FIAT can \emph{only} provide the array substitution $\phi_j(x_q) \rightarrow
+    \Phi_{q,j}$
+  \item[\textbf{new}] FI\alert{n}AT, provides \emph{symbolic expression}
+    $\phi_j(x_q) \rightarrow \Phi^1_{j_1,q_1} \Phi^2_{j_2,q_2}$
+  \item Now a compiler can transform the sums
   \begin{align*}
-    \mathcal{F}_{(p,r)} &= \sum_{j,k} \phi_{(j,k),(p,r)} f_{j,k} \\
-                        &= \sum_{j,k} \varphi_{j,p}\varphi_{k,r} f_{j,k} \\
-                        &= \sum_j \varphi_{j,p} \sum_k \varphi_{k,r} f_{j,k}
+    \mathcal{F}_{(j_1,j_2)} &= \sum_{(q_1,q_2)} w_{q_1}w_{q_2} \Phi^1_{j_1,q_1} \Phi^2_{j_2,q_2} f_{(j_1,j_2)} \\
+                        &= \sum_{q_1} w_{q_1} \Phi_{j_1,q_1}
+                          \sum_{q_2} \Phi_{j_2,q_2} f_{(j_1, j_2)}
   \end{align*}
-  Automating this transformation is enabled by providing
-  \emph{symbolic code} for the tabulation
-  $\varphi_{j,p}\varphi_{k,r}$.
+  \end{itemize}
 \end{frame}
 
 \begin{frame}
