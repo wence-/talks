@@ -1,0 +1,63 @@
+\documentclass[presentation]{beamer}
+
+\begin{document}
+
+\begin{abstract}
+  If you've scheduled loops, you've gone too far
+  ==============================================
+
+  The optimal loop schedule for a given algorithm is typically
+  hardware dependent, even with all other parameters of the algorithm
+  fixed.  When we manually port code to a new hardware platform, we
+  must understand the loop structure and then perform, in tandem, data
+  layout and loop reordering to achieve good performance.  This is a
+  difficult task.  I argue that requiring a compiler system to perform
+  the same task will never work: the scheduled loop nest does not
+  offer enough information to the compiler for it to determine the
+  algorithmic structure.  Instead, we should strive for program
+  transformation steps that operate on /unscheduled/ DAGs.  This is
+  most easily achieved with DSLs, since no analysis is required.  I
+  will say some things about how we achieve this in the context of
+  finite element codes, but will mostly be full of questions.
+  
+\end{abstract}
+
+Want to say:
+
+- What I want:
+
+Reasonable fraction of achievable machine peak
+
+Single source: there should be \emph{no} handwritten code that needs
+to change when I change hardware.
+
+Transparently parallel.
+
+- ``any fule kno'' write data parallel code
+- What should be the granularity that the application developer sees
+- For finite elements, might be ``integral on a single cell''
+- But this is probably already too large to try and parallelise
+``outside''.
+- Just naively applying a per element integral in a data parallel way
+will not utilise all hardware
+- Corollary: need to perform transformations in tandem both inter- and
+intra- ``kernel''.
+- If I give you \emph{scheduled} loops, can you deduce the best
+transformation?  Difficult, because ``intent'' must be determined.
+- Instead, unscheduled loops allow application-guided transformation
+and \emph{synthesis}.
+- Example: sum factorised tensor product bases
+
+- Problems: what should I target for good vectorised code.
+- I have a cost model for working set size and flop minimisation.
+What else do I need to include.  Do I rank-augment tensors and rely on
+compilers to vectorise, or something fancier?
+
+- What about GPUs.  I would really like to treat them like very long
+vector CPUs, but they're sort of not.  The normal ``pack elements with
+good numbering'' trick doesn't work.  Instead, need to take single
+kernels, splat across a warp and do per-warp ``work transposition''
+with synchronisation points.
+
+- 
+\end{document}
