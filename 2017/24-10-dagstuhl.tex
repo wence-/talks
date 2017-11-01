@@ -1,63 +1,389 @@
 \documentclass[presentation]{beamer}
+\usetheme{metropolis}
+\metroset{progressbar=frametitle}
+\usepackage{tikz}
+
+\date{24th October 2017}
+\title{If you've scheduled loops, you've gone too far}
+\author{Lawrence Mitchell\inst{1,*}}
+\institute{
+\inst{1}Department\textbf{s} of Computing and Mathematics, Imperial College
+London
+
+\inst{*}\texttt{lawrence.mitchell@imperial.ac.uk}
+}
+\usepackage{pifont}
+\usepackage{minted}
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
+\newcommand{\arxivlink}[2]{%
+  \href{http://www.arxiv.org/abs/#1}%
+  {\texttt{arXiv:\,#1\,[#2]}}%
+}
+\newcommand{\doilink}[1]{%
+  \href{http://dx.doi.org/#1}%
+  {\texttt{doi:\,#1}}%
+}
+\usepackage[url=false,
+            doi=true,
+            isbn=false,
+            style=authoryear,
+            maxnames=10,
+            firstinits=true,
+            uniquename=init,
+            backend=biber]{biblatex}
+
+\setbeamertemplate{bibliography item}{}
+\renewcommand{\bibfont}{\fontsize{8}{8}\selectfont}
+\addbibresource{references.bib}
+\setlength{\bibitemsep}{1ex}
+\setlength{\fboxsep}{1pt}
+
+\renewbibmacro{in:}{}
+\DeclareFieldFormat[article]{volume}{\textbf{#1}}
+\DeclareFieldFormat{doi}{%
+  doi\addcolon%
+  \ifhyperref{\href{http://dx.doi.org/#1}{\nolinkurl{#1}}}
+  {\nolinkurl{#1}}}
+\AtEveryBibitem{%
+\clearfield{pages}%
+\clearfield{issue}%
+\clearfield{number}%
+}
+
+\DeclareMathOperator{\tr}{tr}
+
+\graphicspath{{./\jobname.figures/}{../pictures/}}
 
 \begin{document}
 
-\begin{abstract}
-  If you've scheduled loops, you've gone too far
-  ==============================================
+\begin{frame}[plain,noframenumbering]
+  \maketitle
+  \begin{tikzpicture}[remember picture,overlay]
+    \node[at=(current page.south west), anchor=south west] {\includegraphics[height=0.9cm]{epsrc-logo}};
+    \node[at=(current page.south east), anchor=south east] {\includegraphics[height=0.9cm]{imperial-two-tone}};
+  \end{tikzpicture}
+\end{frame}
 
-  The optimal loop schedule for a given algorithm is typically
-  hardware dependent, even with all other parameters of the algorithm
-  fixed.  When we manually port code to a new hardware platform, we
-  must understand the loop structure and then perform, in tandem, data
-  layout and loop reordering to achieve good performance.  This is a
-  difficult task.  I argue that requiring a compiler system to perform
-  the same task will never work: the scheduled loop nest does not
-  offer enough information to the compiler for it to determine the
-  algorithmic structure.  Instead, we should strive for program
-  transformation steps that operate on /unscheduled/ DAGs.  This is
-  most easily achieved with DSLs, since no analysis is required.  I
-  will say some things about how we achieve this in the context of
-  finite element codes, but will mostly be full of questions.
-  
-\end{abstract}
+% \begin{abstract}
+%   If you've scheduled loops, you've gone too far
+%   ==============================================
 
-Want to say:
+%   The optimal loop schedule for a given algorithm is typically
+%   hardware dependent, even with all other parameters of the algorithm
+%   fixed.  When we manually port code to a new hardware platform, we
+%   must understand the loop structure and then perform, in tandem, data
+%   layout and loop reordering to achieve good performance.  This is a
+%   difficult task.  I argue that requiring a compiler system to perform
+%   the same task will never work: the scheduled loop nest does not
+%   offer enough information to the compiler for it to determine the
+%   algorithmic structure.  Instead, we should strive for program
+%   transformation steps that operate on /unscheduled/ DAGs.  This is
+%   most easily achieved with DSLs, since no analysis is required.  I
+%   will say some things about how we achieve this in the context of
+%   finite element codes, but will mostly be full of questions.
 
-- What I want:
+% \end{abstract}
 
-Reasonable fraction of achievable machine peak
+\begin{frame}[standout]
+  Write data\uncover<2>{/task} parallel code
 
-Single source: there should be \emph{no} handwritten code that needs
-to change when I change hardware.
+  {\small as any fule kno}
+\end{frame}
 
-Transparently parallel.
+\begin{frame}
+  \frametitle{I've got 99 problems}
+  \begin{lemma}
+    You can't trust computational scientists to write good code.
+  \end{lemma}
 
-- ``any fule kno'' write data parallel code
-- What should be the granularity that the application developer sees
-- For finite elements, might be ``integral on a single cell''
-- But this is probably already too large to try and parallelise
-``outside''.
-- Just naively applying a per element integral in a data parallel way
-will not utilise all hardware
-- Corollary: need to perform transformations in tandem both inter- and
-intra- ``kernel''.
-- If I give you \emph{scheduled} loops, can you deduce the best
-transformation?  Difficult, because ``intent'' must be determined.
-- Instead, unscheduled loops allow application-guided transformation
-and \emph{synthesis}.
-- Example: sum factorised tensor product bases
+  \begin{corollary}
+    Make it ``impossible'' to \emph{not} write good code.
+  \end{corollary}
+\end{frame}
 
-- Problems: what should I target for good vectorised code.
-- I have a cost model for working set size and flop minimisation.
-What else do I need to include.  Do I rank-augment tensors and rely on
-compilers to vectorise, or something fancier?
+\begin{frame}[fragile]
+  \frametitle{DSLs for finite elements}
+  \begin{columns}
+    \begin{column}{0.47\framewidth}
+      {\footnotesize
+        Find $(u, p, T) \in V\times W\times Q$ s.t.
+        \begin{align*}
+          \int\!\nabla u \cdot \nabla v + (u \cdot \nabla u) \cdot v \\
+          - p\nabla\cdot v + \frac{\text{Ra}}{\text{Pr}} Tg \hat{z} \cdot v\,\text{d}x &= 0 \\
+          \int\!\nabla\cdot u q\,\text{d}x&= 0\\
+          \int\! (u\cdot \nabla T) S + \text{Pr}^{-1} \nabla T \cdot \nabla
+          S\,\text{d}x &= 0\\
+          \quad \forall\, (v,q,T) \in V\times W \times Q
+        \end{align*}
+        }
+    \end{column}
+    \begin{uncoverenv}<2->
+      \begin{column}{0.52\framewidth}
+\begin{minted}[fontsize=\tiny]{python}
+from firedrake import *
+mesh = Mesh(...)
+V = VectorFunctionSpace(mesh, "CG", 2)
+W = FunctionSpace(mesh, "CG", 1)
+Q = FunctionSpace(mesh, "CG", 1)
+Z = V * W * Q
+Ra = Constant(200)
+Pr = Constant(6.18)
+upT = Function(Z)
+u, p, T = split(upT)
+v, q, S = TestFunctions(Z)
+bcs = [...] # no-flow + temp gradient
+nullspace = MixedVectorSpaceBasis(
+   Z, [Z.sub(0), VectorSpaceBasis(constant=True),
+       Z.sub(2)])
+F = (inner(grad(u), grad(v))
+     + inner(dot(grad(u), u), v)
+     - inner(p, div(v))
+     + (Ra/Pr)*inner(T*g, v)
+     + inner(div(u), q)
+     + inner(dot(grad(T), u), S)
+     + (1/Pr) * inner(grad(T), grad(S)))*dx
 
-- What about GPUs.  I would really like to treat them like very long
-vector CPUs, but they're sort of not.  The normal ``pack elements with
-good numbering'' trick doesn't work.  Instead, need to take single
-kernels, splat across a warp and do per-warp ``work transposition''
-with synchronisation points.
+solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
+\end{minted}
+      \end{column}
+    \end{uncoverenv}
+  \end{columns}
+\end{frame}
+\begin{frame}[fragile]
+  \frametitle{ + a DSL for solver configuration}
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      {\fontsize{4.5}{4.5}\selectfont
+\begin{verbatim}
+-snes_type newtonls
+-snes_rtol 1e-8
+-snes_linesearch_type basic
+-ksp_type fgmres
+-ksp_gmres_modifiedgramschmidt
+-mat_type matfree
+-pc_type fieldsplit
+-pc_fieldsplit_type multiplicative
+-pc_fieldsplit_0_fields 0,1
+-pc_fieldsplit_1_fields 2
+-prefix_push fieldsplit_1_
+  -ksp_type gmres
+  -ksp_rtol 1e-4,
+  -pc_type python
+  -pc_python_type firedrake.AssembledPC
+  -assembled_mat_type aij
+  -assembled_pc_type telescope
+  -assembled_pc_telescope_reduction_factor 6
+  -assembled_telescope_pc_type hypre
+  -assembled_telescope_pc_hypre_boomeramg_P_max 4
+  -assembled_telescope_pc_hypre_boomeramg_agg_nl 1
+  -assembled_telescope_pc_hypre_boomeramg_agg_num_paths 2
+  -assembled_telescope_pc_hypre_boomeramg_coarsen_type HMIS
+  -assembled_telescope_pc_hypre_boomeramg_interp_type ext+i
+  -assembled_telescope_pc_hypre_boomeramg_no_CF True
+-prefix_pop
+-prefix_push fieldsplit_0_
+  -ksp_type gmres
+  -ksp_gmres_modifiedgramschmidt
+  -ksp_rtol 1e-2
+  -pc_type fieldsplit
+  -pc_fieldsplit_type schur
+  -pc_fieldsplit_schur_fact_type lower
+\end{verbatim}
+        }
+      \end{column}
+      \begin{column}{0.5\textwidth}
+        {\fontsize{4.5}{4.5}\selectfont
+\begin{verbatim}
+  -prefix_push fieldsplit_0_
+    -ksp_type preonly
+    -pc_type python
+    -pc_python_type firedrake.AssembledPC
+    -assembled_mat_type aij
+    -assembled_pc_type hypre
+    -assembled_pc_hypre_boomeramg_P_max 4
+    -assembled_pc_hypre_boomeramg_agg_nl 1
+    -assembled_pc_hypre_boomeramg_agg_num_paths 2
+    -assembled_pc_hypre_boomeramg_coarsen_type HMIS
+    -assembled_pc_hypre_boomeramg_interp_type ext+i
+    -assembled_pc_hypre_boomeramg_no_CF
+  -prefix_pop
+  -prefix_push fieldsplit_1_
+    -ksp_type preonly
+    -pc_type python
+    -pc_python_type firedrake.PCDPC
+    -pcd_Fp_mat_type matfree
+    -pcd_Kp_ksp_type preonly
+    -pcd_Kp_mat_type aij
+    -pcd_Kp_pc_type telescope
+    -pcd_Kp_pc_telescope_reduction_factor 6
+    -pcd_Kp_telescope_pc_type ksp
+    -pcd_Kp_telescope_ksp_ksp_max_it 3
+    -pcd_Kp_telescope_ksp_ksp_type richardson
+    -pcd_Kp_telescope_ksp_pc_type hypre
+    -pcd_Kp_telescope_ksp_pc_hypre_boomeramg_P_max 4
+    -pcd_Kp_telescope_ksp_pc_hypre_boomeramg_agg_nl 1
+    -pcd_Kp_telescope_ksp_pc_hypre_boomeramg_agg_num_paths 2
+    -pcd_Kp_telescope_ksp_pc_hypre_boomeramg_coarsen_type HMIS
+    -pcd_Kp_telescope_ksp_pc_hypre_boomeramg_interp_type ext+i
+    -pcd_Kp_telescope_ksp_pc_hypre_boomeramg_no_CF
+    -pcd_Mp_mat_type aij
+    -pcd_Mp_ksp_type richardson
+    -pcd_Mp_pc_type sor
+    -pcd_Mp_ksp_max_it 2
+  -prefix_pop
+-prefix_pop
+\end{verbatim}
+}
+      \end{column}
+  \end{columns}
+\end{frame}
 
-- 
+\begin{frame}
+  \frametitle{Firedrake \url{www.firedrakeproject.org}}
+
+  \begin{quote}
+    {\normalfont [\ldots]} an automated system for the solution of partial
+    differential equations using the finite element method.
+  \end{quote}
+
+  \begin{itemize}
+  \item Written in Python.
+  \item Finite element problems specified with \emph{embedded} domain
+    specific language, UFL \parencite{Alnaes:2014} from the FEniCS project.
+  \item \emph{Runtime} compilation to low-level (C) code.
+  \item Explicitly \emph{data parallel} API.
+  \end{itemize}
+
+  \begin{flushright}
+    {\scriptsize F.~Rathgeber, D.A.~Ham, \textbf{LM}, M.~Lange,
+      F.~Luporini, A.T.T.~McRae, G.-T.~Bercea, G.R.~Markall,
+      P.H.J.~Kelly. TOMS,
+      2016. \arxivlink{1501.01809}{cs.MS}\nocite{Rathgeber:2016}}
+  \end{flushright}
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Code transformation}
+  \begin{itemize}
+  \item Represent fields as expansion in some basis $\{\phi_i\}$ for
+    the discrete space.
+  \item Integrals are computed by numerical quadrature on mesh elements.
+    \begin{equation*}
+      \int_\Omega F(\phi_i) \phi_j \,\text{d}x \rightarrow \sum_{e \in
+        \mathcal{T}} \sum_q w_q F(\phi_i(q)) \phi_j(q)
+    \end{equation*}
+    \item Need to evaluate $\phi_j$ and $F(\phi_i)$, defined by basis coefficients
+      $\{f_i\}_{i=1}^{N}$, at quadrature points $\{q_j\}_{j=1}^{Q}$.
+
+    \begin{equation*}
+      \mathcal{F}_q = \big[\Phi f\,\big]_q = \sum_i \phi_{i,q} f_i
+    \end{equation*}
+  \item $\Phi$ is a $Q\times N$ matrix of basis functions evaluated at
+    quadrature points.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{How fast can you do dgemv?}
+  \begin{itemize}
+  \item For degree $p$ elements in $d$ dimensions. $N, Q = \mathcal{O}(p^d)$.
+  \item<2-> So I need $\mathcal{O}(p^{2d})$ operations.  Right?
+  \item<3-> Well not always$\dots$.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Exploiting structure}
+  Often, $\phi$ might have a tensor decomposition.
+  \begin{equation*}
+    \phi_{i,q}(x,y,\dots) :=  \varphi_{j,p}(x)\varphi_{k,r}(y)\dots
+  \end{equation*}
+  and so
+  \begin{align*}
+    \mathcal{F}_{(p,r)} &= \sum_{j,k} \phi_{(j,k),(p,r)} f_{j,k} \\
+                        &= \sum_{j,k} \varphi_{j,p}\varphi_{k,r} f_{j,k} \\
+                        &= \sum_j \varphi_{j,p} \sum_k \varphi_{k,r} f_{j,k}
+  \end{align*}
+  at the cost of some temporary storage, this requires only
+  $\mathcal{O}(d p^{d+1})$ operations.
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Tensions}
+  \begin{itemize}
+  \item You want the granularity of the data parallel operation to be
+    small
+  \item That way the programmer has less chance to get it wrong
+  \item But, can you then get the ``good'' algorithm?
+  \end{itemize}
+  \hspace{0.5\baselineskip}
+  \begin{uncoverenv}<2->
+    \begin{columns}
+      \begin{column}{0.5\textwidth}
+        Will your compiler hoist into array temporaries?
+\begin{minted}[fontsize=\scriptsize]{c}
+for (p = 0; p < L; p++)
+ for (r = 0; r < L; r++)
+  for (j = 0; j < M; j++)
+   for (k = 0; k < M; k++)
+    F[L*p+r][j*M+k] += f(p,j)*g(r,k)
+\end{minted}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      Will your blas library notice if \texttt{PHI} has
+      Kronecker-product structure?
+\begin{minted}[fontsize=\scriptsize]{c}
+double PHI[L][M] = {{ ... }};
+dgemv(PHI, Fi, Fq)
+\end{minted}
+    \end{column}
+  \end{columns}
+\end{uncoverenv}
+\end{frame}
+\begin{frame}
+  \frametitle{Scheduling}
+  \begin{itemize}
+  \item Front-end DSL matches finite elements
+  \item Compiler frontend removes finite element specific constructs $\rightarrow$
+    DAG representation of tensor-algebra.
+  \item These operations can have structure (e.g.~tensor-product
+    decomposition)
+  \item Transformations on the DAG to minimise op-count, perhaps
+    promote vectorisation.
+  \item Scheduling $\leftrightarrow$ topological sort of DAG
+  \item Opportunity to introduce hardware- and problem-guided
+    heuristics, and optimisation passes
+  \end{itemize}
+  \begin{flushright}
+    {\scriptsize Homolya, \textbf{LM}, Luporini,
+      Ham. \arxivlink{1705.03667}{cs.MS}\nocite{Homolya:2017} \\
+
+      Homolya, Kirby, Ham.  In preparation}
+  \end{flushright}
+\end{frame}
+
+\begin{frame}
+  \frametitle{DSLs are handcuffs}
+
+  \begin{itemize}
+  \item[\cmark] A DSL should elegantly capture mathematical structure
+  \item[\cmark] things expressible in the mathematics can be compiled
+    to efficient code \emph{and algorithms!}
+  \item[\xmark] All else cannot be compiled, need graceful
+    degradation.
+  \item[\xmark/\cmark] Greatest advantages come when you incorporate
+    them \emph{at the top level}.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[standout]
+  Thanks!
+\end{frame}
+\appendix
+\begin{frame}
+  \frametitle{References}
+  \printbibliography[heading=none]
+\end{frame}
 \end{document}
