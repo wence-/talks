@@ -247,20 +247,30 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
     differential equations using the finite element method.
   \end{quote}
 
-  \begin{itemize}
-  \item Written in Python.
-  \item Finite element problems specified with \emph{embedded} domain
-    specific language, UFL \parencite{Alnaes:2014} from the FEniCS project.
-  \item \emph{Runtime} compilation to low-level (C) code.
-  \item Explicitly \emph{data parallel} API.
-  \end{itemize}
+  \begin{onlyenv}<1>
+    \begin{itemize}
+    \item Written in Python.
+    \item Finite element problems specified with \emph{embedded}
+      domain specific language, UFL \parencite{Alnaes:2014} from the
+      FEniCS project.
+    \item \emph{Runtime} compilation to low-level (C) code.
+    \item Explicitly \emph{data parallel} API.
+    \end{itemize}
 
-  \begin{flushright}
-    {\scriptsize F.~Rathgeber, D.A.~Ham, \textbf{LM}, M.~Lange,
-      F.~Luporini, A.T.T.~McRae, G.-T.~Bercea, G.R.~Markall,
-      P.H.J.~Kelly. TOMS,
-      2016. \arxivlink{1501.01809}{cs.MS}\nocite{Rathgeber:2016}}
-  \end{flushright}
+    \begin{flushright}
+      {\scriptsize F.~Rathgeber, D.A.~Ham, \textbf{LM}, M.~Lange,
+        F.~Luporini, A.T.T.~McRae, G.-T.~Bercea, G.R.~Markall,
+        P.H.J.~Kelly. TOMS,
+        2016. \arxivlink{1501.01809}{cs.MS}\nocite{Rathgeber:2016}}
+    \end{flushright}
+  \end{onlyenv}
+  \begin{onlyenv}<2>
+    \begin{block}{User groups at}
+      Imperial, Bath, Leeds, Kiel, Rice, Houston, Oregon Health \&
+      Science, Exeter, Buffalo, ETH, Waterloo, Minnesota, Baylor,
+      Texas A\&M, \dots
+    \end{block}
+  \end{onlyenv}
 \end{frame}
 
 
@@ -360,7 +370,7 @@ dgemv(PHI, Fi, Fq)
     {\scriptsize Homolya, \textbf{LM}, Luporini,
       Ham. \arxivlink{1705.03667}{cs.MS}\nocite{Homolya:2017} \\
 
-      Homolya, Kirby, Ham.  In preparation}
+      Homolya, Kirby, Ham.  \arxivlink{1711.02473}{cs.MS}\nocite{Homolya:2017a}}
   \end{flushright}
 \end{frame}
 
