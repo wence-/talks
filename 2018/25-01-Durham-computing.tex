@@ -14,6 +14,10 @@
 \newcommand{\cmark}{\ding{51}}
 \newcommand{\xmark}{\ding{55}}
 \DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator{\grad}{grad}
+\let\div\relax
+\DeclareMathOperator{\div}{div}
+\DeclareMathOperator{\curl}{curl}
 \date{6th July 2017}
 \usetheme{metropolis}
 \metroset{progressbar=frametitle}
@@ -92,8 +96,8 @@ London
 \begin{frame}[t]
   \frametitle{A problem}
   \begin{itemize}
-  \item Computational simulation of partial differential equations
-    underpins much of modern science and engineering.
+  \item Computational simulation underpins much of modern science and
+    engineering.
   \item Simulation models are ever more complex.
   \item The extra computational effort used to be offset by increased
     hardware performance \ldots
@@ -165,7 +169,7 @@ London
     \end{block}
   \end{onlyenv}
   \begin{onlyenv}<2->
-    \begin{block}{After 1953}
+    \begin{block}{1953--present: FORmula TRANslation}
 \begin{minted}[fontsize=\tiny]{fortran}
       PROGRAM MAIN
       PARAMETER (N=100)
@@ -188,16 +192,28 @@ London
   \end{overlayarea}
 \end{frame}
 
-
 \begin{frame}
-  \frametitle{DSLs for numerical computing}
+  \frametitle{Firedrake \url{www.firedrakeproject.org}}
+
+  \begin{quote}
+    {\normalfont [\ldots]} an automated system for the solution of partial
+    differential equations using the finite element method.
+  \end{quote}
+
   \begin{itemize}
-  \item Fortran was designed as a domain specific language for
-    \alert{FORmula TRANslation}
-  \item A compiler then translates this high level specification to
-    executable code.
-  \item Why not do the same at a higher level for PDEs?
+  \item Written in Python.
+  \item Finite element problems specified with \emph{embedded} domain
+    specific language.
+  \item \emph{Runtime} compilation to low-level (C) code.
+  \item Explicitly \emph{data parallel}: don't worry about MPI.
   \end{itemize}
+
+  \begin{flushright}
+    {\scriptsize F.~Rathgeber, D.A.~Ham, \textbf{LM}, M.~Lange,
+      F.~Luporini, A.T.T.~McRae, G.-T.~Bercea, G.R.~Markall,
+      P.H.J.~Kelly. ACM Transactions on Mathematical Software,
+      2016. \arxivlink{1501.01809}{cs.MS}}
+  \end{flushright}
 \end{frame}
 
 \begin{frame}
@@ -268,32 +284,8 @@ London
   \end{equation*}
 \end{frame}
 
-\begin{frame}
-  \frametitle{Firedrake \url{www.firedrakeproject.org}}
-
-  \begin{quote}
-    {\normalfont [\ldots]} an automated system for the solution of partial
-    differential equations using the finite element method.
-  \end{quote}
-
-  \begin{itemize}
-  \item Written in Python.
-  \item Finite element problems specified with \emph{embedded} domain
-    specific language.
-  \item \emph{Runtime} compilation to low-level (C) code.
-  \item Explicitly \emph{data parallel}: don't worry about MPI.
-  \end{itemize}
-
-  \begin{flushright}
-    {\scriptsize F.~Rathgeber, D.A.~Ham, \textbf{LM}, M.~Lange,
-      F.~Luporini, A.T.T.~McRae, G.-T.~Bercea, G.R.~Markall,
-      P.H.J.~Kelly. ACM Transactions on Mathematical Software,
-      2016. \arxivlink{1501.01809}{cs.MS}\nocite{Rathgeber:2016}}
-  \end{flushright}
-\end{frame}
-
 \begin{frame}[fragile]
-  \frametitle{Exploiting abstractions}
+  \frametitle{Fit to the mathematics}
   \begin{itemize}
   \item Firedrake builds on, and extends, embedded DSLs developed in
     the FEniCS project.
@@ -321,7 +313,7 @@ a = dot(grad(u), grad(v))*dx
 \end{frame}
 
 \begin{frame}[fragile]
-  \frametitle{Compiling variational forms: TSFC}
+  \frametitle{A compiler for finite elements}
   A \emph{form compiler} translates UFL into
   low-level (C/C++/...) code for performing an element integral.
   \begin{flushright}
@@ -334,7 +326,7 @@ a = dot(grad(u), grad(v))*dx
       \begin{columns}
         \begin{column}{0.4\textwidth}
           \begin{equation*}
-            \int_\Omega \nabla u \cdot \nabla v\,\text{d}x
+            \int_e \nabla u \cdot \nabla v\,\text{d}x
           \end{equation*}
         \end{column}
         \hspace{-3em}
@@ -348,11 +340,17 @@ a = dot(grad(u), grad(v))*dx
         \end{column}
       \end{columns}
     \item Is transformed to a tensor algebra expression
-
-    \item Compiler passes aim to minimise FLOPs to evaluate this
-      expression.
-
-    \item Generate low-level code.
+      {\small \begin{equation*}
+    \sum_q w_q \left| d \right| \sum_{i_5} \left( \sum_{i_3}
+      K_{i_3,i_5} \begin{bmatrix}
+        E^{(1)}_{q,k} & E^{(2)}_{q,k}
+      \end{bmatrix}_{i_3} \right)
+    \left( \sum_{i_4} K_{i_4,i_5} \begin{bmatrix}
+        E^{(1)}_{q,j} & E^{(2)}_{q,j}
+      \end{bmatrix}_{i_4} \right)
+  \end{equation*}}
+    \item Compiler passes aim to minimise FLOPs required to evaluate
+      this expression.
     \end{itemize}
   \end{onlyenv}
   \begin{onlyenv}<2>
@@ -403,30 +401,8 @@ void cell_integral(double A[3][3],
   \end{overlayarea}
 \end{frame}
 
-\begin{frame}[fragile]
-  \frametitle{Optimising tensor contractions}
-
-  An integral in physical space is \emph{pulled back} to reference
-  space
-  \begin{equation*}
-  \int \nabla u \cdot \nabla v\,\text{d}x = \int J^{-T} \nabla \tilde{u} \cdot J^{-T} \nabla \tilde{v} \left| J \right|\, \text{d}X
-  \end{equation*}
-
-  With quadrature, we have a tensor contraction to evaluate:
-  \begin{equation*}
-    \sum_q w_q \left| d \right| \sum_{i_5} \left( \sum_{i_3}
-      K_{i_3,i_5} \begin{bmatrix}
-        E^{(1)}_{q,k} & E^{(2)}_{q,k}
-      \end{bmatrix}_{i_3} \right)
-    \left( \sum_{i_4} K_{i_4,i_5} \begin{bmatrix}
-        E^{(1)}_{q,j} & E^{(2)}_{q,j}
-      \end{bmatrix}_{i_4} \right).
-  \end{equation*}
-\end{frame}
-
-
 \begin{frame}
-  \frametitle{FLOP-optimal contractions}
+  \frametitle{FLOP-optimal tensor contractions}
   An important class of finite elements uses \emph{tensor product}
   basis functions
   \begin{equation*}
@@ -448,198 +424,199 @@ void cell_integral(double A[3][3],
   \end{flushright}
 \end{frame}
 
+\begin{frame}[fragile]
+  \frametitle{Automated, not just for toy problems}
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      \begin{block}{}
+        Find $u \in V \subset H(\curl)$ s.t.
+        {\scriptsize \begin{equation*}
+          \int\!\!\curl u \cdot \curl v \,\text{d}x = \int\!\!B\cdot
+          v\,\text{d}x \quad \forall v \in V.
+        \end{equation*}}
+\begin{minted}[fontsize=\tiny,mathescape]{python}
+NCE = FiniteElement("NCE", hexahedron, degree)
+Q = VectorElement("Q", hexahedron, degree)
+u = Coefficient(NCE) # Solution in $H(\curl)$
+B = Coefficient(Q)   # Coefficient in $H^1$
+v = TestFunction(NCE)
+F = (dot(curl(u), curl(v)) - dot(B, v))*dx
+\end{minted}
+    \end{block}
+    {\fontsize{9}{9}\selectfont
+      \begin{itemize}
+        \item<2-> TSFC obtains optimal \emph{complexity} evaluation
+        \item<2-> In progress: is the constant factor good?
+        \item<2-> Much still to be done in terms of vectorisation.
+        \end{itemize}
+      }
+    \end{column}
+  \begin{column}{0.6\textwidth}
+  \begin{center}
+    \begin{tikzpicture}[scale=0.9]
+      \begin{loglogaxis}[name=plot, small, title=FLOPs to evaluate $F$,
+        xlabel=Polynomial degree,
+        ylabel=FLOPs, xtick={1,2,4,8,16,32},
+        xticklabels={$1$,$2$,$4$,$8$,$16$,$32$}, axis lines=left, axis
+        line style={-}, log basis x=2,
+        legend entries={Na\"ive (no sum fact), With sum factorisation},
+        legend style={at={(0.5,-0.3)},anchor=north,draw=none}]
+        \pgfplotstableread[row sep=crcr]{
+degree flops_vanilla flops_opt\\
+1 9.78100e+03 6.48100e+03\\
+2 1.05624e+05 2.78280e+04\\
+3 6.04110e+05 7.50860e+04\\
+4 2.36102e+06 1.63395e+05\\
+5 7.20724e+06 3.09060e+05\\
+6 1.85105e+07 5.33483e+05\\
+7 4.18644e+07 8.60322e+05\\
+8 8.59101e+07 1.31626e+06\\
+9 1.63287e+08 1.93100e+06\\
+10 2.91712e+08 2.73728e+06\\
+11 4.95190e+08 3.77084e+06\\
+12 8.05352e+08 5.07047e+06\\
+13 1.26293e+09 6.67796e+06\\
+14 1.91933e+09 8.63816e+06\\
+15 2.83841e+09 1.09989e+07\\
+16 4.09829e+09 1.38110e+07\\
+17 5.79335e+09 1.71285e+07\\
+18 8.03637e+09 2.10082e+07\\
+19 1.09608e+10 2.55101e+07\\
+20 1.47229e+10 3.06972e+07\\
+21 1.95048e+10 3.66353e+07\\
+22 2.55164e+10 4.33937e+07\\
+23 3.29987e+10 5.10443e+07\\
+24 4.22266e+10 5.96621e+07\\
+25 5.35115e+10 6.93253e+07\\
+26 6.72053e+10 8.01150e+07\\
+27 8.37026e+10 9.21153e+07\\
+28 1.03445e+11 1.05413e+08\\
+29 1.26924e+11 1.20099e+08\\
+30 1.54686e+11 1.36267e+08\\
+31 1.87334e+11 1.54011e+08\\
+32 2.25533e+11 1.73433e+08\\
+}\data; \pgfplotstableset{create on use/vanilla/.style={create
+            col/expr={1e3*pow(\thisrow{degree},6)}}};
+        \pgfplotstableset{create on use/spectral/.style={create
+            col/expr={5e2*pow(\thisrow{degree},4)}}};
+  
+        \addplot+[mark=none, color=black, line width=1.5pt] table
+        [x=degree,y=flops_vanilla] \data; \addplot+[mark=none,
+        color=black, dashed, line width=1.5pt] table
+        [x=degree,y=flops_opt] \data; \addplot+[mark=none, color=black,
+        dotted, line width=1pt] table [x=degree,y=vanilla] \data
+        coordinate [pos=0.67] (A); \node at (A) [anchor=south east]
+        {$\mathcal{O}(p^6)$}; \addplot+[mark=none, color=black,
+        dotted, line width=1pt] table [x=degree,y=spectral] \data
+        coordinate [pos=0.67] (B); \node at (B) [anchor=north west]
+        {$\mathcal{O}(p^4)$};
+      \end{loglogaxis}
+    \end{tikzpicture}
+  \end{center}    
+  \end{column}
+  \end{columns}  
+\end{frame}
 
 \begin{frame}
-  \frametitle{High performance composable solvers}
+  \frametitle{Future directions}
+  \begin{itemize}
+  \item Vectorisation and code generation for SIMD/GPUs
+  \item Requires an intermediate representation for element kernels,
+    and loop over elements.
+    \begin{flushright}
+      {\scriptsize with Andreas Kl\"ockner (UIUC), TJ Sun, and Paul
+        Kelly}
+    \end{flushright}
+    \item Capture slightly wider class of tensor algebra
+    \item Many finite element schemes require element-local
+      manipulations (e.g. inverses, matrix-matrix products)
+      \begin{flushright}
+        {\scriptsize with Thomas Gibson, David Ham, and Colin Cotter.}
+      \end{flushright}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{High performance solvers}
   \begin{itemize}
   \item In most cases, after discretising a PDE, we need to
     \emph{solve} a (non)linear problem.
   \item Designing robust, scalable solvers is a vast area of research
     in applied mathematics.
-  \item Often, the proof-of-concept implementation is serial, in matlab.
-  \item Restricts uptake.
+  \item Papers often only present (serial) proof of concept.
+  \item Need low-cost means of comparing different options.
   \end{itemize}
+  \begin{block}{Idea}
+    Extend Firedrake's DSL to encompass building blocks of
+    multi-level and domain decomposition solvers.
+    \begin{flushright}
+      {\scriptsize with Rob Kirby (Baylor), and Matt Knepley (Buffalo)}
+    \end{flushright}
+  \end{block}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Element-local manipulations: SLATE}
+  \frametitle{An example that works: block preconditioning}
   \begin{itemize}
-  \item Many coupled systems of PDEs are amenable to
-    \emph{hybridisation}.
-  \item Allows for efficient solution by \emph{locally eliminating}
-    variables.
-  \item Reduces dimension of resulting matrix equation.
-  \item Typically gives a ``nicer'' operator (e.g. all eigenvalues
-    real and positive).
-  \end{itemize}
-  \begin{flushright}
-    {\scriptsize
-    T.H.~Gibson, \textbf{LM}, D.A.~Ham, C.J.~Cotter, \emph{A domain-specific
-    language for the hybridization and static condensation of finite
-    element methods}. In preparation.}
-  \end{flushright}
-\end{frame}
-\begin{frame}
-  \frametitle{An example}
-  We transform
-  \begin{equation*}
-    \overbrace{\begin{bmatrix}
-      A & B & K \\
-      C & D & L \\
-      M & N & Q
-    \end{bmatrix}}^{R}
-    \begin{Bmatrix}
-      U\\
-      P\\
-      \Lambda
-    \end{Bmatrix} =
-    \overbrace{\begin{Bmatrix}
-      G \\
-      F \\
-      H
-    \end{Bmatrix}}^{Z}.
+  \item Block system
+    \begin{equation*}
+    \begin{bmatrix}
+      A & B^T \\
+      C & 0
+    \end{bmatrix}
   \end{equation*}
-  into
-\begin{align*}
-  \overbrace{\left(Q - \begin{bmatrix}
-      M & N
-    \end{bmatrix}
-          \begin{bmatrix}
-            A & B \\
-            C & D
-          \end{bmatrix}^{-1}
-                \begin{bmatrix}
-                  K \\
-                  L
-                \end{bmatrix}\right)}^{S} \Lambda = 
-  \overbrace{H - \begin{bmatrix}
-      M & N
-    \end{bmatrix}
-          \begin{bmatrix}
-            A & B \\
-            C & D
-          \end{bmatrix}^{-1}
-                \begin{Bmatrix}
-                  G \\
-                  F
-                \end{Bmatrix}}^{E}
-\end{align*}
-performing the linear algebra element-wise (rather than globally).
-\end{frame}
-
-\begin{frame}[fragile]
-  \frametitle{An example}
-\begin{align*}
-  \overbrace{\left(Q - \begin{bmatrix}
-      M & N
-    \end{bmatrix}
-          \begin{bmatrix}
-            A & B \\
-            C & D
-          \end{bmatrix}^{-1}
-                \begin{bmatrix}
-                  K \\
-                  L
-                \end{bmatrix}\right)}^{S} \Lambda = 
-  \overbrace{H - \begin{bmatrix}
-      M & N
-    \end{bmatrix}
-          \begin{bmatrix}
-            A & B \\
-            C & D
-          \end{bmatrix}^{-1}
-                \begin{Bmatrix}
-                  G \\
-                  F
-                \end{Bmatrix}}^{E}
-\end{align*}
-\begin{minted}[fontsize=\scriptsize,mathescape=true]{python}
-...
-R = Tensor(a)    # Interpret a UFL expression as a tensor
-Z = Tensor(L)
-Q = R[2,2]       # Symbolically extract subblocks
-H = Z[2]
-S = Q - R[2, :2]*R[:2, :2].inv * R[:2, 2]
-E = H - R[2, :2]*R[:2, :2].inv * Z[:2]
-# Form global system and invert
-solve(S == E, lambdah)          # $\Lambda_h \leftarrow S^{-1}E$
-\end{minted}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Applicable to real problems}
-  \begin{itemize}
-  \item Simple implementation populates matrices by calling kernels
-    for terminal tensors (the variational forms).
-  \item We then use Eigen to perform the tensor algebra.
-  \item Using SLATE with Firedrake to develop high performance solvers
-    for atmospheric flow.
-  \item Preliminary results show 8x performance improvement for
-    rotating shallow water equations, just by changing solver.
-  \item Three-dimensional formulation in progress.
+  \item $A$ sparse, but $A^{-1}$ dense
+  \item Use iterative methods, with preconditioner
+  \item For example  \begin{equation*}
+      T = \begin{bmatrix}
+        A & 0 \\
+        0 & S := C A^{-1} B^T
+      \end{bmatrix}^{-1}
+      \begin{bmatrix}
+        A & B^T \\
+        C & 0
+      \end{bmatrix}
+    \end{equation*}
+  \item Game is to find a good approximation to $S^{-1}$.
+  \item Often, this will not be some function of $A$, $B^T$, and $C$.
   \end{itemize}
 \end{frame}
 
-
 \begin{frame}
-  \frametitle{Performance}
-  Fast prototyping is good, ``but I have to rewrite for performance''.
-
-  \begin{overlayarea}{\textwidth}{0.6\textheight}
-    \begin{onlyenv}<2>
-      \begin{itemize}
-      \item Firedrake provides computational performance often >50\%
-        achievable peak
-        \parencite{Luporini:2015,Bercea:2016,Mitchell:2016}.
-      \item Carries over to real models
-      \end{itemize}
-      \begin{block}{Thetis {\scriptsize \url{thetisproject.org}}}
-        \begin{itemize}
-        \item 3D unstructured coastal ocean model
-        \item 6400 LOC
-        \item 4-8x faster than previous code in group (same numerics)
-        \item c. 18 person months (previous code, c. 12 person years)
-        \end{itemize}
-      \end{block}
-    \end{onlyenv}
-  \end{overlayarea}
+  \frametitle{Block solvers in Firedrake}
+  \begin{itemize}
+  \item Provide mechanism for plugging in approximations to
+    $S^{-1}$, in reusable, composable way.
+  \item After all, they ``just'' need more matrices.
+  \item Separates mathematics (what) from implementation (how).
+  \item Your ``proof of concept'' solver becomes both scalable and
+    high performance, transparently ports to new architectures with
+    Firedrake.
+    \begin{flushright}
+      {\scriptsize R.C.~Kirby and \textbf{LM}. SIAM Journal on Scientific Software,
+        2018. \arxivlink{1706.01346}{cs.MS}.}
+    \end{flushright}
+  \end{itemize}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Future directions}
-  \begin{block}{TSFC}
+  \frametitle{Conclusions}
+  \begin{itemize}
+  \item DSLs are more than a pretty face.
+  \item Offer many opportunities for employing ``traditional''
+    computer science in new settings.  Productive interdisciplinary
+    research!
+  \item Much still to do:
     \begin{itemize}
-    \item Loop fusion for SIMD vectorisation on CPUs.
-    \item Transformations for GPUs.
-      \begin{flushright}
-        {\scriptsize with Andreas Kl\"ockner (UIUC), TJ Sun, and Paul Kelly}
-      \end{flushright}
+    \item compiler development: vectorisation, GPUs, more tensor
+      algebra.
+    \item custom solver specification for ``hard'' problems: domain
+      decomposition, better multigrid, \dots.
     \end{itemize}
-  \end{block}
-  \vspace{-2em}
-  \begin{block}{SLATE}
-    \begin{itemize}
-    \item Better intermediate representation: transformations should
-      be closed over IR.
-    \item patch-wise solvers for \emph{a posteriori} error estimation.
-      \begin{flushright}
-        {\scriptsize with Thomas Gibson, Colin Cotter, and David Ham}
-      \end{flushright}
-    \end{itemize}
-  \end{block}
-  \vspace{-2em}
-  \begin{block}{Solvers}
-    \begin{itemize}
-    \item matrix-free for high-order discretisations
-    \item robust domain decomposition methods
-      \begin{flushright}
-        {\scriptsize with Rob Kirby (Baylor), and Matt Knepley (Buffalo)}
-      \end{flushright}
-    \end{itemize}
-  \end{block}
+  \end{itemize}
 \end{frame}
 
-% \section{Lecture excerpt}
+\section{Lecture excerpt}
 
 % \begin{frame}
 %   \frametitle{Overview}
@@ -939,9 +916,4 @@ solve(S == E, lambdah)          # $\Lambda_h \leftarrow S^{-1}E$
 %   function is to small changes in its inputs.
 % \end{frame}
 
-\appendix
-\begin{frame}
-  \frametitle{References}
-  \printbibliography[heading=none]
-\end{frame}
 \end{document}
