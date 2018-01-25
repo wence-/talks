@@ -117,26 +117,54 @@ London
 \section{Recent highlights}
 \begin{frame}
   \frametitle{Numerical weather prediction}
-  \begin{center}
-    \includegraphics[width=3cm]{earth}
-  \end{center}
+  \begin{columns}
+    \begin{column}{3cm}
+      \includegraphics[width=3cm]{earth}
+    \end{column}
+    \begin{column}{6cm}
+      {\footnotesize \begin{equation*}
+          \begin{pmatrix}
+            M_2 & -\frac{\Delta t}{2}D^T &
+            -\frac{\Delta t}{2}Q\\[1ex]
+            \frac{\Delta t}{2}c^2D & M_3 & 0\\[1ex]
+            \frac{\Delta t}{2}N^2Q^T & 0 & M_b
+          \end{pmatrix}
+          \begin{pmatrix}
+            \vec{U}\\[1ex]\vec{P}\\[1ex]\vec{B}
+          \end{pmatrix}
+          =
+          \begin{pmatrix}
+            M_2\vec{R}_u\\[1ex]
+            M_3\vec{R}_p\\[1ex]
+            M_b\vec{R}_b
+          \end{pmatrix}
+        \end{equation*}}
+    \end{column}
+  \end{columns}
   \begin{block}{Challenge}
     Invert elliptic operator fast enough for operational forecasting.
 
     High aspect ratio: black-box numerical solvers struggle.
 
-    Need scalable, custom solver.
+    Need scalable, custom multigrid solver.
   \end{block}
 \end{frame}
 \begin{frame}
   \frametitle{Multigrid approach}
-  \begin{center}
-    \begin{tikzpicture}
-      \node (B) {\includegraphics[height=2cm]{bandedmatrix}};
-      \node (C) [right=0.3cm of B,yshift=0.6cm] {\includegraphics[height=1.5cm]{columndofs}};
-      \node (A) [below=0.1cm of C] {\includegraphics[height=1cm]{MeshHierarchy}};
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      \begin{tikzpicture}
+        \node (B) {\includegraphics[height=1.5cm]{bandedmatrix}}; \node
+        (C) [right=0.15cm of B,yshift=0.6cm]
+        {\includegraphics[height=1cm]{columndofs}}; \node (A)
+        [below=0.05cm of C]
+        {\includegraphics[height=0.75cm]{MeshHierarchy}};
       \end{tikzpicture}
-    \end{center}
+    \end{column}
+    \begin{column}{0.4\textwidth}
+      \includegraphics[width=4cm]{nwp-multigrid-scaling}
+    \end{column}
+  \end{columns}
     Developed custom tensor-product multigrid scheme, showed robustness
     and scalability.
 
@@ -209,7 +237,7 @@ London
   \begin{block}{Academic}
     \begin{itemize}
     \item Used by research groups at Imperial, Baylor, Kiel, Exeter,
-      Oxford, Leeds, Waterloo, Buffalo, \ldots
+      Oxford, Leeds, Waterloo, Buffalo, Washington, \ldots
 
     \item Teaching tool at Waterloo, Imperial.
     \end{itemize}
@@ -219,7 +247,7 @@ London
     \item Guides design of computational and numerical schemes in UK
       Met Office's next forecasting system.
 
-    \item Optimisation of tidal turbine array placement (MeyGen).
+    \item Optimisation of tidal turbine array placement.
     \end{itemize}
   \end{block}
 \end{frame}
@@ -350,9 +378,8 @@ F = dot(grad(u), grad(v))*dx
 \end{frame}
 
 \begin{frame}[fragile]
-  \frametitle{TSFC: a compiler for finite elements}
-  Domain specific compiler translates UFL into
-  low-level code for performing an element integral.
+  \frametitle{TSFC: an optimising compiler for finite elements}
+  Translate UFL into low-level code for performing an element integral.
   \begin{flushright}
     {\scriptsize M.~Homolya, \textbf{LM}, F.~Luporini, D.A.~Ham. \arxivlink{1705.03667}{cs.MS}}
   \end{flushright}
@@ -556,7 +583,8 @@ degree flops_vanilla flops_opt\\
     \item Better solutions than previous model in group.
     \item 4-8x faster than models with comparative quality of
       results.
-    \item Is differentiable: can use for PDE-constrained optimisation.
+    \item Has an adjoint: in use for PDE-constrained optimisation of
+      tidal turbine array layout.
     \item Only 1.5 person years.
     \end{itemize}
   \end{block}
@@ -570,7 +598,7 @@ degree flops_vanilla flops_opt\\
     \emph{solve} a (non)linear problem.
   \item Designing robust, scalable solvers is a vast area of research
     in applied mathematics.
-  \item Papers often only present (serial) proof of concept.
+  \item Papers often only hack up a matlab proof of concept.
   \end{itemize}
   \begin{block}{Idea}
     \begin{itemize}
@@ -606,7 +634,7 @@ degree flops_vanilla flops_opt\\
   \item Broad interdisciplinary research agenda spanning:
     \begin{itemize}
     \item Programming languages
-    \item Compiler design
+    \item Domain-specific compilers
     \item Numerical methods \& (non)linear algebra
     \end{itemize}
   \item Application areas:
