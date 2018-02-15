@@ -1,0 +1,58 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amsfonts,amssymb}
+\usepackage{graphicx}
+\usepackage{times}
+\parindent0pt
+\parskip 1.5ex plus 1ex minus .5ex
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Do not change above this line! Do not add packages! You may comment
+% out packages missing in your installation.
+%
+% Everything before "\begin{document}" will be ignored! Do not define
+%   macros!
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+\title{Solver composition across the PDE/linear algebra divide}
+\author{%
+  Lawrence Mitchell\thanks{Department of Computing and Department of
+    Mathematics, Imperial College London
+    \texttt{lawrence.mitchell@imperial.ac.uk}}
+  \and
+  Robert C.~Kirby\thanks{Department of Mathematics, Baylor University,
+    \texttt{robert\_kirby@baylor.edu}}
+}
+\maketitle
+
+The efficient solution of discretisations of coupled systems of
+partial differential equations (PDEs) is at the core of much of
+numerical simulation.  Significant effort has been expended on
+scalable algorithms to precondition Krylov iterations for the linear
+systems that arise.  With few exceptions, the reported numerical
+implementation of such solution strategies is specific to a particular
+model setup, and intimately ties the solver strategy to the
+discretisation and PDE, especially when the preconditioner requires
+auxiliary operators.
+
+In this talk, I will present recent improvements in the Firedrake
+finite element library that allow for
+straightforward development of the building blocks of extensible,
+composable preconditioners that decouple the solver from the model
+formulation.
+
+The implementation extends the algebraic composability of linear
+solvers offered by the PETSc library by augmenting operators, and
+hence preconditioners, with the ability to provide any necessary
+auxiliary operators.  As such, the full flexibility of the PDE library
+is available \emph{within} the solver: many complex preconditioners
+for Schur complement factorisations can be coded in a few 10s of
+lines.  Moreover, these preconditioners are reusable and nestable
+within larger block solvers.
+
+
+\end{document}
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: t
+%%% End: 

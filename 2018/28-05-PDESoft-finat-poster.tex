@@ -1,0 +1,57 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amsfonts,amssymb}
+\usepackage{graphicx}
+\usepackage{times}
+\parindent0pt
+\parskip 1.5ex plus 1ex minus .5ex
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Do not change above this line! Do not add packages! You may comment
+% out packages missing in your installation.
+%
+% Everything before "\begin{document}" will be ignored! Do not define
+%   macros!
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+\title{FInAT: exploiting structure in code generation for high-order finite elements}
+\author{%
+  Mikl\'os Homolya\thanks{Department of Computing, Imperial College
+    London \texttt{m.homolya14@imperial.ac.uk}}
+  \and
+  Robert C.~Kirby\thanks{Department of Mathematics, Baylor University,
+    \texttt{robert\_kirby@baylor.edu}}
+  \and
+  David A.~Ham\thanks{Department of Mathematics, Imperial College
+    London \texttt{david.ham@imperial.ac.uk}}
+  \and
+  Lawrence Mitchell\thanks{Department of Computing and Department of
+    Mathematics, Imperial College London
+    \texttt{lawrence.mitchell@imperial.ac.uk}}
+}
+\maketitle
+
+{\Large This is a submission for poster presentation only (rather than
+  a talk).}
+
+Code generation is an increasingly popular technique for the
+development of complicated finite element discretisations of partial
+differential equations.  In this poster, we show new developments in
+the Firedrake finite element framework that allow the code generation
+pipeline to exploit structure inherent to some finite elements.  This
+includes, in particular, sum factorisation on tensor product cells for
+the full family of $Q^-$ spaces.
+
+This is achieved by providing a more expressive interface between the
+form compiler and the library providing the implementation of finite
+element tabulation.  This is encapsulated in a new finite element
+library, FInAT, that explicitly communicates the structure of
+elements.  New form compiler algorithms are introduced that exploit
+this structure.
+
+
+\end{document}
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: t
+%%% End: 
