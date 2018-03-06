@@ -1,0 +1,92 @@
+\documentclass[presentation]{beamer}
+\usetheme{metropolis}
+\metroset{progressbar=frametitle}
+\usepackage{tikz}
+
+\date{12th March 2018}
+\title{Compiling tensor algebra for finite elements}
+\author{Lawrence Mitchell\inst{1,*}}
+\institute{
+\inst{1}Department\textbf{s} of Computing and Mathematics, Imperial College
+London
+
+\inst{*}\texttt{lawrence.mitchell@imperial.ac.uk}
+}
+\usepackage{pifont}
+\usepackage{minted}
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
+\newcommand{\arxivlink}[2]{%
+  \href{http://www.arxiv.org/abs/#1}%
+  {\texttt{arXiv:\,#1\,[#2]}}%
+}
+\newcommand{\doilink}[1]{%
+  \href{http://dx.doi.org/#1}%
+  {\texttt{doi:\,#1}}%
+}
+\usepackage[url=false,
+            doi=true,
+            isbn=false,
+            style=authoryear,
+            maxnames=10,
+            firstinits=true,
+            uniquename=init,
+            backend=biber]{biblatex}
+
+\setbeamertemplate{bibliography item}{}
+\renewcommand{\bibfont}{\fontsize{8}{8}\selectfont}
+\addbibresource{references.bib}
+\setlength{\bibitemsep}{1ex}
+\setlength{\fboxsep}{1pt}
+
+\renewbibmacro{in:}{}
+\DeclareFieldFormat[article]{volume}{\textbf{#1}}
+\DeclareFieldFormat{doi}{%
+  doi\addcolon%
+  \ifhyperref{\href{http://dx.doi.org/#1}{\nolinkurl{#1}}}
+  {\nolinkurl{#1}}}
+\AtEveryBibitem{%
+\clearfield{pages}%
+\clearfield{issue}%
+\clearfield{number}%
+}
+
+\DeclareMathOperator{\tr}{tr}
+
+\graphicspath{{./\jobname.figures/}{../pictures/}}
+
+\begin{document}
+
+\begin{frame}[plain,noframenumbering]
+  \maketitle
+  \begin{tikzpicture}[remember picture,overlay]
+    \node[at=(current page.south west), anchor=south west] {\includegraphics[height=0.9cm]{epsrc-logo}};
+    \node[at=(current page.south east), anchor=south east] {\includegraphics[height=0.9cm]{imperial-two-tone}};
+  \end{tikzpicture}
+\end{frame}
+
+\begin{abstract}
+  Compiling tensor algebra for finite element computations
+  ========================================================
+
+  At the core of a PDE any library that uses finite elements is a
+  large tensor contraction.  Providing a low flop count, highly
+  efficient, implementation of this contraction is either devolved to
+  the computational scientist (and then a general purpose compiler),
+  or else to a domain specific compiler (and thence to a general
+  purpose one).
+
+  I will talk about the domain specific compiler, and the optimisation
+  passes, that we use in the Firedrake project
+  (www.firedrakeproject.org), that deliver low algorithmic
+  complexity algorithms on a class of finite elements that exhibit
+  kronecker product structure.
+
+  I will then cover some open questions and future research
+  directions, in particular how to extend the code transformation
+  pipeline to incorporate operations on tensors that are not easily
+  expressible as scalar indexed expressions: of particular interest is
+  to widen the applicability to include tensor inverse and determinant
+  calculations.
+\end{abstract}
+
