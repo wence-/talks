@@ -2,17 +2,27 @@
 \usetheme{metropolis}
 \metroset{progressbar=frametitle}
 \usepackage{tikz}
-
-\date{12th March 2018}
+\date{13th March 2018}
 \title{Compiling tensor algebra for finite elements}
-\author{Lawrence Mitchell\inst{1,*}}
+\usepackage{censor}
+\author{Lawrence Mitchell\inst{1,*}\\
+  {\scriptsize Thomas Gibson, David A.~Ham, Mikl\'os Homolya, Paul H.~J.~Kelly, Fabio
+    Luporini, TJ Sun}
+}
 \institute{
-\inst{1}Department\textbf{s} of Computing and Mathematics, Imperial College
-London
+\inst{1}Department\alert{s} of Computing and Mathematics,
+\censor{Imperial College London}
 
 \inst{*}\texttt{lawrence.mitchell@imperial.ac.uk}
 }
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathtools}
+
+\DeclarePairedDelimiter\abs{\lvert}{\rvert}%
+\DeclarePairedDelimiter\norm{\lVert}{\rVert}%
 \usepackage{pifont}
+\usepackage{shellesc}
 \usepackage{minted}
 \newcommand{\cmark}{\ding{51}}
 \newcommand{\xmark}{\ding{55}}
@@ -61,32 +71,227 @@ London
   \maketitle
   \begin{tikzpicture}[remember picture,overlay]
     \node[at=(current page.south west), anchor=south west] {\includegraphics[height=0.9cm]{epsrc-logo}};
-    \node[at=(current page.south east), anchor=south east] {\includegraphics[height=0.9cm]{imperial-two-tone}};
+    \node[at=(current page.south east), anchor=south east] {\includegraphics[height=0.9cm]{firedrake-small}};
   \end{tikzpicture}
 \end{frame}
 
-\begin{abstract}
-  Compiling tensor algebra for finite element computations
-  ========================================================
+% \begin{abstract}
+%   Compiling tensor algebra for finite element computations
+%   ========================================================
 
-  At the core of a PDE any library that uses finite elements is a
-  large tensor contraction.  Providing a low flop count, highly
-  efficient, implementation of this contraction is either devolved to
-  the computational scientist (and then a general purpose compiler),
-  or else to a domain specific compiler (and thence to a general
-  purpose one).
+%   At the core of a PDE any library that uses finite elements is a
+%   large tensor contraction.  Providing a low flop count, highly
+%   efficient, implementation of this contraction is either devolved to
+%   the computational scientist (and then a general purpose compiler),
+%   or else to a domain specific compiler (and thence to a general
+%   purpose one).
 
-  I will talk about the domain specific compiler, and the optimisation
-  passes, that we use in the Firedrake project
-  (www.firedrakeproject.org), that deliver low algorithmic
-  complexity algorithms on a class of finite elements that exhibit
-  kronecker product structure.
+%   I will talk about the domain specific compiler, and the optimisation
+%   passes, that we use in the Firedrake project
+%   (www.firedrakeproject.org), that deliver low algorithmic
+%   complexity algorithms on a class of finite elements that exhibit
+%   kronecker product structure.
 
-  I will then cover some open questions and future research
-  directions, in particular how to extend the code transformation
-  pipeline to incorporate operations on tensors that are not easily
-  expressible as scalar indexed expressions: of particular interest is
-  to widen the applicability to include tensor inverse and determinant
-  calculations.
-\end{abstract}
+%   I will then cover some open questions and future research
+%   directions, in particular how to extend the code transformation
+%   pipeline to incorporate operations on tensors that are not easily
+%   expressible as scalar indexed expressions: of particular interest is
+%   to widen the applicability to include tensor inverse and determinant
+%   calculations.
+% \end{abstract}
 
+
+\begin{frame}
+  \frametitle{Firedrake \url{www.firedrakeproject.org}}
+
+  \begin{quote}
+    {\normalfont [\ldots]} an automated system for the solution of partial
+    differential equations using the finite element method.
+  \end{quote}
+
+  \begin{onlyenv}<1>
+    \begin{itemize}
+    \item Written in Python.
+    \item Finite element problems specified with \emph{embedded}
+      domain specific language, UFL \parencite{Alnaes:2014} from the
+      FEniCS project.
+    \item \emph{Runtime} compilation to low-level (C) code.
+    \item Explicitly \emph{data parallel} API.
+    \end{itemize}
+
+    \begin{flushright}
+      {\scriptsize F.~Rathgeber, D.A.~Ham, \textbf{LM}, M.~Lange,
+        F.~Luporini, A.T.T.~McRae, G.-T.~Bercea, G.R.~Markall,
+        P.H.J.~Kelly. TOMS,
+        2016. \arxivlink{1501.01809}{cs.MS}\nocite{Rathgeber:2016}}
+    \end{flushright}
+  \end{onlyenv}
+  \begin{onlyenv}<2>
+    \begin{block}{User groups at}
+      Imperial, Bath, Leeds, Kiel, Rice, Houston, Exeter, Buffalo,
+      ETH, Waterloo, Minnesota, Baylor, Texas A\&M, Oxford, \dots
+    \end{block}
+  \end{onlyenv}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{DSLs for finite elements}
+  \begin{columns}
+    \begin{column}{0.47\framewidth}
+      {\footnotesize
+        Find $(u, p, T) \in V\times W\times Q$ s.t.
+        \begin{align*}
+          \int\!\nabla u \cdot \nabla v + (u \cdot \nabla u) \cdot v \\
+          - p\nabla\cdot v + \frac{\text{Ra}}{\text{Pr}} Tg \hat{z} \cdot v\,\text{d}x &= 0 \\
+          \int\!\nabla\cdot u q\,\text{d}x&= 0\\
+          \int\! (u\cdot \nabla T) S + \text{Pr}^{-1} \nabla T \cdot \nabla
+          S\,\text{d}x &= 0\\
+          \quad \forall\, (v,q,T) \in V\times W \times Q
+        \end{align*}
+        }
+    \end{column}
+      \begin{column}{0.52\framewidth}
+\begin{minted}[fontsize=\tiny]{python}
+from firedrake import *
+mesh = Mesh(...)
+V = VectorFunctionSpace(mesh, "CG", 2)
+W = FunctionSpace(mesh, "CG", 1)
+Q = FunctionSpace(mesh, "CG", 1)
+Z = V * W * Q
+Ra = Constant(...)
+Pr = Constant(...)
+upT = Function(Z)
+u, p, T = split(upT)
+v, q, S = TestFunctions(Z)
+bcs = [...]
+
+F = (inner(grad(u), grad(v))
+     + inner(dot(grad(u), u), v)
+     - inner(p, div(v))
+     + (Ra/Pr)*inner(T*g, v)
+     + inner(div(u), q)
+     + inner(dot(grad(T), u), S)
+     + (1/Pr) * inner(grad(T), grad(S)))*dx
+
+solve(F == 0, upT, bcs=bcs)
+\end{minted}
+      \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Just tensor algebra}
+  \begin{itemize}
+  \item Continuous
+    \begin{equation*}
+      \int \nabla u \cdot \nabla v \,\text{d}x = \int J^{-T}\hat{\nabla}
+      \tilde u \cdot J^{-T}\hat{\nabla} \tilde v \abs{\det J}\,\text{d}\hat{x}
+    \end{equation*}
+  \item Discrete, with quadrature $\{(\xi_q, w_q)\}$
+    \begin{equation*}
+      \mathbf{A}_{i j} = \sum_{q\alpha \beta \gamma} w_q K_{q\beta \alpha}
+      \frac{\partial{\Psi_i}}{\partial \hat{x}_\beta}(\xi_{q})
+      K_{q\gamma \alpha} \frac{\partial{\Psi_j}}{\partial \hat{x}_\gamma}(\xi_{q})
+      \abs{\det J_q}
+    \end{equation*}
+
+    with $J_{q\alpha\beta}$ the Jacobian of the coordinate transformation and
+    $K_{q\alpha\beta}$ its inverse.
+  \item \emph{Always} linear in $\Psi_i$ and $\Psi_j$, the ``arguments''.
+  \item Sometimes, there is structure, $\Psi_i = \Psi_{(i_1,i_2,\dots,i_d)} =
+    \psi_{i_1}\psi_{i_2}\dots\psi_{i_d}$ and so
+    $\partial_{\hat{x}_\alpha}\Psi_i =
+    \psi_{i_1}\dots\partial_{\hat{x}_\alpha}\psi_{i_\alpha}\dots\psi_{i_d}$
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Why a domain-specific compiler?}
+  \begin{itemize}
+  \item Want predictably good performance across:
+    \begin{itemize}
+    \item choice of PDE;
+    \item discretisation order.
+    \end{itemize}
+  \item Want $<10\text{s}$ compilation time for anything domain
+    scientist throws at it.
+  \item Need to exploit domain knowledge to prune search spaces,
+    build cost models, need to choose optimisations that are ``always
+    good''.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{IR: GEM ``comes after FEM''}
+  \begin{itemize}
+  \item Replace finite element terminals by \emph{evaluation rules}
+    \begin{flushright}
+      {\footnotesize Homolya, \textbf{LM}, Luporini,
+        Ham. \arxivlink{1705.03667}{cs.MS}}
+    \end{flushright}
+  \item Ensure that the evaluation rules express structure
+    \begin{flushright}
+      {\footnotesize Homolya, Kirby, Ham. \arxivlink{1711.02473}{cs.MS}}
+    \end{flushright}
+    
+  \item Now we ``just'' have a tensor contraction to transform.
+  \item Passes implemented as GEM $\to$ GEM transformers.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Optimisation passes}
+  \begin{itemize}
+  \item Argument factorisation: transform to ``sum-of-products''
+    canonical form.
+  \item Delta cancellation over tensor contractions
+  \item Delta cancellation across assignments
+  \item Sum factorisation: optimal contraction order found by
+    searching all permutations ($N!$, but $N\le 4$).
+  \item For each contraction, apply ILP-driven factorisation algorithm of
+    {\footnotesize Luporini, Ham, Kelly (2017) \arxivlink{1604.05872}{cs.MS}}
+    (exploits distributivity).
+  \end{itemize}
+\end{frame}
+\begin{frame}
+  \frametitle{Open problems}
+  \begin{itemize}
+  \item Often want to build expressions like
+    \begin{equation*}
+      D_{ij} - C_{ik} (A^{-1})_{k l} B_{l j}
+    \end{equation*}
+  \item $|i| = |j| \in [1, 100]$.
+  \item Impractical to expand out the expression for $A^{-1}$ for
+    large $|i|$.  So we must deal with the matrix ``as a whole''.
+  \item Right now to do this we build matrix-sized temporaries, and do
+    the linear algebra with Eigen.
+  \item \emph{Destroys structure}.  Sad.
+  \end{itemize}
+    \begin{flushright}
+      {\footnotesize Gibson, Mitchell, Ham, Cotter. \arxivlink{1802.00303}{cs.MS}}
+    \end{flushright}
+\end{frame}
+
+\begin{frame}
+  \frametitle{With tensor products I can do better}
+  \begin{itemize}
+  \item   Let $\mathcal{A} = \bigotimes_i A_i$
+    with $A_i$ $n\times n$.  Then
+    \item
+      $\mathcal{A}^{-1} = \bigotimes_i A_i^{-1};$
+    \item
+      $\mathcal{A}^T = \bigotimes_i A_i^T;$
+    \item
+      $\det \mathcal{A} = \prod_i (\det A_i)^n.$
+    \item Suggests that I need representation in IR of inverse (and
+      det), and transformation rules that deal with them.
+    \item Any ideas?
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[standout]
+  Thanks!
+
+  {\small www.firedrakeproject.org}
+\end{frame}
+\end{document}
