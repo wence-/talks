@@ -13,7 +13,7 @@
 \inst{1}Department\alert{s} of Computing and Mathematics,
 \censor{Imperial College London}
 
-\inst{*}\texttt{lawrence.mitchell@imperial.ac.uk}
+\inst{*}\censor{\texttt{lawrence.mitchell@imperial.ac.uk}}\texttt{lawrence@wence.uk}
 }
 \usepackage{amsmath}
 \usepackage{amssymb}
@@ -208,7 +208,7 @@ solve(F == 0, upT, bcs=bcs)
 \begin{frame}
   \frametitle{Why a domain-specific compiler?}
   \begin{itemize}
-  \item Want predictably good performance across:
+  \item Want good performance, with no surprises, across:
     \begin{itemize}
     \item choice of PDE;
     \item discretisation order.
@@ -224,6 +224,7 @@ solve(F == 0, upT, bcs=bcs)
 \begin{frame}
   \frametitle{IR: GEM ``comes after FEM''}
   \begin{itemize}
+  \item Written in Python: compiler + representation: 4000 LOC.
   \item Replace finite element terminals by \emph{evaluation rules}
     \begin{flushright}
       {\footnotesize Homolya, \textbf{LM}, Luporini,
@@ -242,10 +243,13 @@ solve(F == 0, upT, bcs=bcs)
 \begin{frame}
   \frametitle{Optimisation passes}
   \begin{itemize}
-  \item Argument factorisation: transform to ``sum-of-products''
-    canonical form.
-  \item Delta cancellation over tensor contractions
-  \item Delta cancellation across assignments
+  \item Transform to ``sum-of-products''
+    canonical form: each factor in product depends on at most one of
+    the indices in the lvalue.
+  \item Delta cancellation over tensor contractions: $\sum_{ijk} A_{ij}
+    \delta_{jk} \to \sum_{ik} A_{ik}$.
+  \item Delta cancellation across assignments.  $A_{ij} = \delta_{ij}
+    \sum_k B_k \to A_{ii} = \sum_k B_k$
   \item Sum factorisation: optimal contraction order found by
     searching all permutations ($N!$, but $N\le 4$).
   \item For each contraction, apply ILP-driven factorisation algorithm of
@@ -289,9 +293,22 @@ solve(F == 0, upT, bcs=bcs)
     \end{itemize}
 \end{frame}
 
-\begin{frame}[standout]
-  Thanks!
-
-  {\small www.firedrakeproject.org}
+\begin{frame}
+  \frametitle{Conclusions}
+  \begin{itemize}
+  \item Domain-specific intermediate representation, and
+    rewrite rules \emph{really work}.
+  \item The biggest sin is forgetting about structure (and trying to
+    rediscover it).
+  \item Perhaps finite element is just ``another example'' of
+    optimising tensor contractions.
+  \item But a different design space from quantum chemistry (huge
+    tensors), or image analysis (tiny tensors).
+  \item Current challenge: rewriting expressions that have vector or
+    matrix operations in them.  Help?!
+  \end{itemize}
+  \begin{center}
+    {\small \url{www.firedrakeproject.org}}
+  \end{center}
 \end{frame}
 \end{document}
