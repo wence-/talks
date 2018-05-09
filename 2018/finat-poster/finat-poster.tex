@@ -1,0 +1,213 @@
+\RequirePackage[l2tabu,orthodox]{nag}
+
+\documentclass[a0paper,portrait]{baposter}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage{mathtools}
+\usepackage{microtype}
+\usepackage{multicol}
+\usepackage{url}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\newcommand{\fitCurve}[4]{%
+  \pgfplotstablegetelem{#2}{C}\of#1
+  \pgfmathsetmacro{#3}{\pgfplotsretval}
+  \pgfplotstablegetelem{#2}{a}\of#1
+  \pgfmathsetmacro{\a}{\pgfplotsretval}
+  \pgfplotstablegetelem{#2}{b}\of#1
+  \pgfmathsetmacro{\b}{\pgfplotsretval}
+  \addplot[densely dashdotted,domain=\a:\b] {#4};
+}
+\graphicspath{{./\jobname.figures/}{../../pictures/}}
+
+\begin{document}
+
+\begin{poster}{
+    grid=true,
+    columns=4,
+    colspacing=0.7em,
+    textborder=faded,
+    headerborder=open,
+    eyecatcher=true,
+    headershape=rounded,
+    headershade=plain,
+    background=none,
+    headerheight=0.09\textheight,
+  }
+  {\makebox[0.23\textwidth]{
+      \begin{tabular}{cc}
+        \includegraphics[height=0.05\textheight]{finat-logo}
+        &
+          \includegraphics[height=0.05\textheight]{firedrake-small}
+      \end{tabular}
+    }
+    \hfil 
+  } 
+  % Title
+  {\scshape\Large FInAT is not a tabulator}
+  % Authors
+  {\scshape\small Lawrence Mitchell; Mikl\'os Homolya; Robert C.~Kirby; David A.~Ham}
+  % University logo
+  {
+    \makebox[0.23\textwidth]{
+      \begin{tabular}{r}
+        \includegraphics[width=0.15\textwidth]{imperial-two-tone}\\
+        \includegraphics[height=0.05\textwidth]{baylor-logo-bw}\\
+        \end{tabular}
+    }
+  }
+
+  \headerbox{In the beginning\dots}
+  {name=introduction,span=4,column=0,row=0}{
+    \begin{multicols}{3}
+      FIAT, the finite element automated tabulator, provides
+      \emph{tabulations} of a wide class of finite elements on
+      reference cells.
+
+      Used in form compilers to provide evaluation rules.
+      At the core of a finite element system.  Consider an integration
+      on a single physical cell
+      \begin{equation*}
+        \int_K \nabla u \cdot \nabla v \text{d}x.
+      \end{equation*}
+
+      After transforming to the reference element under some mapping
+      $F_K$, we have
+      \begin{equation*}
+        \int_{\hat{K}} J_K^{-T} \hat{\nabla}\hat{u} \cdot J_K^{-T}
+        \hat{\nabla}\hat{v} |J_K|\text{d}\hat{x}.
+      \end{equation*}
+
+      Evaluation using quadrature, with $\{(\xi_q, w_q)\}_{q=1}^{N_q}$
+      a set of quadrature points and weights,
+      \begin{equation*}
+        \sum_{q=1}^{N_q} w_q ( J_K^{-T}(\xi_q) \hat{\nabla}
+        \hat{u}_K(\xi_q) ) \cdot ( J_K^{-T}(\xi_q) \hat{\nabla}
+        \hat{v}_K(\xi_q) ) \left| J_K(\xi_q) \right| .
+      \end{equation*}
+    \end{multicols}
+  }
+
+  \headerbox{Types of structure}
+  {name=structure, column=0, below=introduction, span=2}
+  {
+    \begin{itemize}
+    \item Tensor-valued elements (e.g. $V \subset {(H^1)}^{d\times d}$)
+    \item Tensor-product elements (e.g. $\Xi(x_q) = \prod \xi(x_q)$)
+    \item Enriched elements (e.g. $V = A \oplus B$)
+    \item Hdiv/curl elements ...
+    \end{itemize}
+  }
+
+  \headerbox{Tabulation rules}
+  {name=rules, column=0, below=structure, span=2}
+  {
+    \begin{itemize}
+    \item FIAT: $\Psi_i(\xi_q) \mapsto \mathbf{\Psi}_{iq}$
+
+    \item Tensor-valued: $\Psi_{(\alpha, \nu)\kappa}(\xi_q) \mapsto
+      \Psi^{*}_\alpha(\xi_q)\prod_{i=1}^{n}\delta_{\nu_i \kappa_i}$
+    \item Tensor-product: $\Psi_{(i_1, \dots, i_n)}(\xi_{(q_1, \dots,
+        q_n)}) \mapsto \prod_{j=1}^{n}
+      \Psi_{i_j}^{(j)}(\xi_{q_j}^{(j)})$
+    \item Enriched: $(\Psi_1 \oplus \Psi_2)(\xi_q) \mapsto $
+    \end{itemize}
+  }
+
+  \headerbox{Results: flop complexity}
+  {name=flop-scaling, column=2, below=introduction, span=2}
+  {
+    
+    \begin{tikzpicture}
+      \begin{loglogaxis}[
+        legend cell align=left,
+        legend pos=outer north east,
+        xlabel={Polynomial degree ($ \mathrm{n} $)},
+        xtick={1,2,3,4,5,6,7,8,10,12,14,16,20,24,28,32},
+        xticklabels={1,2,3,4,,,,8,,,,16,,,,32},
+        ylabel={Floating-point operations per cell},
+        ]
+        \addplot[densely dotted,mark=o,mark options={solid}]
+        table [x=degree, y=coffee, col sep=comma] {data/bipoisson_flops.csv};
+        \addlegendentry{\texttt{coffee}}
+        
+        \addplot[densely dashed,domain=1:32] {36*(x+1)^9};
+        \addlegendentry{$ \mathrm{(n+1)^9} $}
+        
+        \addplot[densely dotted,mark=*,mark options={solid}]
+        table [x=degree, y=spectral, col sep=comma] {data/bipoisson_flops.csv};
+        \addlegendentry{\texttt{spectral}}
+        
+        \addplot[densely dashed,domain=1:32] {(x+1)^7};
+        \addlegendentry{$ \mathrm{(n+1)^7} $}
+        
+        \addplot[densely dotted,mark=diamond*,mark options={solid}]
+        table [x=degree, y=gll_spectral, col sep=comma] {data/bipoisson_flops.csv};
+        \addlegendentry{underintegration}
+        
+        \addplot[densely dashed,domain=1:32] {4*(x+1)^5};
+        \addlegendentry{$ \mathrm{(n+1)^5} $}
+      \end{loglogaxis}
+    \end{tikzpicture}
+  }
+
+  \headerbox{Results: operator action}
+  {name=curl-curl, column=2, below=flop-scaling, span=2}
+  {
+    \begin{tikzpicture}
+      \begin{loglogaxis}[
+        legend cell align=left,
+        legend pos=outer north east,
+        xlabel={Polynomial degree ($ \mathrm{n} $)},
+        xtick={1,2,3,4,5,6,7,8,10,12,14,16,20,24,28,32},
+        xticklabels={1,2,3,4,,6,,8,,12,,16,,,,32},
+        ylabel={DoFs/$s$},
+        ]
+        \addplot[densely dotted,mark=star,mark options={solid}] table
+        [x=degree, y=rate, col sep=comma] {data/curlcurl_spmv.csv};
+        \addlegendentry{\textsc{MatVec}}
+
+        \addplot[dotted,mark=*,mark options={solid,fill=gray}] table
+        [x=degree, y=rate, col sep=comma] {data/curlcurl_base.csv};
+        \addlegendentry{FIAT/\texttt{coffee}}
+        \pgfplotstableread{data/curlcurl.dat}{\data}
+        \fitCurve{\data}{0}{\C}{\C * x^3 / (x+1)^6}
+        \addlegendentry{$ \mathrm{n^3 / (n+1)^6} $}
+
+        \addplot[dotted,mark=*,mark options={solid,fill}] table
+        [x=degree, y=rate, col sep=comma] {data/curlcurl_spectral.csv};
+        \addlegendentry{\texttt{spectral}}
+        \fitCurve{\data}{1}{\C}{\C * x^3 / (x+1)^4}
+        \addlegendentry{$ \mathrm{n^3 / (n+1)^4} $}
+      \end{loglogaxis}
+    \end{tikzpicture}
+  }
+
+  \headerbox{Ongoing work}
+  {name=future, column=0, below=curl-curl, span=4}
+  {
+    \begin{itemize}
+    \item Cross-element vectorisation; deeper performance analysis and
+      modelling
+    \item Sum factorised evaluation on simplices: either by collapsed
+      coordinates, or Bernstein polynomials
+    \item Fast mass inverses?
+    \end{itemize}
+
+    \url{https://github.com/finat/finat/}
+
+    \url{https://github.com/firedrakeproject/tsfc/}
+
+    \url{https://www.firedrakeproject.org/}
+
+    \texttt{arXiv: 1711.02473 [cs.MS]}
+
+    \includegraphics[width=5em]{epsrc-logo}
+    \includegraphics[width=5em]{nerc-logo}
+
+    Rob grant: National Science Foundation Award number 1525697
+
+  }
+\end{poster}
+\end{document}
