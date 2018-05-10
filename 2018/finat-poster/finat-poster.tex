@@ -10,6 +10,7 @@
 \usepackage{url}
 \usepackage{tikz}
 \usepackage{pgfplots}
+\usepackage{cmbright}
 \newcommand{\fitCurve}[4]{%
   \pgfplotstablegetelem{#2}{C}\of#1
   \pgfmathsetmacro{#3}{\pgfplotsretval}
@@ -19,174 +20,237 @@
   \pgfmathsetmacro{\b}{\pgfplotsretval}
   \addplot[densely dashdotted,domain=\a:\b] {#4};
 }
+\usepackage{graphicx}
+\usepackage{graphbox}
 \graphicspath{{./\jobname.figures/}{../../pictures/}}
+
+\usepackage[most]{tcolorbox}
+\definecolor{firedrake_red}{RGB}{238,35,54}
+\definecolor{firedrake_blue}{RGB}{52,84,166}
 
 \begin{document}
 
 \begin{poster}{
-    grid=true,
-    columns=4,
-    colspacing=0.7em,
+    grid=false,
+    columns=6,
+    colspacing=0.5em,
     textborder=faded,
+    headerColorOne=firedrake_red,
+    borderColor=firedrake_red,
+    headerFontColor=white,
     headerborder=open,
+    headerfont=\bfseries\Large\scshape,
     eyecatcher=true,
     headershape=rounded,
     headershade=plain,
     background=none,
     headerheight=0.09\textheight,
   }
-  {\makebox[0.23\textwidth]{
-      \begin{tabular}{cc}
-        \includegraphics[height=0.05\textheight]{finat-logo}
-        &
-          \includegraphics[height=0.05\textheight]{firedrake-small}
-      \end{tabular}
+  {
+    \makebox[0.3\textwidth][l]{
+    \begin{tabular}{r}
+      \includegraphics[width=0.15\textwidth]{imperial-two-tone}\\
+      \includegraphics[height=0.05\textwidth]{baylor-logo-bw}\\
+    \end{tabular}
     }
-    \hfil 
   } 
   % Title
   {\scshape\Large FInAT is not a tabulator}
   % Authors
-  {\scshape\small Lawrence Mitchell; Mikl\'os Homolya; Robert C.~Kirby; David A.~Ham}
+  {\small\scshape Lawrence~Mitchell; Mikl\'os~Homolya; David~A.~Ham\\[0.1em]Imperial College London
+    \\[0.4em]  
+    Robert~C.~Kirby\\[0.1em]Baylor University}
   % University logo
   {
-    \makebox[0.23\textwidth]{
-      \begin{tabular}{r}
-        \includegraphics[width=0.15\textwidth]{imperial-two-tone}\\
-        \includegraphics[height=0.05\textwidth]{baylor-logo-bw}\\
-        \end{tabular}
+    \makebox[0.3\textwidth][r]{
+      \includegraphics[align=c,height=0.05\textheight]{firedrake-word}
     }
   }
 
-  \headerbox{In the beginning\dots}
-  {name=introduction,span=4,column=0,row=0}{
-    \begin{multicols}{3}
-      FIAT, the finite element automated tabulator, provides
-      \emph{tabulations} of a wide class of finite elements on
-      reference cells.
+  \begin{posterbox}[name=introduction,span=6,column=0,row=0]{In the beginning\dots}
+    \begin{multicols}{2}
+      {\raggedright FIAT provides implementations of a wide class of
+      finite elements on reference cells. It can provide tables of basis
+      functions, and their derivatives, at sets of points.
+      \begin{align*}
+        \Psi_i(\xi_q) &\mapsto \mathbf{\Psi}_{iq}\\
+        \hat{\nabla}\Psi_i(\xi_q) &\mapsto D\mathbf{\Psi}_{iq}
+      \end{align*}
+      \columnbreak
+      
+      This interface precludes many optimisations one may wish to
+      carry out that depend on \emph{structure} in the basis
+      functions.
 
-      Used in form compilers to provide evaluation rules.
-      At the core of a finite element system.  Consider an integration
-      on a single physical cell
-      \begin{equation*}
-        \int_K \nabla u \cdot \nabla v \text{d}x.
-      \end{equation*}
-
-      After transforming to the reference element under some mapping
-      $F_K$, we have
-      \begin{equation*}
-        \int_{\hat{K}} J_K^{-T} \hat{\nabla}\hat{u} \cdot J_K^{-T}
-        \hat{\nabla}\hat{v} |J_K|\text{d}\hat{x}.
-      \end{equation*}
-
-      Evaluation using quadrature, with $\{(\xi_q, w_q)\}_{q=1}^{N_q}$
-      a set of quadrature points and weights,
-      \begin{equation*}
-        \sum_{q=1}^{N_q} w_q ( J_K^{-T}(\xi_q) \hat{\nabla}
-        \hat{u}_K(\xi_q) ) \cdot ( J_K^{-T}(\xi_q) \hat{\nabla}
-        \hat{v}_K(\xi_q) ) \left| J_K(\xi_q) \right| .
-      \end{equation*}
+      FInAT, provides \emph{symbolic expressions} for the evaluation
+      of basis functions at points.  These preserve any structure in
+      the basis functions for the downstream system.
+      }
     \end{multicols}
-  }
+  \end{posterbox}
 
-  \headerbox{Types of structure}
-  {name=structure, column=0, below=introduction, span=2}
-  {
-    \begin{itemize}
-    \item Tensor-valued elements (e.g. $V \subset {(H^1)}^{d\times d}$)
-    \item Tensor-product elements (e.g. $\Xi(x_q) = \prod \xi(x_q)$)
-    \item Enriched elements (e.g. $V = A \oplus B$)
-    \item Hdiv/curl elements ...
-    \end{itemize}
-  }
+  \begin{posterbox}[name=structure, column=0, below=introduction, span=3]{Tabulation expressions}
+    Arbitrarily structured basis evaluations, composed of six base cases.
+    \tcbset{center title, colframe=firedrake_blue,colback=firedrake_blue!10!white,fonttitle=\bfseries}
+    \begin{tcbraster}[raster columns=6,raster equal height=rows]
+    \begin{tcolorbox}[title=FIAT,left=0mm,right=0mm,top=0mm,bottom=0mm,boxsep=0.5mm,
+      raster multicolumn=3, valign upper=center, halign=center]
+      Tabulation as a literal array.
+      \begin{equation*}
+        \Psi_i(\xi_q) \mapsto \mathbf{\Psi}_{iq}
+      \end{equation*}
+    \end{tcolorbox}
+    \begin{tcolorbox}[title=Tensor-valued,left=0mm,right=0mm,top=0mm,bottom=0mm,boxsep=0.5mm,
+      raster multicolumn=3, valign upper=center]
+      \begin{equation*}
+        \Psi_{(\alpha, \nu)\kappa}(\xi_q) \mapsto \Psi_{\alpha}^*(\xi_q) \prod_{i=1}^n \delta_{\nu_i \kappa_i}
+      \end{equation*}
+    \end{tcolorbox}
+    \begin{tcolorbox}[title=Underintegration,left=0mm,right=0mm,top=0mm,bottom=0mm,boxsep=0.5mm,
+      raster multicolumn=2, valign upper=center]
+      \begin{equation*}
+        \Psi_i(\xi_q) \mapsto \delta_{iq}
+      \end{equation*}
+    \end{tcolorbox}
+    \begin{tcolorbox}[title=Enriched,left=0mm,right=0mm,top=0mm,bottom=0mm,boxsep=0.5mm,
+      raster multicolumn=4, valign upper=center]
+      \begin{equation*}
+        (\Phi \oplus \Psi)_i(\xi_q) \mapsto
+        \begin{cases}
+          \Phi_i(\xi_q) &\text{$i < N_\Phi$}\\
+          \Psi_{i-N_\Phi}(\xi_q) &\text{otherwise}
+        \end{cases}
+      \end{equation*}
+    \end{tcolorbox}
+    \begin{tcolorbox}[title=Tensor product,left=0mm,right=0mm,top=0mm,bottom=0mm,boxsep=0.5mm,
+      raster multicolumn=3, valign upper=center]
+      \begin{equation*}
+        \Psi_{(i_1, \dots, i_n)}(\xi_{(q_1, \dots, q_n)}) \mapsto \prod_{j=1}^{n} \psi_{i_j}(\xi_{q_j})
+      \end{equation*}
+    \end{tcolorbox}
+    \begin{tcolorbox}[title=$\mathbf{H}(\text{div}/\text{curl})$,left=0mm,right=0mm,top=0mm,bottom=0mm,boxsep=0.5mm,
+      raster multicolumn=3, valign upper=center]
+      \begin{equation*}
+        \text{\texttt{HDiv}}(\Psi_i(\xi_q)) \mapsto
+        \begin{cases}
+          [-\Psi_i(\xi_q), 0]\\
+          [0, \Psi_i(\xi_q)]
+        \end{cases}
+      \end{equation*}
+    \end{tcolorbox}
+  \end{tcbraster}
+  \end{posterbox}
 
-  \headerbox{Tabulation rules}
-  {name=rules, column=0, below=structure, span=2}
-  {
-    \begin{itemize}
-    \item FIAT: $\Psi_i(\xi_q) \mapsto \mathbf{\Psi}_{iq}$
+  \begin{posterbox}[name=rules, column=0, below=structure, span=3]{Compiler algorithms}
+    Structure exploiting code generation implemented in TSFC, to obtain optimal complexity finite element kernels.
+    \tcbset{center title, colframe=firedrake_blue,colback=firedrake_blue!10!white,fonttitle=\bfseries}
+    \begin{tcbraster}[raster columns=6]
+      \begin{tcolorbox}[raster multicolumn=3, title={Delta cancellation},left=0mm,right=0mm,top=0mm,bottom=0mm,boxsep=0.5mm,valign upper=center]
+        \begin{equation*}
+          \sum_{i_1, i_2} c_{i_1 i_2} \Psi_{i_1 q}
+          \delta_{i_2 a} \mapsto \sum_{i_1} c_{i_1 a}\Psi_{i_1 q}
+        \end{equation*}
+      \end{tcolorbox}
+      \begin{tcolorbox}[raster multicolumn=3, title={\dots across assignments},left=0mm,right=0mm,top=0mm,bottom=0mm,boxsep=0.5mm,valign upper=center]
+        \begin{align*}
+          A_{i_1 i_2 j_1 j_2} &= \delta_{i_2 j_2} \sum_q w_q S_q \Psi_{i_1 q}\Psi_{j_1 q} \\
+          A_{i_1 i_2 j_1 i_2} &= \sum_q w_q S_q \Psi_{i_1 q}\Psi_{j_1 q}
+        \end{align*}
+      \end{tcolorbox}
+      \begin{tcolorbox}[raster multicolumn=6, title={Sum factorisation},left=0mm,right=0mm,top=0mm,bottom=0mm,boxsep=0.5mm,valign upper=center, halign=center]
+        \begin{align*}
+          \sum_{q_1 q_2} D\Psi^{(1)}_{i_1 q_1}\Psi^{(2)}_{i_2 q_2} D\Psi^{(1)}_{j_1 q_1}\Psi^{(2)}_{j_2 q_2} P^{(1,1)}_{q_1 q_2} \\
+          \mapsto \sum_{q_1} D\Psi^{(1)}_{i_1 q_1} D\Psi^{(1)}_{j_1 q_1} \sum_{q_2}  \Psi^{(2)}_{i_2 q_2}\Psi^{(2)}_{j_2 q_2} P^{(1,1)}_{q_1 q_2}
+        \end{align*}
+        An operation minimal contraction order is chosen by exhaustive search.
+      \end{tcolorbox}
+    \end{tcbraster}
+  \end{posterbox}
 
-    \item Tensor-valued: $\Psi_{(\alpha, \nu)\kappa}(\xi_q) \mapsto
-      \Psi^{*}_\alpha(\xi_q)\prod_{i=1}^{n}\delta_{\nu_i \kappa_i}$
-    \item Tensor-product: $\Psi_{(i_1, \dots, i_n)}(\xi_{(q_1, \dots,
-        q_n)}) \mapsto \prod_{j=1}^{n}
-      \Psi_{i_j}^{(j)}(\xi_{q_j}^{(j)})$
-    \item Enriched: $(\Psi_1 \oplus \Psi_2)(\xi_q) \mapsto $
-    \end{itemize}
-  }
+  \begin{posterbox}[name=flop-scaling, column=3, below=introduction, span=3]{Algorithmic complexity}
+    \begin{center}
+      FLOP/hexahedral cell to compute $\int\!\nabla u \cdot \nabla v\,\text{d}x$.
 
-  \headerbox{Results: flop complexity}
-  {name=flop-scaling, column=2, below=introduction, span=2}
-  {
-    
-    \begin{tikzpicture}
+      \begin{tikzpicture}[scale=0.9]
+        \begin{loglogaxis}[
+          legend cell align=left,
+          legend pos=outer north east,
+          xlabel={Polynomial degree ($ \mathrm{n} $)},
+          xtick={1,2,3,4,5,6,7,8,10,12,14,16,20,24,28,32},
+          xlabel near ticks,
+          xticklabels={1,2,3,4,,,,8,,,,16,,,,32},
+          x tick label style={yshift=-0.15em},
+          ylabel={FLOP/cell},
+          ylabel near ticks,
+          y tick label style={xshift=-0.15em},
+          ]
+          \addplot[densely dotted,mark=o,mark options={solid}, line width=1.5pt]
+          table [x=degree, y=coffee, col sep=comma] {data/bipoisson_flops.csv};
+          \addlegendentry{\texttt{coffee}}
+          
+          \addplot[densely dashed,domain=1:32] {36*(x+1)^9};
+          \addlegendentry{$ \mathrm{(n+1)^9} $}
+          
+          \addplot[densely dotted,mark=*,mark options={solid}, line width=1.5pt]
+          table [x=degree, y=spectral, col sep=comma] {data/bipoisson_flops.csv};
+          \addlegendentry{\texttt{spectral}}
+          
+          \addplot[densely dashed,domain=1:32] {(x+1)^7};
+          \addlegendentry{$ \mathrm{(n+1)^7} $}
+          
+          \addplot[densely dotted,mark=diamond*,mark options={solid}, line width=1.5pt]
+          table [x=degree, y=gll_spectral, col sep=comma] {data/bipoisson_flops.csv};
+          \addlegendentry{underintegration}
+          
+          \addplot[densely dashed,domain=1:32] {4*(x+1)^5};
+          \addlegendentry{$ \mathrm{(n+1)^5} $}
+        \end{loglogaxis}
+      \end{tikzpicture}
+    \end{center}
+  \end{posterbox}
+
+  \begin{posterbox}[name=curl-curl, column=3, below=flop-scaling, span=3]{Throughput}
+    \begin{center}
+      DoF throughput on a hexahedral mesh for
+      \begin{equation*}
+        \int_\Omega\!\nabla \times u \cdot \nabla \times v\,\text{d}x \quad u,v \in V \subset H(\text{curl}) 
+      \end{equation*}
+      Hardware: dual-socket 8 core E5-2640v3.  STREAM Triad 64GB/s.
+      
+      \begin{tikzpicture}[scale=0.9]
       \begin{loglogaxis}[
         legend cell align=left,
         legend pos=outer north east,
         xlabel={Polynomial degree ($ \mathrm{n} $)},
         xtick={1,2,3,4,5,6,7,8,10,12,14,16,20,24,28,32},
+        xlabel near ticks,
         xticklabels={1,2,3,4,,,,8,,,,16,,,,32},
-        ylabel={Floating-point operations per cell},
+        x tick label style={yshift=-0.15em},
+        ylabel={DoF/$s$},
+        ylabel near ticks,
         ]
-        \addplot[densely dotted,mark=o,mark options={solid}]
-        table [x=degree, y=coffee, col sep=comma] {data/bipoisson_flops.csv};
-        \addlegendentry{\texttt{coffee}}
-        
-        \addplot[densely dashed,domain=1:32] {36*(x+1)^9};
-        \addlegendentry{$ \mathrm{(n+1)^9} $}
-        
-        \addplot[densely dotted,mark=*,mark options={solid}]
-        table [x=degree, y=spectral, col sep=comma] {data/bipoisson_flops.csv};
-        \addlegendentry{\texttt{spectral}}
-        
-        \addplot[densely dashed,domain=1:32] {(x+1)^7};
-        \addlegendentry{$ \mathrm{(n+1)^7} $}
-        
-        \addplot[densely dotted,mark=diamond*,mark options={solid}]
-        table [x=degree, y=gll_spectral, col sep=comma] {data/bipoisson_flops.csv};
-        \addlegendentry{underintegration}
-        
-        \addplot[densely dashed,domain=1:32] {4*(x+1)^5};
-        \addlegendentry{$ \mathrm{(n+1)^5} $}
-      \end{loglogaxis}
-    \end{tikzpicture}
-  }
-
-  \headerbox{Results: operator action}
-  {name=curl-curl, column=2, below=flop-scaling, span=2}
-  {
-    \begin{tikzpicture}
-      \begin{loglogaxis}[
-        legend cell align=left,
-        legend pos=outer north east,
-        xlabel={Polynomial degree ($ \mathrm{n} $)},
-        xtick={1,2,3,4,5,6,7,8,10,12,14,16,20,24,28,32},
-        xticklabels={1,2,3,4,,6,,8,,12,,16,,,,32},
-        ylabel={DoFs/$s$},
-        ]
-        \addplot[densely dotted,mark=star,mark options={solid}] table
+        \addplot[densely dotted,mark=star,mark options={solid}, line width=1.5pt] table
         [x=degree, y=rate, col sep=comma] {data/curlcurl_spmv.csv};
         \addlegendentry{\textsc{MatVec}}
 
-        \addplot[dotted,mark=*,mark options={solid,fill=gray}] table
+        \addplot[dotted,mark=*,mark options={solid,fill=gray}, line width=1.5pt] table
         [x=degree, y=rate, col sep=comma] {data/curlcurl_base.csv};
         \addlegendentry{FIAT/\texttt{coffee}}
         \pgfplotstableread{data/curlcurl.dat}{\data}
         \fitCurve{\data}{0}{\C}{\C * x^3 / (x+1)^6}
         \addlegendentry{$ \mathrm{n^3 / (n+1)^6} $}
 
-        \addplot[dotted,mark=*,mark options={solid,fill}] table
+        \addplot[dotted,mark=*,mark options={solid,fill}, line width=1.5pt] table
         [x=degree, y=rate, col sep=comma] {data/curlcurl_spectral.csv};
         \addlegendentry{\texttt{spectral}}
         \fitCurve{\data}{1}{\C}{\C * x^3 / (x+1)^4}
         \addlegendentry{$ \mathrm{n^3 / (n+1)^4} $}
       \end{loglogaxis}
     \end{tikzpicture}
-  }
+  \end{center}
+  \end{posterbox}
 
-  \headerbox{Ongoing work}
-  {name=future, column=0, below=curl-curl, span=4}
-  {
+  \begin{posterbox}[name=future, column=0, below=rules, span=6]{Ongoing work}
     \begin{itemize}
     \item Cross-element vectorisation; deeper performance analysis and
       modelling
@@ -208,6 +272,7 @@
 
     Rob grant: National Science Foundation Award number 1525697
 
-  }
+    Grantham Institute
+  \end{posterbox}
 \end{poster}
 \end{document}
