@@ -8,8 +8,10 @@
 \usepackage{microtype}
 \usepackage{multicol}
 \usepackage{url}
+
 \usepackage{tikz}
 \usepackage{pgfplots}
+\pgfplotsset{compat=1.15}
 \usepackage{cmbright}
 \newcommand{\fitCurve}[4]{%
   \pgfplotstablegetelem{#2}{C}\of#1
@@ -50,6 +52,7 @@
     \makebox[0.3\textwidth][l]{
     \begin{tabular}{r}
       \includegraphics[width=0.15\textwidth]{imperial-two-tone}\\
+      \vspace{0.5em}
       \includegraphics[height=0.05\textwidth]{baylor-logo-bw}\\
     \end{tabular}
     }
@@ -67,11 +70,13 @@
     }
   }
 
-  \begin{posterbox}[name=introduction,span=6,column=0,row=0]{In the beginning\dots}
+  \begin{posterbox}[name=introduction,span=6,column=0,row=0]{FIAT is a
+      tabulator}
     \begin{multicols}{2}
       {\raggedright FIAT provides implementations of a wide class of
       finite elements on reference cells. It can provide tables of basis
       functions, and their derivatives, at sets of points.
+      \vspace{-0.5\baselineskip}
       \begin{align*}
         \Psi_i(\xi_q) &\mapsto \mathbf{\Psi}_{iq}\\
         \hat{\nabla}\Psi_i(\xi_q) &\mapsto D\mathbf{\Psi}_{iq}
@@ -82,7 +87,7 @@
       carry out that depend on \emph{structure} in the basis
       functions.
 
-      FInAT, provides \emph{symbolic expressions} for the evaluation
+      FInAT provides \emph{symbolic expressions} for the evaluation
       of basis functions at points.  These preserve any structure in
       the basis functions for the downstream system.
       }
@@ -169,7 +174,10 @@
 
   \begin{posterbox}[name=flop-scaling, column=3, below=introduction, span=3]{Algorithmic complexity}
     \begin{center}
-      FLOP/hexahedral cell to compute $\int\!\nabla u \cdot \nabla v\,\text{d}x$.
+      FLOP/hexahedral cell computing
+      \begin{equation*}
+      \int\!\nabla u \cdot \nabla v\,\text{d}x.
+    \end{equation*}
 
       \begin{tikzpicture}[scale=0.9]
         \begin{loglogaxis}[
@@ -209,13 +217,13 @@
     \end{center}
   \end{posterbox}
 
-  \begin{posterbox}[name=curl-curl, column=3, below=flop-scaling, span=3]{Throughput}
+  \begin{posterbox}[name=curl-curl, column=3, below=flop-scaling,
+    span=3]{DoF throughput}
     \begin{center}
-      DoF throughput on a hexahedral mesh for
+      Throughput on a hexahedral mesh computing curl-curl action:
       \begin{equation*}
         \int_\Omega\!\nabla \times u \cdot \nabla \times v\,\text{d}x \quad u,v \in V \subset H(\text{curl}) 
       \end{equation*}
-      Hardware: dual-socket 8 core E5-2640v3.  STREAM Triad 64GB/s.
       
       \begin{tikzpicture}[scale=0.9]
       \begin{loglogaxis}[
@@ -250,29 +258,61 @@
   \end{center}
   \end{posterbox}
 
-  \begin{posterbox}[name=future, column=0, below=rules, span=6]{Ongoing work}
-    \begin{itemize}
-    \item Cross-element vectorisation; deeper performance analysis and
-      modelling
-    \item Sum factorised evaluation on simplices: either by collapsed
-      coordinates, or Bernstein polynomials
-    \item Fast mass inverses?
-    \end{itemize}
+  \begin{posterbox}[name=future, column=0, below=rules,
+    span=3]{Future work}
+    \tcbset{center title, colframe=firedrake_blue,colback=firedrake_blue!10!white,fonttitle=\bfseries}
+    \begin{tcolorbox}[title=Bernstein,left=0mm,right=0mm,top=0mm,bottom=0mm,boxsep=0.5mm, valign upper=center]
+      Sum factorisation on simplex elements using Bernstein basis.
 
-    \url{https://github.com/finat/finat/}
+      Requires mostly similar technology, but now tensor products are ragged.
+    \end{tcolorbox}
+    \begin{tcolorbox}[title=Local algebra,left=0mm,right=0mm,top=0mm,bottom=0mm,boxsep=0.5mm,
+      valign upper=center]
+      Fast tensor algebra for hybridisation methods.  Requires
+      assembling (or providing action of) element tensors with
+      structure $D - C A^{-1} B$.
 
-    \url{https://github.com/firedrakeproject/tsfc/}
+      Should also exploit tensor product identities where possible,
+      e.g.~$\big[\otimes_i A_i\big]^{-1} = \otimes_i A_i^{-1}$.
+    \end{tcolorbox}
+    \begin{tcolorbox}[title=Vectorisation,left=0mm,right=0mm,top=0mm,bottom=0mm,boxsep=0.5mm,
+      valign upper=center]
+      Working on cross-element vectorisation schemes.  Have
+      low-complexity algorithms, need to do the performance analysis
+      to ensure high performance too.
+    \end{tcolorbox}
+  \end{posterbox}    
+  \begin{posterbox}[name=try, column=3, below=curl-curl,
+    span=3]{Try it}
+    \tcbset{center title, colframe=firedrake_blue,colback=firedrake_blue!10!white,fonttitle=\bfseries}
+    \begin{tcolorbox}[title=Code,left=0mm,right=0mm,top=0mm,bottom=0mm,boxsep=0.5mm,valign upper=center]
+    FInAT: \url{https://github.com/finat/finat/}\\
+    TSFC: \url{https://github.com/firedrakeproject/tsfc/}\\
+    Firedrake: \url{https://www.firedrakeproject.org/}
+    \end{tcolorbox}
+    \begin{tcolorbox}[title=More
+      details,left=0mm,right=0mm,top=0mm,bottom=0mm,boxsep=0.5mm,valign
+      upper=center, halign=left]
+      Homolya, Kirby, Ham, \emph{Exposing and exploiting structure:
+        optimal code generation for high-order finite element
+        methods}. To appear in ACM TOMS (2018).
+      \texttt{arXiv:\,1711.02473\,[cs.MS]}.
+    \end{tcolorbox}
+  \end{posterbox}
+  \begin{posterbox}[name=acknowledgements,
+    column=0,span=6,below=future,
+    boxheaderheight=0.75em]{}
+    This work was supported by: the Grantham Institute; the National
+    Science Foundation [award number 1525697]; the Natural Environment
+    Research Council [grant number NE/K008951/1]; the Engineering and
+    Physical Sciences Research Council [grant number EP/M011054/1].
 
-    \url{https://www.firedrakeproject.org/}
-
-    \texttt{arXiv: 1711.02473 [cs.MS]}
-
-    \includegraphics[width=5em]{epsrc-logo}
-    \includegraphics[width=5em]{nerc-logo}
-
-    Rob grant: National Science Foundation Award number 1525697
-
-    Grantham Institute
+    
+    \begin{center}
+      \includegraphics[height=2em]{epsrc-logo} \hfill
+      \includegraphics[height=2em]{nerc-logo} \hfill
+      \includegraphics[height=2em]{nsf-logo}
+    \end{center}
   \end{posterbox}
 \end{poster}
 \end{document}
