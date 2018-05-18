@@ -11,7 +11,7 @@
 
 \usepackage{tikz}
 \usepackage{pgfplots}
-\pgfplotsset{compat=1.15}
+\pgfplotsset{compat=1.13}
 \usepackage{cmbright}
 \newcommand{\fitCurve}[4]{%
   \pgfplotstablegetelem{#2}{C}\of#1
@@ -27,8 +27,8 @@
 \graphicspath{{./\jobname.figures/}{../../pictures/}}
 
 \usepackage[most]{tcolorbox}
-\definecolor{firedrake_red}{RGB}{238,35,54}
-\definecolor{firedrake_blue}{RGB}{52,84,166}
+\definecolor{firedrake_red}{RGB}{221,0,0}
+\definecolor{firedrake_blue}{RGB}{16,66,122}
 
 \begin{document}
 
@@ -72,26 +72,30 @@
 
   \begin{posterbox}[name=introduction,span=6,column=0,row=0]{FIAT is a
       tabulator}
-    \begin{multicols}{2}
-      {\raggedright FIAT provides implementations of a wide class of
-      finite elements on reference cells. It can provide tables of basis
+    \begin{minipage}{0.49\textwidth}
+      \subsection*{FIAT}
+      \vspace{-0.5em}
+      Provides implementations of a wide class of
+      finite elements on reference cells. It can tabulate basis
       functions, and their derivatives, at sets of points.
-      \vspace{-0.5\baselineskip}
+      \vspace{-0.25\baselineskip}
       \begin{align*}
         \Psi_i(\xi_q) &\mapsto \mathbf{\Psi}_{iq}\\
         \hat{\nabla}\Psi_i(\xi_q) &\mapsto D\mathbf{\Psi}_{iq}
       \end{align*}
-      \columnbreak
-      
-      This interface precludes many optimisations one may wish to
-      carry out that depend on \emph{structure} in the basis
-      functions.
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.49\textwidth} 
+      \subsection*{FInaT}
+      \vspace{-0.5em}
+      Provides \emph{symbolic expressions} for the
+      evaluation of basis functions at points.  These enable a
+      compiler to apply optimisations that depend on \emph{structure}
+      in the basis functions.
 
-      FInAT provides \emph{symbolic expressions} for the evaluation
-      of basis functions at points.  These preserve any structure in
-      the basis functions for the downstream system.
-      }
-    \end{multicols}
+      We have implemented these optimisations in TSFC, to provide low
+      complexity finite element evaluation in Firedrake.
+    \end{minipage}
   \end{posterbox}
 
   \begin{posterbox}[name=structure, column=0, below=introduction, span=3]{Tabulation expressions}
@@ -120,7 +124,7 @@
     \begin{tcolorbox}[title=Enriched,left=0mm,right=0mm,top=0mm,bottom=0mm,boxsep=0.5mm,
       raster multicolumn=4, valign upper=center]
       \begin{equation*}
-        (\Phi \oplus \Psi)_i(\xi_q) \mapsto
+        {(\Phi \oplus \Psi)}_i(\xi_q) \mapsto
         \begin{cases}
           \Phi_i(\xi_q) &\text{$i < N_\Phi$}\\
           \Psi_{i-N_\Phi}(\xi_q) &\text{otherwise}
@@ -147,29 +151,32 @@
   \end{posterbox}
 
   \begin{posterbox}[name=rules, column=0, below=structure, span=3]{Compiler algorithms}
-    Structure exploiting code generation implemented in TSFC, to obtain optimal complexity finite element kernels.
-    \tcbset{center title, colframe=firedrake_blue,colback=firedrake_blue!10!white,fonttitle=\bfseries}
-    \begin{tcbraster}[raster columns=6]
-      \begin{tcolorbox}[raster multicolumn=3, title={Delta cancellation},left=0mm,right=0mm,top=0mm,bottom=0mm,boxsep=0.5mm,valign upper=center]
-        \begin{equation*}
-          \sum_{i_1, i_2} c_{i_1 i_2} \Psi_{i_1 q}
-          \delta_{i_2 a} \mapsto \sum_{i_1} c_{i_1 a}\Psi_{i_1 q}
-        \end{equation*}
-      \end{tcolorbox}
-      \begin{tcolorbox}[raster multicolumn=3, title={\dots across assignments},left=0mm,right=0mm,top=0mm,bottom=0mm,boxsep=0.5mm,valign upper=center]
-        \begin{align*}
-          A_{i_1 i_2 j_1 j_2} &= \delta_{i_2 j_2} \sum_q w_q S_q \Psi_{i_1 q}\Psi_{j_1 q} \\
-          A_{i_1 i_2 j_1 i_2} &= \sum_q w_q S_q \Psi_{i_1 q}\Psi_{j_1 q}
-        \end{align*}
-      \end{tcolorbox}
-      \begin{tcolorbox}[raster multicolumn=6, title={Sum factorisation},left=0mm,right=0mm,top=0mm,bottom=0mm,boxsep=0.5mm,valign upper=center, halign=center]
-        \begin{align*}
-          \sum_{q_1 q_2} D\Psi^{(1)}_{i_1 q_1}\Psi^{(2)}_{i_2 q_2} D\Psi^{(1)}_{j_1 q_1}\Psi^{(2)}_{j_2 q_2} P^{(1,1)}_{q_1 q_2} \\
-          \mapsto \sum_{q_1} D\Psi^{(1)}_{i_1 q_1} D\Psi^{(1)}_{j_1 q_1} \sum_{q_2}  \Psi^{(2)}_{i_2 q_2}\Psi^{(2)}_{j_2 q_2} P^{(1,1)}_{q_1 q_2}
-        \end{align*}
-        An operation minimal contraction order is chosen by exhaustive search.
-      \end{tcolorbox}
-    \end{tcbraster}
+    Structure exploiting code generation implemented in TSFC, to
+    obtain optimal complexity finite element kernels.
+
+    \vspace{-\baselineskip}
+    \subsection*{Delta cancellation}
+    \vspace{-0.5em}
+    \begin{equation*}
+      \sum_{i_1, i_2} c_{i_1 i_2} \Psi_{i_1 q}
+      \delta_{i_2 a} \mapsto \sum_{i_1} c_{i_1 a}\Psi_{i_1 q}
+    \end{equation*}
+    \vspace{-1.2\baselineskip}
+    \subsubsection*{\dots across assignments}
+    \vspace{-0.3em}
+    \begin{equation*}
+      A_{i_1 i_2 j_1 j_2} = \delta_{i_2 j_2} \sum_q w_q S_q \Psi_{i_1 q}\Psi_{j_1 q} \mapsto A_{i_1 i_2 j_1 i_2} = \sum_q w_q S_q \Psi_{i_1 q}\Psi_{j_1 q}
+    \end{equation*}
+    \vspace{-1.25\baselineskip}
+    \subsection*{Sum factorisation}
+    \vspace{-0.5em}
+    An operation minimal contraction order is chosen by exhaustive search.
+    \begin{align*}
+      \sum_{q_1 q_2} D\Psi^{(1)}_{i_1 q_1}\Psi^{(2)}_{i_2 q_2}
+      D\Psi^{(1)}_{j_1 q_1}\Psi^{(2)}_{j_2 q_2} P^{(1,1)}_{q_1 q_2}
+      \mapsto \\
+      \sum_{q_1} D\Psi^{(1)}_{i_1 q_1} D\Psi^{(1)}_{j_1 q_1} \sum_{q_2}  \Psi^{(2)}_{i_2 q_2}\Psi^{(2)}_{j_2 q_2} P^{(1,1)}_{q_1 q_2}
+    \end{align*}
   \end{posterbox}
 
   \begin{posterbox}[name=flop-scaling, column=3, below=introduction, span=3]{Algorithmic complexity}
@@ -179,7 +186,7 @@
       \int\!\nabla u \cdot \nabla v\,\text{d}x.
     \end{equation*}
 
-      \begin{tikzpicture}[scale=0.9]
+      \begin{tikzpicture}[scale=0.823]
         \begin{loglogaxis}[
           legend cell align=left,
           legend pos=outer north east,
@@ -260,59 +267,67 @@
 
   \begin{posterbox}[name=future, column=0, below=rules,
     span=3]{Future work}
-    \tcbset{center title, colframe=firedrake_blue,colback=firedrake_blue!10!white,fonttitle=\bfseries}
-    \begin{tcolorbox}[title=Bernstein,left=0mm,right=0mm,top=0mm,bottom=0mm,boxsep=0.5mm, valign upper=center]
+    \subsection*{Bernstein on simplices}
+    \vspace{-0.5em}
       Sum factorisation on simplex elements using Bernstein basis.
 
-      Requires mostly similar technology, but now tensor products are ragged.
-    \end{tcolorbox}
-    \begin{tcolorbox}[title=Local algebra,left=0mm,right=0mm,top=0mm,bottom=0mm,boxsep=0.5mm,
-      valign upper=center]
+      Requires mostly similar technology, but now tensor products are
+      ragged.
+      \vspace{-\baselineskip}
+      \subsection*{Local tensor algebra}
+      \vspace{-0.5em}
       Fast tensor algebra for hybridisation methods.  Requires
       assembling (or providing action of) element tensors with
       structure $D - C A^{-1} B$.
 
       Should also exploit tensor product identities where possible,
       e.g.~$\big[\otimes_i A_i\big]^{-1} = \otimes_i A_i^{-1}$.
-    \end{tcolorbox}
-    \begin{tcolorbox}[title=Vectorisation,left=0mm,right=0mm,top=0mm,bottom=0mm,boxsep=0.5mm,
-      valign upper=center]
-      Working on cross-element vectorisation schemes.  Have
+      \vspace{-\baselineskip}
+      \subsection*{Vectorisation}
+      \vspace{-0.5em}
+      Working in progress cross-element vectorisation schemes.  Have
       low-complexity algorithms, need to do the performance analysis
       to ensure high performance too.
-    \end{tcolorbox}
   \end{posterbox}    
   \begin{posterbox}[name=try, column=3, below=curl-curl,
     span=3]{Try it}
-    \tcbset{center title, colframe=firedrake_blue,colback=firedrake_blue!10!white,fonttitle=\bfseries}
-    \begin{tcolorbox}[title=Code,left=0mm,right=0mm,top=0mm,bottom=0mm,boxsep=0.5mm,valign upper=center]
+    \subsection*{More details}
+    \vspace{-0.5em}
+    Homolya, Kirby, Ham, \emph{Exposing and exploiting structure:
+      optimal code generation for high-order finite element
+      methods}. To appear in ACM TOMS (2018).
+    \texttt{arXiv:\,1711.02473\,[cs.MS]}.
+    \vspace{-\baselineskip}
+    \subsection*{Code}
+    \vspace{-0.5em}
     FInAT: \url{https://github.com/finat/finat/}\\
     TSFC: \url{https://github.com/firedrakeproject/tsfc/}\\
     Firedrake: \url{https://www.firedrakeproject.org/}
-    \end{tcolorbox}
-    \begin{tcolorbox}[title=More
-      details,left=0mm,right=0mm,top=0mm,bottom=0mm,boxsep=0.5mm,valign
-      upper=center, halign=left]
-      Homolya, Kirby, Ham, \emph{Exposing and exploiting structure:
-        optimal code generation for high-order finite element
-        methods}. To appear in ACM TOMS (2018).
-      \texttt{arXiv:\,1711.02473\,[cs.MS]}.
-    \end{tcolorbox}
+
+    \vspace{\baselineskip}
+    \begin{minipage}{0.167\textwidth}
+      \begin{flushleft}
+        \includegraphics[align=c,height=2.5em]{epsrc-logo}
+      \end{flushleft}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.167\textwidth}
+      \begin{center}
+        \includegraphics[align=c,height=2.5em]{nerc-logo}
+      \end{center}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.167\textwidth}
+      \begin{flushright}
+        \includegraphics[align=c,height=3.5em]{nsf-logo}
+      \end{flushright}
+    \end{minipage}
   \end{posterbox}
   \begin{posterbox}[name=acknowledgements,
-    column=0,span=6,below=future,
-    boxheaderheight=0.75em]{}
-    This work was supported by: the Grantham Institute; the National
-    Science Foundation [award number 1525697]; the Natural Environment
+    column=0,span=6,below=future,boxheaderheight=2em]{Support}
+    The Grantham Institute; the National Science Foundation [award number 1525697]; the Natural Environment
     Research Council [grant number NE/K008951/1]; the Engineering and
     Physical Sciences Research Council [grant number EP/M011054/1].
-
-    
-    \begin{center}
-      \includegraphics[height=2em]{epsrc-logo} \hfill
-      \includegraphics[height=2em]{nerc-logo} \hfill
-      \includegraphics[height=2em]{nsf-logo}
-    \end{center}
   \end{posterbox}
 \end{poster}
 \end{document}
