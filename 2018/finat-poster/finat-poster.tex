@@ -5,14 +5,13 @@
 \usepackage{amssymb}
 \usepackage{amsfonts}
 \usepackage{mathtools}
-\usepackage{microtype}
-\usepackage{multicol}
+\usepackage[final,letterspace=50,step=2,stretch=10]{microtype}
+\microtypecontext{spacing=nonfrench}
 \usepackage{url}
 
 \usepackage{tikz}
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.13}
-\usepackage{cmbright}
 \newcommand{\fitCurve}[4]{%
   \pgfplotstablegetelem{#2}{C}\of#1
   \pgfmathsetmacro{#3}{\pgfplotsretval}
@@ -29,7 +28,21 @@
 \usepackage[most]{tcolorbox}
 \definecolor{firedrake_red}{RGB}{221,0,0}
 \definecolor{firedrake_blue}{RGB}{16,66,122}
+\usepackage{cmbright}
+\usepackage{fontspec}
+\defaultfontfeatures{
+  Ligatures = TeX,
+  Scale = 1,
+  Extension = .otf }
+\setsansfont[
+Numbers = {Monospaced, Lining},
+UprightFont= *-Light,
+ItalicFont = *-Light Italic,
+BoldFont = *-Medium,
+BoldItalicFont = *-Medium Italic,]{FiraSans}
 
+% \renewcommand*\familydefault{\sffamily}
+\usepackage{FiraMono}
 \begin{document}
 
 \begin{poster}{
@@ -49,127 +62,145 @@
     headerheight=0.09\textheight,
   }
   {
-    \makebox[0.3\textwidth][l]{
-    \begin{tabular}{r}
-      \includegraphics[width=0.15\textwidth]{imperial-two-tone}\\
-      \vspace{0.5em}
-      \includegraphics[height=0.05\textwidth]{baylor-logo-bw}\\
-    \end{tabular}
-    }
+    \begin{minipage}[l]{0.3\textwidth}
+      \includegraphics[align=b, height=1.1cm]{imperial-two-tone}
+      \par
+      \vspace{0.2cm}
+      \includegraphics[align=t, height=1.1cm]{baylor-logo-bw}
+    \end{minipage}
   } 
   % Title
-  {\scshape\Large FInAT is not a tabulator}
+  {\scshape\LARGE FInAT is not a tabulator}
   % Authors
-  {\small\scshape Lawrence~Mitchell; Mikl\'os~Homolya; David~A.~Ham\\[0.1em]Imperial College London
-    \\[0.4em]  
-    Robert~C.~Kirby\\[0.1em]Baylor University}
+  {\vspace{0.2em}\small\scshape Lawrence~Mitchell\quad
+    Mikl\'os~Homolya \quad David~A.~Ham\\[0.15em]Imperial College London
+    \\[0.5em]  
+    Robert~C.~Kirby\\[0.15em]Baylor University}
   % University logo
   {
     \makebox[0.3\textwidth][r]{
-      \includegraphics[align=c,height=0.05\textheight]{firedrake-word}
+      \includegraphics[align=c,height=1.75cm]{firedrake-word}
     }
   }
 
   \begin{posterbox}[name=introduction,span=6,column=0,row=0]{FIAT is a
       tabulator}
-    \begin{minipage}{0.49\textwidth}
+    \begin{minipage}[t]{0.49\textwidth}%
       \subsection*{FIAT}
-      \vspace{-0.5em}
-      Provides implementations of a wide class of
-      finite elements on reference cells. It can tabulate basis
-      functions, and their derivatives, at sets of points.
       \vspace{-0.25\baselineskip}
+      \raggedright
+      Provides implementations of a wide class of finite elements on
+      reference cells. It can tabulate basis functions, and their
+      derivatives, at sets of points.  \vspace{-1\baselineskip}
       \begin{align*}
         \Psi_i(\xi_q) &\mapsto \mathbf{\Psi}_{iq}\\
-        \hat{\nabla}\Psi_i(\xi_q) &\mapsto D\mathbf{\Psi}_{iq}
+        \nabla\Psi_i(\xi_q) &\mapsto D\mathbf{\Psi}_{iq}
       \end{align*}
-    \end{minipage}
-    \hfill
-    \begin{minipage}{0.49\textwidth} 
-      \subsection*{FInaT}
-      \vspace{-0.5em}
-      Provides \emph{symbolic expressions} for the
-      evaluation of basis functions at points.  These enable a
-      compiler to apply optimisations that depend on \emph{structure}
-      in the basis functions.
+    \end{minipage}%
+    \hspace{0.02\textwidth}%
+    \begin{minipage}[t]{0.49\textwidth}%
+      \raggedright
+      \subsection*{FInAT}
+      \vspace{-0.25\baselineskip}
+      Provides \emph{symbolic expressions} for the evaluation of
+      basis functions at points.  These enable a compiler to apply
+      optimisations that depend on \emph{structure} in the basis
+      functions.
 
-      We have implemented these optimisations in TSFC, to provide low
-      complexity finite element evaluation in Firedrake.
+      We have implemented these optimisations in TSFC, to provide
+      low complexity finite element evaluation in Firedrake.
     \end{minipage}
   \end{posterbox}
 
-  \begin{posterbox}[name=structure, column=0, below=introduction, span=3]{Tabulation expressions}
+  \begin{posterbox}[name=structure, column=0, below=introduction,
+    span=3, height=0.275,
+    ]{Tabulation expressions}
+    \raggedright
     Arbitrarily structured basis evaluations, composed of six base cases.
-    \tcbset{center title, colframe=firedrake_blue,colback=firedrake_blue!10!white,fonttitle=\bfseries}
+    \tcbset{center title,
+      colframe=firedrake_blue,
+      colback=firedrake_blue!10!white,
+      fonttitle=\bfseries,
+      right=0mm,
+      left=0mm,
+      top=0.25mm,
+      bottom=0.2mm,
+      boxsep=0.5mm,
+      valign upper=center,
+      halign=center}
     \begin{tcbraster}[raster columns=6,raster equal height=rows]
-    \begin{tcolorbox}[title=FIAT,left=0mm,right=0mm,top=0mm,bottom=0mm,boxsep=0.5mm,
-      raster multicolumn=3, valign upper=center, halign=center]
-      Tabulation as a literal array.
-      \begin{equation*}
-        \Psi_i(\xi_q) \mapsto \mathbf{\Psi}_{iq}
-      \end{equation*}
-    \end{tcolorbox}
-    \begin{tcolorbox}[title=Tensor-valued,left=0mm,right=0mm,top=0mm,bottom=0mm,boxsep=0.5mm,
-      raster multicolumn=3, valign upper=center]
-      \begin{equation*}
-        \Psi_{(\alpha, \nu)\kappa}(\xi_q) \mapsto \Psi_{\alpha}^*(\xi_q) \prod_{i=1}^n \delta_{\nu_i \kappa_i}
-      \end{equation*}
-    \end{tcolorbox}
-    \begin{tcolorbox}[title=Underintegration,left=0mm,right=0mm,top=0mm,bottom=0mm,boxsep=0.5mm,
-      raster multicolumn=2, valign upper=center]
-      \begin{equation*}
-        \Psi_i(\xi_q) \mapsto \delta_{iq}
-      \end{equation*}
-    \end{tcolorbox}
-    \begin{tcolorbox}[title=Enriched,left=0mm,right=0mm,top=0mm,bottom=0mm,boxsep=0.5mm,
-      raster multicolumn=4, valign upper=center]
-      \begin{equation*}
-        {(\Phi \oplus \Psi)}_i(\xi_q) \mapsto
-        \begin{cases}
-          \Phi_i(\xi_q) &\text{$i < N_\Phi$}\\
-          \Psi_{i-N_\Phi}(\xi_q) &\text{otherwise}
-        \end{cases}
-      \end{equation*}
-    \end{tcolorbox}
-    \begin{tcolorbox}[title=Tensor product,left=0mm,right=0mm,top=0mm,bottom=0mm,boxsep=0.5mm,
-      raster multicolumn=3, valign upper=center]
-      \begin{equation*}
-        \Psi_{(i_1, \dots, i_n)}(\xi_{(q_1, \dots, q_n)}) \mapsto \prod_{j=1}^{n} \psi_{i_j}(\xi_{q_j})
-      \end{equation*}
-    \end{tcolorbox}
-    \begin{tcolorbox}[title=$\mathbf{H}(\text{div}/\text{curl})$,left=0mm,right=0mm,top=0mm,bottom=0mm,boxsep=0.5mm,
-      raster multicolumn=3, valign upper=center]
-      \begin{equation*}
-        \text{\texttt{HDiv}}(\Psi_i(\xi_q)) \mapsto
-        \begin{cases}
-          [-\Psi_i(\xi_q), 0]\\
-          [0, \Psi_i(\xi_q)]
-        \end{cases}
-      \end{equation*}
-    \end{tcolorbox}
-  \end{tcbraster}
+      \begin{tcolorbox}[title=FIAT, raster multicolumn=3]
+        Tabulation as a literal array
+        \vspace{-0.5\baselineskip}
+        \begin{equation*}
+          \Psi_i(\xi_q) \mapsto \mathbf{\Psi}_{iq}
+        \end{equation*}
+      \end{tcolorbox}
+      \begin{tcolorbox}[title=Tensor-valued, raster multicolumn=3]
+        Components are $\delta$s
+        \vspace{-0.5\baselineskip}
+        \begin{equation*}
+          \Psi_{(\alpha, \nu)\kappa}(\xi_q) \mapsto \Psi_{\alpha}^*(\xi_q) \prod_{i=1}^n \delta_{\nu_i \kappa_i}
+        \end{equation*}
+      \end{tcolorbox}
+      \begin{tcolorbox}[title=Underintegration, raster multicolumn=2]
+        \vspace{-0.5\baselineskip}
+        \begin{equation*}
+          \Psi_i(\xi_q) \mapsto \delta_{iq}
+        \end{equation*}
+      \end{tcolorbox}
+      \begin{tcolorbox}[title=Enriched, raster multicolumn=4]
+        \vspace{-0.5\baselineskip}
+        \begin{equation*}
+          {(\Phi \oplus \Psi)}_i(\xi_q) \mapsto
+          \begin{cases}
+            \Phi_i(\xi_q) &\text{$i < N_\Phi$}\\
+            \Psi_{i-N_\Phi}(\xi_q) &\text{otherwise}
+          \end{cases}
+        \end{equation*}
+      \end{tcolorbox}
+      \begin{tcolorbox}[title=Tensor product, raster multicolumn=3]
+        With tensorial quadrature rule
+        \vspace{-0.5\baselineskip}
+        \begin{equation*}
+          \Psi_{(i_1, \dots, i_n)}(\xi_{(q_1, \dots, q_n)}) \mapsto \prod_{j=1}^{n} \psi_{i_j}(\xi_{q_j})
+        \end{equation*}
+      \end{tcolorbox}
+      \begin{tcolorbox}[title=$\mathbf{H}(\text{div}/\text{curl})$, raster multicolumn=3]
+        Inner structure
+        \vspace{-0.5\baselineskip}
+        \begin{equation*}
+          \text{\texttt{HDiv}}(\Psi_i(\xi_q)) \mapsto
+          \begin{cases}
+            [-\Psi_i(\xi_q), 0]\\
+            [0, \Psi_i(\xi_q)]
+          \end{cases}
+        \end{equation*}
+      \end{tcolorbox}
+    \end{tcbraster}
   \end{posterbox}
 
-  \begin{posterbox}[name=rules, column=0, below=structure, span=3]{Compiler algorithms}
-    Structure exploiting code generation implemented in TSFC, to
-    obtain optimal complexity finite element kernels.
-
+  \begin{posterbox}[name=rules, column=0, below=structure, span=3,
+    height=0.275]{Compiler algorithms}
+    \raggedright
+    Structure exploiting code generation implemented in TSFC,
+    provides low complexity finite element kernels.
     \vspace{-\baselineskip}
     \subsection*{Delta cancellation}
-    \vspace{-0.5em}
+    \vspace{-0.25\baselineskip}
     \begin{equation*}
       \sum_{i_1, i_2} c_{i_1 i_2} \Psi_{i_1 q}
       \delta_{i_2 a} \mapsto \sum_{i_1} c_{i_1 a}\Psi_{i_1 q}
     \end{equation*}
-    \vspace{-1.2\baselineskip}
+    \vspace{-2\baselineskip}
     \subsubsection*{\dots across assignments}
-    \vspace{-0.3em}
+    \vspace{-0.25\baselineskip}
     \begin{equation*}
       A_{i_1 i_2 j_1 j_2} = \delta_{i_2 j_2} \sum_q w_q S_q \Psi_{i_1 q}\Psi_{j_1 q} \mapsto A_{i_1 i_2 j_1 i_2} = \sum_q w_q S_q \Psi_{i_1 q}\Psi_{j_1 q}
     \end{equation*}
-    \vspace{-1.25\baselineskip}
+    \vspace{-1.75\baselineskip}
     \subsection*{Sum factorisation}
-    \vspace{-0.5em}
+    \vspace{-0.25\baselineskip}
     An operation minimal contraction order is chosen by exhaustive search.
     \begin{align*}
       \sum_{q_1 q_2} D\Psi^{(1)}_{i_1 q_1}\Psi^{(2)}_{i_2 q_2}
@@ -179,14 +210,15 @@
     \end{align*}
   \end{posterbox}
 
-  \begin{posterbox}[name=flop-scaling, column=3, below=introduction, span=3]{Algorithmic complexity}
-    \begin{center}
-      FLOP/hexahedral cell computing
-      \begin{equation*}
-      \int\!\nabla u \cdot \nabla v\,\text{d}x.
+  \begin{posterbox}[name=flop-scaling, column=3, below=introduction,
+    span=3, height=0.275]{Algorithmic complexity}
+    \raggedright
+    FLOP complexity computing Laplacian on hexahedral cells
+    \begin{equation*}
+      \int\!\nabla u \cdot \nabla v\,\text{d}x \quad u, v \in V \subset H^1
     \end{equation*}
-
-      \begin{tikzpicture}[scale=0.823]
+    \begin{center}
+      \begin{tikzpicture}[scale=0.875]
         \begin{loglogaxis}[
           legend cell align=left,
           legend pos=outer north east,
@@ -225,86 +257,88 @@
   \end{posterbox}
 
   \begin{posterbox}[name=curl-curl, column=3, below=flop-scaling,
-    span=3]{DoF throughput}
+    span=3, height=0.275]{DoF throughput}
+    \raggedright
+    Throughput on a hexahedral mesh computing curl-curl action:
+    \begin{equation*}
+      \int_\Omega\!\nabla \times u \cdot \nabla \times v\,\text{d}x \quad u,v \in V \subset H(\text{curl}) 
+    \end{equation*}
     \begin{center}
-      Throughput on a hexahedral mesh computing curl-curl action:
-      \begin{equation*}
-        \int_\Omega\!\nabla \times u \cdot \nabla \times v\,\text{d}x \quad u,v \in V \subset H(\text{curl}) 
-      \end{equation*}
-      
-      \begin{tikzpicture}[scale=0.9]
-      \begin{loglogaxis}[
-        legend cell align=left,
-        legend pos=outer north east,
-        xlabel={Polynomial degree ($ \mathrm{n} $)},
-        xtick={1,2,3,4,5,6,7,8,10,12,14,16,20,24,28,32},
-        xlabel near ticks,
-        xticklabels={1,2,3,4,,,,8,,,,16,,,,32},
-        x tick label style={yshift=-0.15em},
-        ylabel={DoF/$s$},
-        ylabel near ticks,
-        ]
-        \addplot[densely dotted,mark=star,mark options={solid}, line width=1.5pt] table
-        [x=degree, y=rate, col sep=comma] {data/curlcurl_spmv.csv};
-        \addlegendentry{\textsc{MatVec}}
+      \begin{tikzpicture}[scale=0.875]
+        \begin{loglogaxis}[
+          legend cell align=left,
+          legend pos=outer north east,
+          xlabel={Polynomial degree ($ \mathrm{n} $)},
+          xtick={1,2,3,4,5,6,7,8,10,12,14,16,20,24,28,32},
+          xlabel near ticks,
+          xticklabels={1,2,3,4,,,,8,,,,16,,,,32},
+          x tick label style={yshift=-0.15em},
+          ylabel={DoF/$s$},
+          ylabel near ticks,
+          ]
+          \addplot[densely dotted,mark=star,mark options={solid}, line width=1.5pt] table
+          [x=degree, y=rate, col sep=comma] {data/curlcurl_spmv.csv};
+          \addlegendentry{\textsc{MatVec}}
 
-        \addplot[dotted,mark=*,mark options={solid,fill=gray}, line width=1.5pt] table
-        [x=degree, y=rate, col sep=comma] {data/curlcurl_base.csv};
-        \addlegendentry{FIAT/\texttt{coffee}}
-        \pgfplotstableread{data/curlcurl.dat}{\data}
-        \fitCurve{\data}{0}{\C}{\C * x^3 / (x+1)^6}
-        \addlegendentry{$ \mathrm{n^3 / (n+1)^6} $}
+          \addplot[dotted,mark=*,mark options={solid,fill=gray}, line width=1.5pt] table
+          [x=degree, y=rate, col sep=comma] {data/curlcurl_base.csv};
+          \addlegendentry{FIAT/\texttt{coffee}}
+          \pgfplotstableread{data/curlcurl.dat}{\data}
+          \fitCurve{\data}{0}{\C}{\C * x^3 / (x+1)^6}
+          \addlegendentry{$ \mathrm{n^3 / (n+1)^6} $}
 
-        \addplot[dotted,mark=*,mark options={solid,fill}, line width=1.5pt] table
-        [x=degree, y=rate, col sep=comma] {data/curlcurl_spectral.csv};
-        \addlegendentry{\texttt{spectral}}
-        \fitCurve{\data}{1}{\C}{\C * x^3 / (x+1)^4}
-        \addlegendentry{$ \mathrm{n^3 / (n+1)^4} $}
-      \end{loglogaxis}
-    \end{tikzpicture}
-  \end{center}
+          \addplot[dotted,mark=*,mark options={solid,fill}, line width=1.5pt] table
+          [x=degree, y=rate, col sep=comma] {data/curlcurl_spectral.csv};
+          \addlegendentry{\texttt{spectral}}
+          \fitCurve{\data}{1}{\C}{\C * x^3 / (x+1)^4}
+          \addlegendentry{$ \mathrm{n^3 / (n+1)^4} $}
+        \end{loglogaxis}
+      \end{tikzpicture}
+    \end{center}
   \end{posterbox}
 
   \begin{posterbox}[name=future, column=0, below=rules,
-    span=3]{Future work}
+    span=3, height=0.235]{Future work}
+    \raggedright
     \subsection*{Bernstein on simplices}
-    \vspace{-0.5em}
-      Sum factorisation on simplex elements using Bernstein basis.
+    \vspace{-0.25\baselineskip}
+    Sum factorisation on simplex elements using Bernstein basis.
 
-      Requires mostly similar technology, but now tensor products are
-      ragged.
-      \vspace{-\baselineskip}
-      \subsection*{Local tensor algebra}
-      \vspace{-0.5em}
-      Fast tensor algebra for hybridisation methods.  Requires
-      assembling (or providing action of) element tensors with
-      structure $D - C A^{-1} B$.
+    Requires mostly similar technology, but now tensor products are
+    ragged.
+    \vspace{-\baselineskip}
+    \subsection*{Local tensor algebra}
+    \vspace{-0.25\baselineskip}
+    Fast tensor algebra for hybridisation methods.  Requires
+    assembling (or providing action of) element tensors with
+    structure $D - C A^{-1} B$.
 
-      Should also exploit tensor product identities where possible,
-      e.g.~$\big[\otimes_i A_i\big]^{-1} = \otimes_i A_i^{-1}$.
-      \vspace{-\baselineskip}
-      \subsection*{Vectorisation}
-      \vspace{-0.5em}
-      Working in progress cross-element vectorisation schemes.  Have
-      low-complexity algorithms, need to do the performance analysis
-      to ensure high performance too.
+    Should also exploit tensor product identities where possible,
+    for example,
+    $\left(\bigotimes_i A_i\right)^{-1} = \bigotimes_i A_i^{-1}$.
+    \vspace{-\baselineskip}
+    \subsection*{Vectorisation {\itshape\&} performance}
+    \vspace{-0.25\baselineskip}
+    Work in progress cross-element vectorisation schemes via
+    \texttt{loo.py}.  Have low-complexity algorithms, need to do
+    the performance analysis to ensure high performance too.
   \end{posterbox}    
   \begin{posterbox}[name=try, column=3, below=curl-curl,
-    span=3]{Try it}
+    span=3, height=0.235]{Try it}
+    \raggedright
     \subsection*{More details}
-    \vspace{-0.5em}
+    \vspace{-0.25\baselineskip}
     Homolya, Kirby, Ham, \emph{Exposing and exploiting structure:
       optimal code generation for high-order finite element
-      methods}. To appear in ACM TOMS (2018).
-    \texttt{arXiv:\,1711.02473\,[cs.MS]}.
+      methods}. \texttt{arXiv:\,1711.02473\,[cs.MS]}.
     \vspace{-\baselineskip}
     \subsection*{Code}
-    \vspace{-0.5em}
-    FInAT: \url{https://github.com/finat/finat/}\\
-    TSFC: \url{https://github.com/firedrakeproject/tsfc/}\\
-    Firedrake: \url{https://www.firedrakeproject.org/}
+    \vspace{-0.25\baselineskip}
+    FInAT -- \url{https://github.com/finat/finat/}\\[0.25\baselineskip]
+    TSFC -- \url{https://github.com/firedrakeproject/tsfc/}\\[0.25\baselineskip]
+    Firedrake -- \url{https://www.firedrakeproject.org/}
 
-    \vspace{\baselineskip}
+    \vspace{1.5\baselineskip}
     \begin{minipage}{0.167\textwidth}
       \begin{flushleft}
         \includegraphics[align=c,height=2.5em]{epsrc-logo}
@@ -324,10 +358,13 @@
     \end{minipage}
   \end{posterbox}
   \begin{posterbox}[name=acknowledgements,
-    column=0,span=6,below=future,boxheaderheight=2em]{Support}
-    The Grantham Institute; the National Science Foundation [award number 1525697]; the Natural Environment
-    Research Council [grant number NE/K008951/1]; the Engineering and
-    Physical Sciences Research Council [grant number EP/M011054/1].
+    column=0,span=6,below=future,boxheaderheight=2em, height=0.075]{Support}
+    \begin{flushleft}
+      The Grantham Institute; the National Science Foundation [award
+      number 1525697]; the Natural Environment Research Council [grant
+      number NE/K008951/1]; the Engineering and Physical Sciences
+      Research Council [grant number EP/M011054/1].
+    \end{flushleft}
   \end{posterbox}
 \end{poster}
 \end{document}
