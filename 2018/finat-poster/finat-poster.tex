@@ -1,6 +1,10 @@
 \RequirePackage[l2tabu,orthodox]{nag}
 
-\documentclass[a0paper,portrait]{baposter}
+\documentclass[cmyk,luatex,a0paper,portrait]{baposter}
+\usepackage{xcolor}
+\definecolor{firedrake_red}{cmyk}{0.07,0.86,0.8,0.09}
+\definecolor{imperial_darkblue}{cmyk}{0.95,0.64,0.14,0.31}
+\definecolor{imperial_lightblue}{cmyk}{0.59,0.28,0.08,0.01}
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{amsfonts}
@@ -11,7 +15,7 @@
 
 \usepackage{tikz}
 \usepackage{pgfplots}
-\pgfplotsset{compat=1.13}
+\pgfplotsset{compat=1.15}
 \newcommand{\fitCurve}[4]{%
   \pgfplotstablegetelem{#2}{C}\of#1
   \pgfmathsetmacro{#3}{\pgfplotsretval}
@@ -26,8 +30,6 @@
 \graphicspath{{./\jobname.figures/}{../../pictures/}}
 
 \usepackage[most]{tcolorbox}
-\definecolor{firedrake_red}{RGB}{221,0,0}
-\definecolor{firedrake_blue}{RGB}{16,66,122}
 \usepackage{cmbright}
 \usepackage{fontspec}
 \defaultfontfeatures{
@@ -63,10 +65,10 @@ BoldItalicFont = *-Medium Italic,]{FiraSans}
   }
   {
     \begin{minipage}[l]{0.3\textwidth}
-      \includegraphics[align=b, height=1.1cm]{imperial-two-tone}
+      \includegraphics[align=b, height=1.05cm]{imperial-two-tone}
       \par
       \vspace{0.2cm}
-      \includegraphics[align=t, height=1.1cm]{baylor-logo-bw}
+      \includegraphics[align=t, height=1.2cm]{baylor-logo-bw}
     \end{minipage}
   } 
   % Title
@@ -79,7 +81,7 @@ BoldItalicFont = *-Medium Italic,]{FiraSans}
   % University logo
   {
     \makebox[0.3\textwidth][r]{
-      \includegraphics[align=c,height=1.75cm]{firedrake-word}
+      \includegraphics[align=c,height=1.75cm]{firedrake-mod}
     }
   }
 
@@ -118,39 +120,51 @@ BoldItalicFont = *-Medium Italic,]{FiraSans}
     \raggedright
     Arbitrarily structured basis evaluations, composed of six base cases.
     \tcbset{center title,
-      colframe=firedrake_blue,
-      colback=firedrake_blue!10!white,
+      colframe=imperial_darkblue,
+      colback=imperial_lightblue!10!white,
       fonttitle=\bfseries,
       right=0mm,
       left=0mm,
       top=0.25mm,
-      bottom=0.2mm,
+      bottom=0.25mm,
       boxsep=0.5mm,
-      valign upper=center,
-      halign=center}
+      middle=0mm,
+      toptitle=-0.5mm,
+      bottomtitle=-1mm,
+      valign upper=top,
+      valign lower=center,
+      halign=center,
+      lower separated=false,
+    before title=\strut}
     \begin{tcbraster}[raster columns=6,raster equal height=rows]
-      \begin{tcolorbox}[title=FIAT, raster multicolumn=3]
+      \begin{tcolorbox}[title=FIAT, raster multicolumn=3,
+        height=2.25cm]
         Tabulation as a literal array
+        \tcblower
         \vspace{-0.5\baselineskip}
         \begin{equation*}
           \Psi_i(\xi_q) \mapsto \mathbf{\Psi}_{iq}
         \end{equation*}
       \end{tcolorbox}
-      \begin{tcolorbox}[title=Tensor-valued, raster multicolumn=3]
-        Components are $\delta$s
-        \vspace{-0.5\baselineskip}
+      \begin{tcolorbox}[title=Tensor-valued, raster multicolumn=3, height=2.25cm]
+        Components are Kronecker $\delta$s
+        \tcblower
+        \vspace{-0.91\baselineskip}
         \begin{equation*}
-          \Psi_{(\alpha, \nu)\kappa}(\xi_q) \mapsto \Psi_{\alpha}^*(\xi_q) \prod_{i=1}^n \delta_{\nu_i \kappa_i}
+          \Psi_{(\alpha, \nu)\kappa}(\xi_q) \mapsto \Psi_{\alpha}^*(\xi_q){\prod_{i=1}^n \delta_{\nu_i \kappa_i}}
         \end{equation*}
       \end{tcolorbox}
-      \begin{tcolorbox}[title=Underintegration, raster multicolumn=2]
+      \begin{tcolorbox}[title=Underintegration, raster multicolumn=2, height=1.9cm]
+        $\{\xi_q\}$ matches nodes
+        \tcblower
         \vspace{-0.5\baselineskip}
         \begin{equation*}
           \Psi_i(\xi_q) \mapsto \delta_{iq}
         \end{equation*}
       \end{tcolorbox}
-      \begin{tcolorbox}[title=Enriched, raster multicolumn=4]
-        \vspace{-0.5\baselineskip}
+      \begin{tcolorbox}[title=Enriched, raster multicolumn=4,
+        height=1.9cm, valign upper=center]
+        \vspace{-\baselineskip}
         \begin{equation*}
           {(\Phi \oplus \Psi)}_i(\xi_q) \mapsto
           \begin{cases}
@@ -159,14 +173,16 @@ BoldItalicFont = *-Medium Italic,]{FiraSans}
           \end{cases}
         \end{equation*}
       \end{tcolorbox}
-      \begin{tcolorbox}[title=Tensor product, raster multicolumn=3]
+      \begin{tcolorbox}[title=Tensor product, raster multicolumn=3, height=2.25cm]
         With tensorial quadrature rule
-        \vspace{-0.5\baselineskip}
+        \tcblower
+        \vspace{-0.96\baselineskip}
         \begin{equation*}
           \Psi_{(i_1, \dots, i_n)}(\xi_{(q_1, \dots, q_n)}) \mapsto \prod_{j=1}^{n} \psi_{i_j}(\xi_{q_j})
         \end{equation*}
       \end{tcolorbox}
-      \begin{tcolorbox}[title=$\mathbf{H}(\text{div}/\text{curl})$, raster multicolumn=3]
+      \begin{tcolorbox}[title=$\mathbf{H}(\text{div}/\text{curl})$,
+        raster multicolumn=3, height=2.25cm]
         Inner structure
         \vspace{-0.5\baselineskip}
         \begin{equation*}
@@ -187,20 +203,20 @@ BoldItalicFont = *-Medium Italic,]{FiraSans}
     provides low complexity finite element kernels.
     \vspace{-\baselineskip}
     \subsection*{Delta cancellation}
-    \vspace{-0.25\baselineskip}
+    \vspace{-0.35\baselineskip}
     \begin{equation*}
       \sum_{i_1, i_2} c_{i_1 i_2} \Psi_{i_1 q}
       \delta_{i_2 a} \mapsto \sum_{i_1} c_{i_1 a}\Psi_{i_1 q}
     \end{equation*}
     \vspace{-2\baselineskip}
     \subsubsection*{\dots across assignments}
-    \vspace{-0.25\baselineskip}
+    \vspace{-0.35\baselineskip}
     \begin{equation*}
       A_{i_1 i_2 j_1 j_2} = \delta_{i_2 j_2} \sum_q w_q S_q \Psi_{i_1 q}\Psi_{j_1 q} \mapsto A_{i_1 i_2 j_1 i_2} = \sum_q w_q S_q \Psi_{i_1 q}\Psi_{j_1 q}
     \end{equation*}
     \vspace{-1.75\baselineskip}
     \subsection*{Sum factorisation}
-    \vspace{-0.25\baselineskip}
+    \vspace{-0.35\baselineskip}
     An operation minimal contraction order is chosen by exhaustive search.
     \begin{align*}
       \sum_{q_1 q_2} D\Psi^{(1)}_{i_1 q_1}\Psi^{(2)}_{i_2 q_2}
@@ -223,31 +239,31 @@ BoldItalicFont = *-Medium Italic,]{FiraSans}
           legend cell align=left,
           legend pos=outer north east,
           xlabel={Polynomial degree ($ \mathrm{n} $)},
+          xlabel style={yshift=-0.25em},
           xtick={1,2,3,4,5,6,7,8,10,12,14,16,20,24,28,32},
-          xlabel near ticks,
           xticklabels={1,2,3,4,,,,8,,,,16,,,,32},
-          x tick label style={yshift=-0.15em},
+          x tick label style={yshift=-0.25em},
           ylabel={FLOP/cell},
-          ylabel near ticks,
-          y tick label style={xshift=-0.15em},
+          ylabel style={yshift=0.5em},
+          y tick label style={xshift=-0.25em},
           ]
           \addplot[densely dotted,mark=o,mark options={solid}, line width=1.5pt]
           table [x=degree, y=coffee, col sep=comma] {data/bipoisson_flops.csv};
-          \addlegendentry{\texttt{coffee}}
+          \addlegendentry{FIAT mode}
           
           \addplot[densely dashed,domain=1:32] {36*(x+1)^9};
           \addlegendentry{$ \mathrm{(n+1)^9} $}
           
           \addplot[densely dotted,mark=*,mark options={solid}, line width=1.5pt]
           table [x=degree, y=spectral, col sep=comma] {data/bipoisson_flops.csv};
-          \addlegendentry{\texttt{spectral}}
+          \addlegendentry{FInAT mode}
           
           \addplot[densely dashed,domain=1:32] {(x+1)^7};
           \addlegendentry{$ \mathrm{(n+1)^7} $}
           
           \addplot[densely dotted,mark=diamond*,mark options={solid}, line width=1.5pt]
           table [x=degree, y=gll_spectral, col sep=comma] {data/bipoisson_flops.csv};
-          \addlegendentry{underintegration}
+          \addlegendentry{Collocated}
           
           \addplot[densely dashed,domain=1:32] {4*(x+1)^5};
           \addlegendentry{$ \mathrm{(n+1)^5} $}
@@ -269,27 +285,28 @@ BoldItalicFont = *-Medium Italic,]{FiraSans}
           legend cell align=left,
           legend pos=outer north east,
           xlabel={Polynomial degree ($ \mathrm{n} $)},
+          xlabel style={yshift=-0.25em},
           xtick={1,2,3,4,5,6,7,8,10,12,14,16,20,24,28,32},
-          xlabel near ticks,
           xticklabels={1,2,3,4,,,,8,,,,16,,,,32},
-          x tick label style={yshift=-0.15em},
-          ylabel={DoF/$s$},
-          ylabel near ticks,
+          x tick label style={yshift=-0.25em},
+          ylabel={DoF/s},
+          ylabel style={yshift=0.5em},
+          y tick label style={xshift=-0.25em},
           ]
           \addplot[densely dotted,mark=star,mark options={solid}, line width=1.5pt] table
           [x=degree, y=rate, col sep=comma] {data/curlcurl_spmv.csv};
-          \addlegendentry{\textsc{MatVec}}
+          \addlegendentry{CSR matrix}
 
           \addplot[dotted,mark=*,mark options={solid,fill=gray}, line width=1.5pt] table
           [x=degree, y=rate, col sep=comma] {data/curlcurl_base.csv};
-          \addlegendentry{FIAT/\texttt{coffee}}
+          \addlegendentry{FIAT mode}
           \pgfplotstableread{data/curlcurl.dat}{\data}
           \fitCurve{\data}{0}{\C}{\C * x^3 / (x+1)^6}
           \addlegendentry{$ \mathrm{n^3 / (n+1)^6} $}
 
           \addplot[dotted,mark=*,mark options={solid,fill}, line width=1.5pt] table
           [x=degree, y=rate, col sep=comma] {data/curlcurl_spectral.csv};
-          \addlegendentry{\texttt{spectral}}
+          \addlegendentry{FInAT mode}
           \fitCurve{\data}{1}{\C}{\C * x^3 / (x+1)^4}
           \addlegendentry{$ \mathrm{n^3 / (n+1)^4} $}
         \end{loglogaxis}
@@ -301,14 +318,14 @@ BoldItalicFont = *-Medium Italic,]{FiraSans}
     span=3, height=0.235]{Future work}
     \raggedright
     \subsection*{Bernstein on simplices}
-    \vspace{-0.25\baselineskip}
+    \vspace{-0.35\baselineskip}
     Sum factorisation on simplex elements using Bernstein basis.
 
     Requires mostly similar technology, but now tensor products are
     ragged.
     \vspace{-\baselineskip}
     \subsection*{Local tensor algebra}
-    \vspace{-0.25\baselineskip}
+    \vspace{-0.35\baselineskip}
     Fast tensor algebra for hybridisation methods.  Requires
     assembling (or providing action of) element tensors with
     structure $D - C A^{-1} B$.
@@ -318,7 +335,7 @@ BoldItalicFont = *-Medium Italic,]{FiraSans}
     $\left(\bigotimes_i A_i\right)^{-1} = \bigotimes_i A_i^{-1}$.
     \vspace{-\baselineskip}
     \subsection*{Vectorisation {\itshape\&} performance}
-    \vspace{-0.25\baselineskip}
+    \vspace{-0.35\baselineskip}
     Work in progress cross-element vectorisation schemes via
     \texttt{loo.py}.  Have low-complexity algorithms, need to do
     the performance analysis to ensure high performance too.
@@ -327,44 +344,52 @@ BoldItalicFont = *-Medium Italic,]{FiraSans}
     span=3, height=0.235]{Try it}
     \raggedright
     \subsection*{More details}
-    \vspace{-0.25\baselineskip}
+    \vspace{-0.35\baselineskip}
     Homolya, Kirby, Ham, \emph{Exposing and exploiting structure:
       optimal code generation for high-order finite element
       methods}. \texttt{arXiv:\,1711.02473\,[cs.MS]}.
     \vspace{-\baselineskip}
     \subsection*{Code}
-    \vspace{-0.25\baselineskip}
-    FInAT -- \url{https://github.com/finat/finat/}\\[0.25\baselineskip]
-    TSFC -- \url{https://github.com/firedrakeproject/tsfc/}\\[0.25\baselineskip]
-    Firedrake -- \url{https://www.firedrakeproject.org/}
+    \vspace{-0.35\baselineskip}
+    FInAT -- \url{github.com/finat/finat}\\[0.25\baselineskip]
+    TSFC -- \url{github.com/firedrakeproject/tsfc}\\[0.25\baselineskip]
+    Firedrake -- \url{www.firedrakeproject.org}
 
-    \vspace{1.5\baselineskip}
-    \begin{minipage}{0.167\textwidth}
+    \vspace{1.4\baselineskip}
+    \begin{minipage}{0.166\textwidth}
       \begin{flushleft}
-        \includegraphics[align=c,height=2.5em]{epsrc-logo}
+        \includegraphics[align=c,height=3em]{epsrc-logo}
       \end{flushleft}
     \end{minipage}
     \hfill
-    \begin{minipage}{0.167\textwidth}
+    \begin{minipage}{0.166\textwidth}
       \begin{center}
-        \includegraphics[align=c,height=2.5em]{nerc-logo}
+        \includegraphics[align=c,height=3em]{nerc-logo}
       \end{center}
     \end{minipage}
     \hfill
-    \begin{minipage}{0.167\textwidth}
+    \begin{minipage}{0.166\textwidth}
       \begin{flushright}
-        \includegraphics[align=c,height=3.5em]{nsf-logo}
+        \includegraphics[align=c,height=4.25em]{nsf-logo}
       \end{flushright}
     \end{minipage}
   \end{posterbox}
   \begin{posterbox}[name=acknowledgements,
-    column=0,span=6,below=future,boxheaderheight=2em, height=0.075]{Support}
-    \begin{flushleft}
-      The Grantham Institute; the National Science Foundation [award
-      number 1525697]; the Natural Environment Research Council [grant
-      number NE/K008951/1]; the Engineering and Physical Sciences
-      Research Council [grant number EP/M011054/1].
-    \end{flushleft}
+    column=0,span=6,below=future,boxheaderheight=2em,
+    height=0.075]{Support}
+    \begin{minipage}[t]{0.49\textwidth}
+      \raggedright
+      \small
+      The Grantham Institute\\[0.25\baselineskip]
+      National Science Foundation award number 1525697
+    \end{minipage}%
+    \hspace{0.02\textwidth}%
+    \begin{minipage}[t]{0.49\textwidth}
+      \raggedright
+      \small
+      Natural Environment Research Council grant number NE/K008951/1\\[0.25\baselineskip]
+      Engineering and Physical Sciences Research Council grant number EP/M011054/1
+    \end{minipage}
   \end{posterbox}
 \end{poster}
 \end{document}
