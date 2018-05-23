@@ -83,6 +83,13 @@ London
 \begin{document}
 \maketitle
 
+\bgroup
+\setbeamertemplate{background}{}
+\setbeamercolor{footline}{
+  use=normal text,
+  fg=normal text.fg
+}
+
 \begin{frame}[fragile,t]
   \frametitle{UFL makes it easy to write complex PDEs}
   \begin{columns}
@@ -151,64 +158,7 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
 \begin{frame}[fragile]
   \begin{columns}
     \begin{column}{0.5\textwidth}
-      \begin{block}{Cahn-Hilliard}
-        \small
-        \begin{align*}
-          \phi_t - \nabla \cdot \rho \nabla \mu &= 0\\
-          \mu + \lambda \Delta \phi - \phi(\phi^2 - 1) &= 0\\
-        \end{align*}
-        Implicit timestepping + Newton
-        \begin{equation*}
-          \begin{bmatrix}
-            M & \Delta t \theta \rho K \\
-            -\lambda K - M_\phi & M
-          \end{bmatrix}
-          \begin{bmatrix}
-            \delta\phi \\
-            \delta\mu
-          \end{bmatrix} =
-          \begin{bmatrix}
-            f_1 \\
-            f_2
-          \end{bmatrix}
-        \end{equation*}
-      \end{block}
-    \end{column}
-    \begin{column}{0.5\textwidth}
-\begin{minted}[fontsize=\tiny,escapeinside=||]{python}
-from firedrake import *
-mesh = Mesh(...)
-V = FunctionSpace(mesh, "CG", 1)
-Z = V*V
-|$\theta$| = 0.5
-|$\lambda$| = Constant(0.005)
-M = Constant(10)
-q, v = TestFunctions(Z)
-z = Function(Z)
-z0 = Function(Z)
-|$\phi_{n+1}$|, |$\mu_{n+1}$| = split(z)
-|$\phi_n$|, |$\mu_n$| = split(z0)
-|$\phi_{n+1}$| = variable(|$\phi_{n+1}$|)
-f = (1.0/4)*(|$\phi_{n+1}$|**2 - 1)**2
-dfdphi = diff(f, |$\phi_{n+1}$|)
-|$\mu_{n+\theta}$| = (1-|$\theta$|)*|$\mu_n$| + |$\theta$|*|$\mu_{n+1}$|
-dt = 5e-6
-F = ((|$\phi_{n+1}$| - |$\phi_n$|)*q
-     + dt*M*dot(grad(|$\mu_{n+\theta}$|), grad(q))
-     + (|$\mu_{n+1}$| - dfdphi)*v
-     -|$\lambda$|*dot(grad(|$\phi_{n+1}$|), grad(v)))*dx
-while t < ...:
-    z0.assign(z)
-    solve(F == 0, z)
-\end{minted}
-    \end{column}
-  \end{columns}
-\end{frame}
-
-\begin{frame}[fragile]
-  \begin{columns}
-    \begin{column}{0.5\textwidth}
-      \begin{block}{Ohta-Kawasaki}
+      \begin{block}{Ohta--Kawasaki}
         \small
         \begin{align*}
           u_t - \Delta w + \sigma(u - m) &= 0\\
@@ -284,58 +234,21 @@ while t < ...:
   \end{itemize}
 
   \begin{block}{Claim}
-    All of these things are possible if the solver library can call
-    back to the PDE library to create operators.
+    All of these things are possible (straightforward?) if the solver
+    library can call back to the PDE library to create operators.
   \end{block}
 \end{frame}
 
-
 \begin{frame}
-  \frametitle{Block preconditioning}
+  \frametitle{Idea}
   \begin{itemize}
-  \item Coupled problems are (typically) not amenable to black
-    box preconditioning.
-  \item<2-> Solution: block preconditioning
+  \item Endow discretised operators with PDE-level information: what
+    bilinear form; which function space.
+  \item Enable standard fieldsplits on these operators.
+  \item Write custom preconditioners that can utilise the information
+    in these operators appropriately.
   \end{itemize}
-  \begin{columns}<2>[t]
-    \begin{column}{0.5\textwidth}
-      \begin{block}{Schur complement}
-        \begin{equation*}
-          T = \begin{bmatrix}
-            A & 0 \\
-            0 & C A^{-1} B^T
-          \end{bmatrix}^{-1}
-          \begin{bmatrix}
-            A & B^T \\
-            C & 0
-          \end{bmatrix}
-        \end{equation*}
-        has minimal polynomial $T(T - I)(T^2 - T - I) = 0$.
-        \nocite{Murphy:2000,Ipsen:2001,Benzi:2005}
-      \end{block}
-    \end{column}
-    \begin{column}{0.5\textwidth}
-      \begin{block}{Function space}
-        If $\mathcal{A} : W \rightarrow W^*$, then
-        \begin{equation*}
-          \langle u, v \rangle_W^{-1} \mathcal{A}
-        \end{equation*}
-        has mesh independent condition number.
-        \nocite{Malek:2014,Mardal:2011,Kirby:2010}
-      \end{block}
-    \end{column}
-  \end{columns}
-\end{frame}
-
-\begin{frame}
-  \frametitle{A problem}
-  \begin{itemize}
-  \item Such preconditioners often need auxiliary matrices not
-    appearing in the original operator.
-  \item How do we provide these to the solver library in a composable
-    manner?
-  \end{itemize}
-  \begin{block}<2->{Firedrake \& PETSc to the rescue}
+  \begin{block}<2->{Extend PETSc with Firedrake-level PCs}
   \begin{itemize}
   \item PETSc already provides a highly runtime-configurable library
     for \emph{algebraically} composing solvers. \nocite{Brown:2012}
@@ -348,6 +261,64 @@ while t < ...:
   \end{itemize}
   \end{block}
 \end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{This sounds like hard work}
+  Fortunately, \texttt{petsc4py} makes it easy to write these PCs.
+\begin{minted}[fontsize=\tiny,escapeinside=||,mathescape=true]{python3}
+class MyPC(object):
+    def setUp(self, pc):
+        A, P = pc.getOperators()
+        # Can inspect options dictionary here
+        # do whatever
+    def apply(self, pc, r, e):
+        # Compute approximation to error given current residual
+        # $e \gets A^{-1} r$
+
+solve(..., solver_parameters={"pc_type": "python",
+                              "pc_python_type": "MyPC"})
+\end{minted}
+  PETSc manages all the splitting and nesting already.  So this does
+  the right thing \emph{inside} multigrid, etc\ldots
+\end{frame}
+
+% \begin{frame}
+%   \frametitle{Block preconditioning}
+%   \begin{itemize}
+%   \item Coupled problems are (typically) not amenable to black
+%     box preconditioning.
+%   \item<2-> Solution: block preconditioning
+%   \end{itemize}
+%   \begin{columns}<2>[t]
+%     \begin{column}{0.5\textwidth}
+%       \begin{block}{Schur complement}
+%         \begin{equation*}
+%           T = \begin{bmatrix}
+%             A & 0 \\
+%             0 & C A^{-1} B^T
+%           \end{bmatrix}^{-1}
+%           \begin{bmatrix}
+%             A & B^T \\
+%             C & 0
+%           \end{bmatrix}
+%         \end{equation*}
+%         has minimal polynomial $T(T - I)(T^2 - T - I) = 0$.
+%         \nocite{Murphy:2000,Ipsen:2001,Benzi:2005}
+%       \end{block}
+%     \end{column}
+%     \begin{column}{0.5\textwidth}
+%       \begin{block}{Function space}
+%         If $\mathcal{A} : W \rightarrow W^*$, then
+%         \begin{equation*}
+%           \langle u, v \rangle_W^{-1} \mathcal{A}
+%         \end{equation*}
+%         has mesh independent condition number.
+%         \nocite{Malek:2014,Mardal:2011,Kirby:2010}
+%       \end{block}
+%     \end{column}
+%   \end{columns}
+% \end{frame}
+
 \begin{frame}[fragile,t]
   \frametitle{Two new pieces}
   \begin{block}{A new matrix type}
@@ -381,7 +352,8 @@ A = assemble(a, mat_type="matfree")
   \begin{column}{0.7\textwidth}
 \begin{minted}[fontsize=\scriptsize]{python}
 solve(a == L, x,
-      {"pc_type": "python",
+      {"mat_type": "matfree",
+       "pc_type": "python",
        "pc_python_type": "AssembledPC"})
 \end{minted}
   \end{column}
@@ -438,7 +410,7 @@ solve(a == L, x, solver_parameters=opts)
 \begin{frame}[allowframebreaks]
   \frametitle{Something more complicated}
   A preconditioner for the Ohta--Kawasaki equation
-  \parencite{Farrell:2016}
+  \parencite{Farrell:2017}
   \begin{equation*}
     \begin{split}
       u_t - \Delta w + \sigma(u - m) &= 0\\
@@ -510,7 +482,7 @@ class OKPC(PCBase):
         # $\hat{S} = \inner{q, w} + \epsilon\sqrt{c}\inner{\nabla q, \nabla w}$, $c = \frac{\Delta t \theta}{1 + \Delta t \theta \sigma}$
         op = assemble(inner(w, q)*dx + |$\epsilon$|*sqrt(c)*inner(grad(w), grad(q))*dx)
         self.ksp = KSP().create(comm=pc.comm)
-        self.ksp.setOptionsPrefix(pc.getOptionsPrefix + "shat_")
+        self.ksp.setOptionsPrefix(pc.getOptionsPrefix + "hats_")
         self.ksp.setOperators(op.petscmat, op.petscmat)
         self.ksp.setFromOptions()
         mass = assemble(w*q*dx)
@@ -527,13 +499,6 @@ class OKPC(PCBase):
         self.ksp.solve(t2, y)
 \end{minted}
 \end{frame}
-
-\bgroup
-\setbeamertemplate{background}{}
-\setbeamercolor{footline}{
-  use=normal text,
-  fg=normal text.fg
-}
 
 \begin{frame}[fragile]
   \frametitle{Usage}
@@ -563,9 +528,9 @@ opts = {
      "ksp_max_it": 2,
      |\colourfiredrake{”pc\_type”: ”python”}|,
      |\colourfiredrake{”pc\_python\_type”: ”OKPC”}|,
-     |\colourpetsc{”shat\_ksp\_type”: ”richardson”}|,
-     "shat_ksp_max_it": 5,
-     |\colourpetsc{”shat\_pc\_type”: ”hypre”}|
+     |\colourpetsc{”hat\_ksp\_type”: ”richardson”}|,
+     "hat_ksp_max_it": 5,
+     |\colourpetsc{”hat\_pc\_type”: ”hypre”}|
  }
 
 appctx = {"parameters": (dt, theta, eps, sigma)}
@@ -618,11 +583,11 @@ solve(L == 0, z, solver_parameters=opts, appctx=appctx)
 
     \node[firedrake, below right=0.8cm and -0.2cm of Sinv, anchor=north] (Spinv) {$S_p^{-1} = \hat{S}^{-1} M
       \hat{S}^{-1}$};
-    \node[petsc, below=3.25cm of Spinv] (Shatinv) {$\hat{S}^{-1}
+    \node[petsc, below=3.25cm of Spinv] (Hatinv) {$\hat{S}^{-1}
       \approx \mathcal{K}(\hat{S}, \hat{S}_p^{-1})$};
-    \node[firedrake, below=1.5cm of Shatinv] (Shat)
+    \node[firedrake, below=1.5cm of Hatinv] (Hat)
     {$\hat{S}\text{\raisebox{0.5pt}{ $\leftarrow$ \texttt{assemble(s\_hat)}}}$};
-    \node[petsc, below=1cm of Shat] (Shathypre) {\texttt{hypre($\hat{S}$)}};
+    \node[petsc, below=1cm of Hat] (Hathypre) {\texttt{hypre($\hat{S}$)}};
 
     \draw[arrow] (Jinv.south west) -- (Jx);
     \draw[arrow] (Jx) -- (jx);
@@ -647,20 +612,149 @@ solve(L == 0, z, solver_parameters=opts, appctx=appctx)
 
     \draw[arrow] (Sinv) -- (Spinv);
     \draw[arrow] (Spinv) -- (Mx);
-    \draw[arrow] (Spinv) -- (Shatinv);
-    \draw[arrow] (Shatinv) -- (Shat);
-    \draw[arrow] (Shat) -- (Shathypre);
+    \draw[arrow] (Spinv) -- (Hatinv);
+    \draw[arrow] (Hatinv) -- (Hat);
+    \draw[arrow] (Hat) -- (Hathypre);
   \end{tikzpicture}
     \end{column}
   \end{columns}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Schwarz solvers}
-  
+  \frametitle{Schwarz smoothers}
+  \begin{block}{Building blocks}
+    \begin{itemize}
+    \item Decomposition of mesh into patches\uncover<2->{:
+        \alert{PETSc} with standard FEM adjacency for closure}
+    \item Operators on each patch\uncover<3->{: \alert{Firedrake}}
+    \item Solvers for each patch\uncover<4->{: \alert{PETSc}}
+    \item Boundary conditions\uncover<5->{: \alert{Homogeneous
+          Dirichlet only}}
+    \end{itemize}
+  \end{block}
+  \begin{uncoverenv}<6->
+    \begin{block}{Idea}
+      \begin{itemize}
+      \item PETSc PC using \texttt{DMPlex} to provide patches
+      \item Callback interface to provide operator on the patch
+      \item Normal \texttt{KSP} on each patch to do the solve
+      \end{itemize}
+    \end{block}
+  \end{uncoverenv}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Patch definition}
+  Patch described by set of entities on which dofs are free.
+  \begin{block}{Builtin}
+    Each patch is obtained from a mesh entity $p$ of a given dimension,
+    and an adjacency relation:
+    \begin{itemize}
+    \item \texttt{star}: star(p)
+    \item \texttt{vanka}: closure(star(p))
+    \end{itemize}
+  \end{block}
+  \begin{block}{Callback interface}
+    Write short function to define patches ``by hand''.
+  \end{block}
+  \begin{block}{Code}
+    \url{github.com/wence-/ssc}, available within PETSc RSN.
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Example: P2-P1 Stokes with Vanka smoother}
+\begin{minted}[fontsize=\tiny]{python3}
+mesh = ...
+mh = MeshHierarchy(mesh, nrefinements)
+mesh = mh[-1]
+...
+F = (inner(grad(u), grad(v)) - p*div(v) - q*div*u)*dx
+solver_parameters = {
+    "mat_type": "matfree",
+    "snes_type": "ksponly",
+    "ksp_type": "fgmres",
+    "pc_type": "mg",
+    "mg_levels": {
+        "ksp_type": "gmres",
+        "ksp_max_it": 2,
+        "pc_type": "python",
+        "pc_python_type": "ssc.PatchPC",
+        "patch_pc_patch_construction_type": "vanka",
+        "patch_pc_patch_vanka_dim": 0,
+        "patch_pc_patch_construction_dim": 0,
+        "patch_pc_patch_exclude_subspace": 1,
+        "patch_pc_patch_sub_mat_type": "seqaij",
+        "patch_sub_ksp_type": "preonly",
+        "patch_sub_pc_type": "lu",
+        "patch_sub_pc_factor_shift_type": "nonzero"
+    },
+    "mg_coarse": "lu"
+}
+solve(F == 0, u, solver_parameters=solver_parameters)
+\end{minted}
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Rayleigh-B\'enard}
+  {\small
+  For each Newton step, solve
+  \begin{equation*}
+    \KSP{\begin{bmatrix}
+        F & B^T & M_1\\
+        C & 0 & 0 \\
+        M_2 & 0 & K
+      \end{bmatrix}}{J}
+  \end{equation*}
+  using a preconditioner from \textcite{Howle:2012}:
+  \begin{equation*}
+    \mathbb{J} =
+    \begin{bmatrix}
+      \KSP{\begin{bmatrix}
+          F & B^T\\
+          C & 0
+        \end{bmatrix}}{N} & 0\\
+      0 & I
+    \end{bmatrix}
+    \begin{bmatrix}
+      I & 0 & -M_1\\
+      0 & I & 0 \\
+      0 & 0 & I
+    \end{bmatrix}
+    \begin{bmatrix}
+      I & 0 & 0\\
+      0 & I & 0\\
+      0 & 0 &\ksp{K}
+    \end{bmatrix}
+  \end{equation*}
+  with
+  \begin{equation*}
+    \mathbb{N} = \begin{bmatrix}
+      F & 0 \\
+      0 & \mathcal{K}(S_p, \KSP{L_p}{L}\,F_p \, \KSP{M_p}{M})
+    \end{bmatrix}
+    \begin{bmatrix}
+      I & 0\\
+      -C & I
+    \end{bmatrix}
+    \begin{bmatrix}
+      \ksp{F} & 0 \\
+      0 & I
+    \end{bmatrix}
+  \end{equation*}
+  and
+  \begin{equation*}
+    S_p = -C \ksp{F} B^T.
+  \end{equation*}
+
+  \begin{flushright}
+    {\tiny \textcite[\S B.4]{Kirby:2018} shows full solver configuration.}
+  \end{flushright}
+  }
 \end{frame}
 \begin{frame}
-  \frametitle{Performance: Rayleigh-B\'enard}
+  \frametitle{Weak scaling}
   Limited by performance of algebraic solvers on subblocks.
   \begin{center}
     \scriptsize
@@ -692,11 +786,9 @@ DoFs ($\times 10^{6}$) & MPI processes & Newton its & Krylov its & Time (s)\\
   \frametitle{Conclusions}
 
   \begin{itemize}
-  \item Composable, extensible method using UFL to build block
-    preconditioners.
+  \item Composable solvers using UFL to build block preconditioners.
 
-  \item Model formulation doesn't need to know about the solver
-    configuration.
+  \item Model formulation decoupled from solver configuration.
 
   \item Composes with nonlinear solvers that need linearisations: no
     need to write your own special Newton iteration to get data in.
