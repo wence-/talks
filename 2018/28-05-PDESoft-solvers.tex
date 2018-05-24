@@ -9,7 +9,9 @@
 \newif\ifwidescreen
 \widescreenfalse
 \date{28th May 2018}
-\usetheme{firedrake}
+\usetheme{metropolis}
+
+\metroset{background=light,progressbar=frametitle,numbering=counter}
 
 \renewcommand{\vec}[1]{\ensuremath{\boldsymbol{#1}}}
 \newcommand{\ddt}[1]{\frac{\partial #1}{\partial t}}
@@ -35,17 +37,6 @@ London
 }
 
 \graphicspath{{./\jobname.figures/}{../pictures/}}
-\newenvironment{changemargin}[2]{%
-  \begin{list}{}{%
-    \setlength{\topsep}{0pt}%
-    \setlength{\leftmargin}{#1}%
-    \setlength{\rightmargin}{#2}%
-    \setlength{\listparindent}{\parindent}%
-    \setlength{\itemindent}{\parindent}%
-    \setlength{\parsep}{\parskip}%
-  }%
-  \item[]}{\end{list}}
-
 \usepackage[url=false,
             doi=true,
             isbn=false,
@@ -80,51 +71,71 @@ London
 \usepackage{minted}
 \title{Solver composition across the PDE/linear algebra divide}
 
-\begin{document}
-\maketitle
+\titlegraphic{\hfill\includegraphics[height=1.1cm]{firedrake-word.pdf}}
 
+\begin{document}
 \bgroup
-\setbeamertemplate{background}{}
-\setbeamercolor{footline}{
-  use=normal text,
-  fg=normal text.fg
+\setbeamertemplate{title graphic}{
+  \vbox to 0pt {
+    \vspace*{0.25em}
+    \makebox[1.075\textwidth]{\inserttitlegraphic}%
+  }%
+  \nointerlineskip%
 }
+\setbeamertemplate{background}{%
+  \raisebox{-\paperheight}[0pt][0pt]{%
+    \makebox[\paperwidth][c]{%
+      \includegraphics[width=\paperwidth]{bottom-swoosh}%
+    }%
+  }%
+}
+\begin{frame}
+  \maketitle{}
+\end{frame}
+\egroup
+\bgroup
+% \setbeamertemplate{background}{}
+% \setbeamercolor{footline}{
+%   use=normal text,
+%   fg=normal text.fg
+% }
 
 \begin{frame}[fragile,t]
   \frametitle{UFL makes it easy to write complex PDEs}
-  \begin{columns}
-    \begin{column}{0.47\framewidth}
-      \small
-      \begin{block}{Rayleigh-B\'enard convection}
-        \begin{equation*}
-          \begin{split}
-            -\Delta u + u\cdot\nabla u + \nabla p +
-            \frac{\text{Ra}}{\text{Pr}} \hat{g}T &= 0 \\
-            \nabla \cdot u &= 0 \\
-            - \frac{1}{\text{Pr}} \Delta T + u\cdot \nabla T &= 0
-          \end{split}
-        \end{equation*}
-        Newton
-        \begin{equation*}
-          \begin{bmatrix}
-            F   & B^T & M_1 \\
-            C   & 0   & 0   \\
-            M_2 & 0   & K
-          \end{bmatrix}
-          \begin{bmatrix}
-            \delta u \\
-            \delta p \\
-            \delta T
-          \end{bmatrix} =
-          \begin{bmatrix}
-            f_1 \\
-            f_2 \\
-            f_3
-          \end{bmatrix}
-        \end{equation*}
-      \end{block}
-    \end{column}
-    \begin{column}{0.52\framewidth}
+  \begin{onlyenv}<1>
+    \begin{columns}[t]
+      \begin{column}{0.47\framewidth}
+        \small
+        \begin{block}{Rayleigh-B\'enard convection}
+          \begin{equation*}
+            \begin{split}
+              -\Delta u + u\cdot\nabla u + \nabla p +
+              \frac{\text{Ra}}{\text{Pr}} \hat{g}T &= 0 \\
+              \nabla \cdot u &= 0 \\
+              - \frac{1}{\text{Pr}} \Delta T + u\cdot \nabla T &= 0
+            \end{split}
+          \end{equation*}
+          Newton
+          \begin{equation*}
+            \begin{bmatrix}
+              F   & B^T & M_1 \\
+              C   & 0   & 0   \\
+              M_2 & 0 & K
+            \end{bmatrix}
+            \begin{bmatrix}
+              \delta u \\
+              \delta p \\
+              \delta T
+            \end{bmatrix} =
+            \begin{bmatrix}
+              f_1 \\
+              f_2 \\
+              f_3
+            \end{bmatrix}
+          \end{equation*}
+        \end{block}
+      \end{column}
+      \begin{column}{0.52\framewidth}
 \begin{minted}[fontsize=\tiny]{python}
 from firedrake import *
 mesh = Mesh(...)
@@ -151,37 +162,36 @@ F = (inner(grad(u), grad(v))
 
 solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
 \end{minted}
-    \end{column}
-  \end{columns}
-\end{frame}
-
-\begin{frame}[fragile]
-  \begin{columns}
-    \begin{column}{0.5\textwidth}
-      \begin{block}{Ohta--Kawasaki}
-        \small
-        \begin{align*}
-          u_t - \Delta w + \sigma(u - m) &= 0\\
-          w + \epsilon^2 \Delta u - u(u^2 - 1) &= 0
-        \end{align*}
-        Implicit timestepping + Newton
-        \begin{equation*}
-          \begin{bmatrix}
-            (1 + \Delta t \theta \sigma)M  & \Delta t\theta K \\
-            -\epsilon^2 K - M_E & M
-          \end{bmatrix}
-          \begin{bmatrix}
-            \delta u \\
-            \delta w
-          \end{bmatrix} =
-          \begin{bmatrix}
-            f_1 \\
-            f_2
-          \end{bmatrix}
-        \end{equation*}
-      \end{block}
-    \end{column}
-    \begin{column}{0.5\textwidth}
+      \end{column}
+    \end{columns}
+  \end{onlyenv}
+  \begin{onlyenv}<2>
+    \begin{columns}[t]
+      \begin{column}{0.47\textwidth}
+        \begin{block}{Ohta--Kawasaki}
+          \small
+          \begin{align*}
+            u_t - \Delta w + \sigma(u - m) &= 0\\
+            w + \epsilon^2 \Delta u - u(u^2 - 1) &= 0
+          \end{align*}
+          Implicit timestepping + Newton
+          \begin{equation*}
+            \begin{bmatrix}
+              (1 + \Delta t \theta \sigma)M  & \Delta t\theta K \\
+              -\epsilon^2 K - M_E & M
+            \end{bmatrix}
+            \begin{bmatrix}
+              \delta u \\
+              \delta w
+            \end{bmatrix} =
+            \begin{bmatrix}
+              f_1 \\
+              f_2
+            \end{bmatrix}
+          \end{equation*}
+        \end{block}
+      \end{column}
+      \begin{column}{0.52\textwidth}
 \begin{minted}[fontsize=\tiny,escapeinside=||]{python}
 from firedrake import *
 mesh = Mesh(...)
@@ -208,8 +218,9 @@ while t < ...:
     z0.assign(z)
     solve(F == 0, z)
 \end{minted}
-    \end{column}
-  \end{columns}
+      \end{column}
+    \end{columns}
+  \end{onlyenv}
 \end{frame}
 
 \begin{frame}[t]
@@ -624,8 +635,7 @@ solve(L == 0, z, solver_parameters=opts, appctx=appctx)
   \frametitle{Schwarz smoothers}
   \begin{block}{Building blocks}
     \begin{itemize}
-    \item Decomposition of mesh into patches\uncover<2->{:
-        \alert{PETSc} with standard FEM adjacency for closure}
+    \item Decomposition of mesh into patches\uncover<2->{: \alert{PETSc}}
     \item Operators on each patch\uncover<3->{: \alert{Firedrake}}
     \item Solvers for each patch\uncover<4->{: \alert{PETSc}}
     \item Boundary conditions\uncover<5->{: \alert{Homogeneous
@@ -647,18 +657,22 @@ solve(L == 0, z, solver_parameters=opts, appctx=appctx)
   \frametitle{Patch definition}
   Patch described by set of entities on which dofs are free.
   \begin{block}{Builtin}
-    Each patch is obtained from a mesh entity $p$ of a given dimension,
-    and an adjacency relation:
-    \begin{itemize}
-    \item \texttt{star}: star(p)
-    \item \texttt{vanka}: closure(star(p))
-    \end{itemize}
+    \vspace{0.4ex}
+    Specify patches by selecting:
+    \begin{enumerate}
+    \item Entities to iterate over (vertices, cells, \ldots);
+    \item Adjacency relation that gathers ``free'' dofs.  Some builtin:
+      \begin{itemize}
+      \item[\texttt{star}] all dofs in star of entity
+      \item[\texttt{vanka}] all dofs in closure of star of entity
+      \end{itemize}
+    \end{enumerate}
   \end{block}
-  \begin{block}{Callback interface}
+  \begin{block}{User-defined}
     Write short function to define patches ``by hand''.
   \end{block}
   \begin{block}{Code}
-    \url{github.com/wence-/ssc}, available within PETSc RSN.
+    \url{github.com/wence-/ssc}, available in PETSc RSN.
   \end{block}
 \end{frame}
 
@@ -689,7 +703,7 @@ solver_parameters = {
         "patch_sub_pc_type": "lu",
         "patch_sub_pc_factor_shift_type": "nonzero"
     },
-    "mg_coarse": "lu"
+    "mg_coarse_pc_type": "lu",
 }
 solve(F == 0, u, solver_parameters=solver_parameters)
 \end{minted}
@@ -804,7 +818,7 @@ DoFs ($\times 10^{6}$) & MPI processes & Newton its & Krylov its & Time (s)\\
     \url{www.firedrakeproject.org}
   \end{center}
   \begin{tikzpicture}[remember picture,overlay]
-    \node[at=(current page.south east), anchor=south east] {\includegraphics[width=2.5cm]{epsrc-logo}};
+    \node[at=(current page.south west), anchor=south west] {\includegraphics[width=2.5cm]{epsrc-logo}};
   \end{tikzpicture}
 \end{frame}
 
