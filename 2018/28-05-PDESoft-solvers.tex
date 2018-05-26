@@ -69,7 +69,7 @@ London
 }
 
 \usepackage{minted}
-\title{Solver composition across the PDE/linear algebra divide}
+\title{Across the PDE/linear algebra divide}
 
 \titlegraphic{\hfill\includegraphics[height=1.1cm]{firedrake-word.pdf}}
 
@@ -93,12 +93,6 @@ London
   \maketitle{}
 \end{frame}
 \egroup
-\bgroup
-% \setbeamertemplate{background}{}
-% \setbeamercolor{footline}{
-%   use=normal text,
-%   fg=normal text.fg
-% }
 
 \begin{frame}[fragile,t]
   \frametitle{UFL makes it easy to write complex PDEs}
@@ -225,13 +219,19 @@ while t < ...:
 
 \begin{frame}[t]
   \frametitle{What about the solvers?}
-  \begin{itemize}
-  \item LU is alright for small problems
-  \item \dots but quickly becomes untenable in 3D.
-  \item Instead we use iterative methods (e.g.~Krylov methods)
-  \item<2-> \dots but Krylov methods are \emph{not} solvers
-  \item<3-> so we need \emph{preconditioners}.
-  \end{itemize}
+  \begin{block}{Direct}
+    \begin{itemize}
+    \item Great for small problems;
+    \item wait forever for large problems.
+    \end{itemize}
+  \end{block}
+  \begin{block}{Iterative}
+    \begin{itemize}
+    \item Need good preconditioners;
+    \item For many problems, algebraic manipulation of the operator is
+      insufficient.
+    \end{itemize}
+  \end{block}
 \end{frame}
 
 \begin{frame}
@@ -240,11 +240,13 @@ while t < ...:
   \item Access to standard block preconditioners
   \item Easy specification of auxiliary operators
   \item ``Simple'' configuration
-  \item Arbitrary nesting: smoothers inside splits, multigrid, etc\ldots
-  \item (Overlapping) Schwarz smoothers
+  \item Arbitrary nesting: smoothers inside splits, multigrid,
+    etc\ldots
+  \item \emph{Easy} to extend
   \end{itemize}
 
   \begin{block}{Claim}
+    \vspace{0.2ex}
     All of these things are possible (straightforward?) if the solver
     library can call back to the PDE library to create operators.
   \end{block}
@@ -253,22 +255,23 @@ while t < ...:
 \begin{frame}
   \frametitle{Idea}
   \begin{itemize}
-  \item Endow discretised operators with PDE-level information: what
-    bilinear form; which function space.
-  \item Enable standard fieldsplits on these operators.
+  \item Endow discretised operators with PDE-level information:
+    \begin{itemize}
+    \item what bilinear form
+    \item which function spaces
+    \item boundary conditions
+    \end{itemize}
+  \item Enable standard fieldsplitting on these operators.
   \item Write custom preconditioners that can utilise the information
-    in these operators appropriately.
+    in appropriately.
   \end{itemize}
   \begin{block}<2->{Extend PETSc with Firedrake-level PCs}
   \begin{itemize}
-  \item PETSc already provides a highly runtime-configurable library
-    for \emph{algebraically} composing solvers. \nocite{Brown:2012}
+  \item PETSc already provides \emph{algebraic} composition of solvers. \nocite{Brown:2012}
 
-  \item Firedrake makes it straightforward to build auxiliary
-    operators.
+  \item Firedrake can provide auxiliary operators
 
-  \item We combine these to allow simple development of complex
-    preconditioners.
+  \item We just need to combine these appropriately.
   \end{itemize}
   \end{block}
 \end{frame}
@@ -280,6 +283,9 @@ while t < ...:
 class MyPC(object):
     def setUp(self, pc):
         A, P = pc.getOperators()
+        # A and P are shell matrices, carrying the symbolic
+        # discretisation information.
+        # So I have access to the mesh, function spaces, etc...
         # Can inspect options dictionary here
         # do whatever
     def apply(self, pc, r, e):
@@ -331,10 +337,11 @@ solve(..., solver_parameters={"pc_type": "python",
 % \end{frame}
 
 \begin{frame}[fragile,t]
-  \frametitle{Two new pieces}
+  \frametitle{Implementation: two parts}
   \begin{block}{A new matrix type}
-    A PETSc shell matrix that implements matrix-free actions using
-    Firedrake, and contains the UFL of the bilinear form.
+    \vspace{0.2ex}
+    A shell matrix that implements matrix-free actions, and contains
+    the symbolic information about the bilinear form.
     \begin{columns}
       \begin{column}{0.5\textwidth}
       \begin{equation*}
@@ -348,10 +355,13 @@ A = assemble(a, mat_type="matfree")
 \end{minted}
     \end{column}
     \end{columns}
+    \begin{flushright}
+      \footnotesize Could do this all with assembled matrices if desired.
+    \end{flushright}
   \end{block}
-  \vspace{1.5\baselineskip}
   \begin{block}{Custom preconditioners}
-    Such matrices do not have entries, we create preconditioners
+    \vspace{0.2ex}
+    These matrices do not have entries, we create preconditioners
     that inspect the UFL and do the appropriate thing.
     \begin{columns}
       \begin{column}{0.5\textwidth}
@@ -418,63 +428,62 @@ solve(a == L, x, solver_parameters=opts)
   \end{columns}
 \end{frame}
 
-\begin{frame}[allowframebreaks]
-  \frametitle{Something more complicated}
-  A preconditioner for the Ohta--Kawasaki equation
-  \parencite{Farrell:2017}
-  \begin{equation*}
-    \begin{split}
-      u_t - \Delta w + \sigma(u - m) &= 0\\
-      w + \epsilon^2 \Delta u - u(u^2 - 1) &= 0
-    \end{split}
-  \end{equation*}
-  Newton iteration at each timestep solves
-  \begin{equation*}
-    \begin{bmatrix}
-      (1 + \Delta t \theta \sigma)M  & \Delta t\theta K \\
-      -\epsilon^2 K - M_E & M
-    \end{bmatrix}
-    \begin{bmatrix}
-      \delta u \\
-      \delta w
-    \end{bmatrix} =
-    \begin{bmatrix}
-      f_1 \\
-      f_2
-    \end{bmatrix}
-  \end{equation*}
-  \pagebreak
-
-  Preconditioning strategy:
-  {\scriptsize
+\begin{frame}
+  \frametitle{A more complicated example}
+  \begin{onlyenv}<1> A preconditioner for the Ohta--Kawasaki equation
+    \parencite{Farrell:2017}
     \begin{equation*}
-      \begin{bmatrix}
-        \left[(1 + \Delta t \theta \sigma)M\right]^{-1}  & 0 \\
-        0 & S^{-1}
-      \end{bmatrix}
-      \begin{bmatrix}
-        I & 0\\
-        (\epsilon^2 K + M_E)\left[(1 + \Delta t \theta
-          \sigma)M\right]^{-1} & I\\
-      \end{bmatrix}
+      \begin{split}
+        u_t - \Delta w + \sigma(u - m) &= 0\\
+        w + \epsilon^2 \Delta u - u(u^2 - 1) &= 0
+      \end{split}
+    \end{equation*}
+    Newton iteration at each timestep solves
+    \begin{equation*}
       \begin{bmatrix}
         (1 + \Delta t \theta \sigma)M  & \Delta t\theta K \\
         -\epsilon^2 K - M_E & M
-      \end{bmatrix}.
+      \end{bmatrix}
+      \begin{bmatrix}
+        \delta u \\
+        \delta w
+      \end{bmatrix} =
+      \begin{bmatrix}
+        f_1 \\
+        f_2
+      \end{bmatrix}
     \end{equation*}
-  }
-  Where
-  \begin{equation*}
-    S = M + (\epsilon^2 K + M_E) \left[(1 + \Delta t\theta\sigma)M\right]^{-1} \Delta t \theta K
-  \end{equation*}
-  is inverted iteratively, preconditioned by
-  \begin{equation*}
-    S^{-1} \approx S_p^{-1} = \hat{S}^{-1}M\hat{S}^{-1}
-  \end{equation*}
-  with
-  \begin{equation*}
-    \hat{S} = M + \epsilon\sqrt{(\Delta t \theta)/(1+\Delta t \theta\sigma)} K.
-  \end{equation*}
+  \end{onlyenv}
+
+  \begin{onlyenv}<2> Preconditioning strategy: {\scriptsize
+      \begin{equation*}
+        \begin{bmatrix}
+          \left[(1 + \Delta t \theta \sigma)M\right]^{-1}  & 0 \\
+          0 & S^{-1}
+        \end{bmatrix}
+        \begin{bmatrix}
+          I & 0\\
+          (\epsilon^2 K + M_E)\left[(1 + \Delta t \theta
+            \sigma)M\right]^{-1} & I\\
+        \end{bmatrix}
+        \begin{bmatrix}
+          (1 + \Delta t \theta \sigma)M  & \Delta t\theta K \\
+          -\epsilon^2 K - M_E & M
+        \end{bmatrix}.
+      \end{equation*}
+    } Where
+    \begin{equation*}
+      S = M + (\epsilon^2 K + M_E) \left[(1 + \Delta t\theta\sigma)M\right]^{-1} \Delta t \theta K
+    \end{equation*}
+    is inverted iteratively, preconditioned by
+    \begin{equation*}
+      S^{-1} \approx S_p^{-1} = \hat{S}^{-1}M\hat{S}^{-1}
+    \end{equation*}
+    with
+    \begin{equation*}
+      \hat{S} = M + \epsilon\sqrt{(\Delta t \theta)/(1+\Delta t \theta\sigma)} K.
+    \end{equation*}
+  \end{onlyenv}
 \end{frame}
 
 \begin{frame}[fragile]
@@ -498,8 +507,7 @@ class OKPC(PCBase):
         self.ksp.setFromOptions()
         mass = assemble(w*q*dx)
         self.mass = mass.petscmat
-        work = self.mass.createVecLeft()
-        self.work = (work, work.duplicate())
+        ...
     def apply(self, pc, x, y):
         t1, t2 = self.work
         # $t_1 \leftarrow \hat{S}^{-1}x$
@@ -511,207 +519,128 @@ class OKPC(PCBase):
 \end{minted}
 \end{frame}
 
-\begin{frame}[fragile]
-  \frametitle{Usage}
-  \begin{columns}
-    \ifwidescreen
-    \begin{column}{0.5\textwidth}
-    \else
-    \hspace{-0.8cm}
-    \begin{column}{0.35\textwidth}
-    \fi
-\begin{minted}[fontsize=\tiny,escapeinside=||]{py}
-opts = {
-  "snes_lag_preconditioner": -1,
-  |\colourfiredrake{”mat\_type”: ”matfree”}|,
-  |\colourpetsc{”ksp\_type”: ”gmres”}|,
-  |\colourpetsc{”pc\_type”: ”fieldsplit”}|,
-  |\colourpetsc{”pc\_fieldsplit\_type”: ”schur”}|,
-  |\colourpetsc{”pc\_fieldsplit\_schur\_factorization\_type”: ”lower”}|,
-  |\colourpetsc{”fieldsplit\_0”}|: {
-     |\colourpetsc{”ksp\_type”: ”chebyshev”}|,
-     "ksp_max_it": 10,
-     |\colourfiredrake{”pc\_type”: ”python”}|,
-     |\colourfiredrake{”pc\_python\_type”: ”firedrake.AssembledPC”}|,
-     |\colourpetsc{”assembled\_pc\_type”: ”sor”}|},
-  |\colourpetsc{”fieldsplit\_1”}|: {
-     |\colourpetsc{”ksp\_type”: ”richardson”}|,
-     "ksp_max_it": 2,
-     |\colourfiredrake{”pc\_type”: ”python”}|,
-     |\colourfiredrake{”pc\_python\_type”: ”OKPC”}|,
-     |\colourpetsc{”hat\_ksp\_type”: ”richardson”}|,
-     "hat_ksp_max_it": 5,
-     |\colourpetsc{”hat\_pc\_type”: ”hypre”}|
- }
+% \begin{frame}[fragile]
+%   \frametitle{Usage}
+%   \begin{columns}
+%     \ifwidescreen
+%     \begin{column}{0.5\textwidth}
+%     \else
+%     \hspace{-0.8cm}
+%     \begin{column}{0.35\textwidth}
+%     \fi
+% \begin{minted}[fontsize=\tiny,escapeinside=||]{py}
+% opts = {
+%   "snes_lag_preconditioner": -1,
+%   |\colourfiredrake{”mat\_type”: ”matfree”}|,
+%   |\colourpetsc{”ksp\_type”: ”gmres”}|,
+%   |\colourpetsc{”pc\_type”: ”fieldsplit”}|,
+%   |\colourpetsc{”pc\_fieldsplit\_type”: ”schur”}|,
+%   |\colourpetsc{”pc\_fieldsplit\_schur\_factorization\_type”: ”lower”}|,
+%   |\colourpetsc{”fieldsplit\_0”}|: {
+%      |\colourpetsc{”ksp\_type”: ”chebyshev”}|,
+%      "ksp_max_it": 10,
+%      |\colourfiredrake{”pc\_type”: ”python”}|,
+%      |\colourfiredrake{”pc\_python\_type”: ”firedrake.AssembledPC”}|,
+%      |\colourpetsc{”assembled\_pc\_type”: ”sor”}|},
+%   |\colourpetsc{”fieldsplit\_1”}|: {
+%      |\colourpetsc{”ksp\_type”: ”richardson”}|,
+%      "ksp_max_it": 2,
+%      |\colourfiredrake{”pc\_type”: ”python”}|,
+%      |\colourfiredrake{”pc\_python\_type”: ”OKPC”}|,
+%      |\colourpetsc{”hats\_ksp\_type”: ”richardson”}|,
+%      "hats_ksp_max_it": 5,
+%      |\colourpetsc{”hats\_pc\_type”: ”hypre”}|
+%  }
 
-appctx = {"parameters": (dt, theta, eps, sigma)}
-solve(L == 0, z, solver_parameters=opts, appctx=appctx)
-\end{minted}
-  \end{column}
-  \ifwidescreen
-  \hspace{-0.05\textwidth}
-  \begin{column}{0.55\textwidth}
-  \else
-  \begin{column}{0.65\textwidth}
-  \fi
-  \begin{tikzpicture}[scale=0.55, every node/.style={transform shape},
-    firedrake/.style={rounded rectangle,draw,black, fill=red!20, minimum size=6mm, inner sep=2pt},
-    petsc/.style={rectangle,draw,black, fill=blue!20, minimum size=6mm, inner sep=2pt},
-    arrow/.style={-stealth,line width=0.8}]
-    \node[petsc] (Jinv) {$J^{-1} \approx \mathcal{K}(J,
-      J_p^{-1})$};
-    \node[firedrake, below left=0.1cm and 0.3cm of Jinv.south west] (Jx) {$Jx$};
-    \node[firedrake,below=0.5cm of Jx.south] (jx) {\texttt{assemble(action(J, x))}};
-    \node[petsc,below right=0.5cm and -0.1cm of Jinv] (Jpinv) {$J_p^{-1} =%
-      \left[%
-        \begin{smallmatrix}
-          A^{-1} & 0\\
-          0 & S^{-1}
-        \end{smallmatrix}%
-      \right]
-      \left[%
-      \begin{smallmatrix}
-        I & 0 \\
-        -CA^{-1} & 0 \\
-      \end{smallmatrix}%
-      \right]
-      $};
-    \node[petsc, below left=0.8cm and -1cm of Jpinv] (Ainv)  {$A^{-1}\approx \mathcal{K}(A,A_p^{-1})$};
-    \node[firedrake, below left=1cm and 1.5cm of Ainv] (Ax) {$Ax$};
-    \node[firedrake, below=3cm of Ax] (ax) {\texttt{assemble(action(A, x))}};
-    \node[firedrake, below=1.5cm of Ainv] (Ap)
-    {$A_p \leftarrow \text{\raisebox{0.5pt}{\texttt{assemble(A\_p)}}}$};
-    \node[petsc, below=of Ap] (Apinv) {\texttt{SOR($A_p$)}};
+% appctx = {"parameters": (dt, theta, eps, sigma)}
+% solve(L == 0, z, solver_parameters=opts, appctx=appctx)
+% \end{minted}
+%   \end{column}
+%   \ifwidescreen
+%   \hspace{-0.05\textwidth}
+%   \begin{column}{0.55\textwidth}
+%   \else
+%   \begin{column}{0.65\textwidth}
+%   \fi
+%   \begin{tikzpicture}[scale=0.55, every node/.style={transform shape},
+%     firedrake/.style={rounded rectangle,draw,black, fill=red!20, minimum size=6mm, inner sep=2pt},
+%     petsc/.style={rectangle,draw,black, fill=blue!20, minimum size=6mm, inner sep=2pt},
+%     arrow/.style={-stealth,line width=0.8}]
+%     \node[petsc] (Jinv) {$J^{-1} \approx \mathcal{K}(J,
+%       J_p^{-1})$};
+%     \node[firedrake, below left=0.1cm and 0.3cm of Jinv.south west] (Jx) {$Jx$};
+%     \node[firedrake,below=0.5cm of Jx.south] (jx) {\texttt{assemble(action(J, x))}};
+%     \node[petsc,below right=0.5cm and -0.1cm of Jinv] (Jpinv) {$J_p^{-1} =%
+%       \left[%
+%         \begin{smallmatrix}
+%           A^{-1} & 0\\
+%           0 & S^{-1}
+%         \end{smallmatrix}%
+%       \right]
+%       \left[%
+%       \begin{smallmatrix}
+%         I & 0 \\
+%         -CA^{-1} & 0 \\
+%       \end{smallmatrix}%
+%       \right]
+%       $};
+%     \node[petsc, below left=0.8cm and -1cm of Jpinv] (Ainv)  {$A^{-1}\approx \mathcal{K}(A,A_p^{-1})$};
+%     \node[firedrake, below left=1cm and 1.5cm of Ainv] (Ax) {$Ax$};
+%     \node[firedrake, below=3cm of Ax] (ax) {\texttt{assemble(action(A, x))}};
+%     \node[firedrake, below=1.5cm of Ainv] (Ap)
+%     {$A_p \leftarrow \text{\raisebox{0.5pt}{\texttt{assemble(A\_p)}}}$};
+%     \node[petsc, below=of Ap] (Apinv) {\texttt{SOR($A_p$)}};
 
-    \node[petsc, below=1.3cm of Jpinv.south east, anchor=north] (Sinv) {$S^{-1} \approx \mathcal{K}(S,
-      S_p^{-1})$};
-    \node[petsc, below left=2cm and 0.3cm of Sinv, anchor=north] (S) {$Sx = (M - C A^{-1} B)x$};
-    \node[firedrake, below=of S] (Cx) {$Cx$};
-    \node[firedrake, right=of Cx] (Mx) {$Mx$};
-    \node[firedrake, left=of Cx] (Bx) {$Bx$};
+%     \node[petsc, below=1.3cm of Jpinv.south east, anchor=north] (Sinv) {$S^{-1} \approx \mathcal{K}(S,
+%       S_p^{-1})$};
+%     \node[petsc, below left=2cm and 0.3cm of Sinv, anchor=north] (S) {$Sx = (M - C A^{-1} B)x$};
+%     \node[firedrake, below=of S] (Cx) {$Cx$};
+%     \node[firedrake, right=of Cx] (Mx) {$Mx$};
+%     \node[firedrake, left=of Cx] (Bx) {$Bx$};
 
-    \node[firedrake, below=1.5cm of Cx] (actionx) {\texttt{assemble(action($\cdot$, x))}};
+%     \node[firedrake, below=1.5cm of Cx] (actionx) {\texttt{assemble(action($\cdot$, x))}};
 
-    \node[firedrake, below right=0.8cm and -0.2cm of Sinv, anchor=north] (Spinv) {$S_p^{-1} = \hat{S}^{-1} M
-      \hat{S}^{-1}$};
-    \node[petsc, below=3.25cm of Spinv] (Hatinv) {$\hat{S}^{-1}
-      \approx \mathcal{K}(\hat{S}, \hat{S}_p^{-1})$};
-    \node[firedrake, below=1.5cm of Hatinv] (Hat)
-    {$\hat{S}\text{\raisebox{0.5pt}{ $\leftarrow$ \texttt{assemble(s\_hat)}}}$};
-    \node[petsc, below=1cm of Hat] (Hathypre) {\texttt{hypre($\hat{S}$)}};
+%     \node[firedrake, below right=0.8cm and -0.2cm of Sinv, anchor=north] (Spinv) {$S_p^{-1} = \hat{S}^{-1} M
+%       \hat{S}^{-1}$};
+%     \node[petsc, below=3.25cm of Spinv] (Hatinv) {$\hat{S}^{-1}
+%       \approx \mathcal{K}(\hat{S}, \hat{S}_p^{-1})$};
+%     \node[firedrake, below=1.5cm of Hatinv] (Hat)
+%     {$\hat{S}\text{\raisebox{0.5pt}{ $\leftarrow$ \texttt{assemble(s\_hat)}}}$};
+%     \node[petsc, below=1cm of Hat] (Hathypre) {\texttt{hypre($\hat{S}$)}};
 
-    \draw[arrow] (Jinv.south west) -- (Jx);
-    \draw[arrow] (Jx) -- (jx);
-    \draw[arrow] (Jinv.south east) -- (Jpinv);
+%     \draw[arrow] (Jinv.south west) -- (Jx);
+%     \draw[arrow] (Jx) -- (jx);
+%     \draw[arrow] (Jinv.south east) -- (Jpinv);
 
-    \draw[arrow] (Jpinv.south west) -- (Ainv.north);
-    \draw[arrow] (Ainv.south west) -- (Ax);
-    \draw[arrow] (Ax) -- (ax);
-    \draw[arrow] (Ainv) -- (Ap);
-    \draw[arrow] (Ap) -- (Apinv);
-    \draw[arrow] (Jpinv) -- (Sinv);
-    \draw[arrow] (Sinv) -- (S);
-    \draw[arrow] (S) -- (Ainv.south east);
+%     \draw[arrow] (Jpinv.south west) -- (Ainv.north);
+%     \draw[arrow] (Ainv.south west) -- (Ax);
+%     \draw[arrow] (Ax) -- (ax);
+%     \draw[arrow] (Ainv) -- (Ap);
+%     \draw[arrow] (Ap) -- (Apinv);
+%     \draw[arrow] (Jpinv) -- (Sinv);
+%     \draw[arrow] (Sinv) -- (S);
+%     \draw[arrow] (S) -- (Ainv.south east);
 
-    \draw[arrow] (S) -- (Bx);
-    \draw[arrow] (S) -- (Cx);
-    \draw[arrow] (S) -- (Mx);
+%     \draw[arrow] (S) -- (Bx);
+%     \draw[arrow] (S) -- (Cx);
+%     \draw[arrow] (S) -- (Mx);
 
-    \draw[arrow] (Bx) -- (actionx);
-    \draw[arrow] (Cx) -- (actionx);
-    \draw[arrow] (Mx) -- (actionx);
+%     \draw[arrow] (Bx) -- (actionx);
+%     \draw[arrow] (Cx) -- (actionx);
+%     \draw[arrow] (Mx) -- (actionx);
 
-    \draw[arrow] (Sinv) -- (Spinv);
-    \draw[arrow] (Spinv) -- (Mx);
-    \draw[arrow] (Spinv) -- (Hatinv);
-    \draw[arrow] (Hatinv) -- (Hat);
-    \draw[arrow] (Hat) -- (Hathypre);
-  \end{tikzpicture}
-    \end{column}
-  \end{columns}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Schwarz smoothers}
-  \begin{block}{Building blocks}
-    \begin{itemize}
-    \item Decomposition of mesh into patches\uncover<2->{: \alert{PETSc}}
-    \item Operators on each patch\uncover<3->{: \alert{Firedrake}}
-    \item Solvers for each patch\uncover<4->{: \alert{PETSc}}
-    \item Boundary conditions\uncover<5->{: \alert{Homogeneous
-          Dirichlet only}}
-    \end{itemize}
-  \end{block}
-  \begin{uncoverenv}<6->
-    \begin{block}{Idea}
-      \begin{itemize}
-      \item PETSc PC using \texttt{DMPlex} to provide patches
-      \item Callback interface to provide operator on the patch
-      \item Normal \texttt{KSP} on each patch to do the solve
-      \end{itemize}
-    \end{block}
-  \end{uncoverenv}
-\end{frame}
-
-\begin{frame}[fragile]
-  \frametitle{Patch definition}
-  Patch described by set of entities on which dofs are free.
-  \begin{block}{Builtin}
-    \vspace{0.4ex}
-    Specify patches by selecting:
-    \begin{enumerate}
-    \item Entities to iterate over (vertices, cells, \ldots);
-    \item Adjacency relation that gathers ``free'' dofs.  Some builtin:
-      \begin{itemize}
-      \item[\texttt{star}] all dofs in star of entity
-      \item[\texttt{vanka}] all dofs in closure of star of entity
-      \end{itemize}
-    \end{enumerate}
-  \end{block}
-  \begin{block}{User-defined}
-    Write short function to define patches ``by hand''.
-  \end{block}
-  \begin{block}{Code}
-    \url{github.com/wence-/ssc}, available in PETSc RSN.
-  \end{block}
-\end{frame}
-
-\begin{frame}[fragile]
-  \frametitle{Example: P2-P1 Stokes with Vanka smoother}
-\begin{minted}[fontsize=\tiny]{python3}
-mesh = ...
-mh = MeshHierarchy(mesh, nrefinements)
-mesh = mh[-1]
-...
-F = (inner(grad(u), grad(v)) - p*div(v) - q*div*u)*dx
-solver_parameters = {
-    "mat_type": "matfree",
-    "snes_type": "ksponly",
-    "ksp_type": "fgmres",
-    "pc_type": "mg",
-    "mg_levels": {
-        "ksp_type": "gmres",
-        "ksp_max_it": 2,
-        "pc_type": "python",
-        "pc_python_type": "ssc.PatchPC",
-        "patch_pc_patch_construction_type": "vanka",
-        "patch_pc_patch_vanka_dim": 0,
-        "patch_pc_patch_construction_dim": 0,
-        "patch_pc_patch_exclude_subspace": 1,
-        "patch_pc_patch_sub_mat_type": "seqaij",
-        "patch_sub_ksp_type": "preonly",
-        "patch_sub_pc_type": "lu",
-        "patch_sub_pc_factor_shift_type": "nonzero"
-    },
-    "mg_coarse_pc_type": "lu",
-}
-solve(F == 0, u, solver_parameters=solver_parameters)
-\end{minted}
-\end{frame}
-
+%     \draw[arrow] (Sinv) -- (Spinv);
+%     \draw[arrow] (Spinv) -- (Mx);
+%     \draw[arrow] (Spinv) -- (Hatinv);
+%     \draw[arrow] (Hatinv) -- (Hat);
+%     \draw[arrow] (Hat) -- (Hathypre);
+%   \end{tikzpicture}
+%     \end{column}
+%   \end{columns}
+% \end{frame}
 
 \begin{frame}
-  \frametitle{Rayleigh-B\'enard}
+  \frametitle{Rayleigh-B\'enard solver}
   {\small
   For each Newton step, solve
   \begin{equation*}
@@ -763,7 +692,7 @@ solve(F == 0, u, solver_parameters=solver_parameters)
   \end{equation*}
 
   \begin{flushright}
-    {\tiny \textcite[\S B.4]{Kirby:2018} shows full solver configuration.}
+    {\scriptsize \textcite[\S B.4]{Kirby:2018} shows full solver configuration.}
   \end{flushright}
   }
 \end{frame}
@@ -796,6 +725,114 @@ DoFs ($\times 10^{6}$) & MPI processes & Newton its & Krylov its & Time (s)\\
 \end{uncoverenv}
   \end{center}
 \end{frame}
+
+\begin{frame}
+  \frametitle{Schwarz smoothers}
+  This approach works well for block solvers, what else can I do?
+  \begin{block}{Building blocks}
+    \begin{itemize}
+    \item Decomposition of mesh into patches\uncover<2->{: \alert{PETSc}}
+    \item Operators on each patch\uncover<3->{: \alert{Firedrake}}
+    \item Solvers for each patch\uncover<4->{: \alert{PETSc}}
+    \item Boundary conditions\uncover<5->{: \alert{Homogeneous
+          Dirichlet only for now}}
+    \end{itemize}
+  \end{block}
+  \begin{uncoverenv}<6->
+    \begin{block}{Idea}
+      \begin{itemize}
+      \item PETSc PC using \texttt{DMPlex} to provide patches
+      \item Callback interface provides operator on each patch to
+        \texttt{PCApply}
+      \item Normal \texttt{KSP} on each patch to do the solve
+      \end{itemize}
+    \end{block}
+  \end{uncoverenv}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Patch definition}
+  Patch described by set of entities on which dofs are free.
+  \begin{block}{Builtin}
+    \vspace{0.2ex}
+    Specify patches by selecting:
+    \begin{enumerate}
+    \item Entities to iterate over (vertices, cells, \ldots);
+    \item Adjacency relation that gathers ``free'' dofs.  Some builtin:
+      \begin{itemize}
+      \item[\texttt{star}] all dofs in star of entity
+      \item[\texttt{vanka}] all dofs in closure of star of entity
+      \end{itemize}
+    \end{enumerate}
+  \end{block}
+  \begin{block}{User-defined}
+    \vspace{0.2ex}
+    Write short function to define patches ``by hand''.
+  \end{block}
+  \begin{block}{Implementation}
+    \vspace{0.2ex}
+    \url{github.com/wence-/ssc}, available in PETSc RSN.
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Example: P2-P1 Stokes}
+  \begin{onlyenv}<1>
+    ``Monolithic'' multigrid with Vanka smoother on each level.
+\begin{minted}[fontsize=\tiny]{python3}
+solver_parameters = {
+    "mat_type": "matfree",
+    # Flex-gmres due to nonlinear PC (gmres as smoother)
+    "ksp_type": "fgmres",
+    "pc_type": "mg",
+    "mg_levels": {
+        "ksp_type": "gmres",
+        "ksp_max_it": 2,
+        "pc_type": "python",
+        "pc_python_type": "ssc.PatchPC",
+        "patch_pc_patch_construction_type": "vanka",
+        "patch_pc_patch_construction_dim": 0,  # patches over vertices
+        "patch_pc_patch_vanka_dim": 0,         # what entities are in the constraint space?
+        "patch_pc_patch_exclude_subspace": 1,  # which subspace to exclude?
+        "patch_pc_patch_sub_mat_type": "seqaij",
+        "patch_sub_ksp_type": "preonly",
+        "patch_sub_pc_type": "lu",
+        "patch_sub_pc_factor_shift_type": "nonzero"
+    },
+    "mg_coarse_pc_type": "lu",
+}
+solve(F == 0, u, solver_parameters=solver_parameters)
+\end{minted}
+  \end{onlyenv}
+  \begin{onlyenv}<2>
+    Schur complement only requires change of options.
+\begin{minted}[fontsize=\tiny,mathescape=true]{python3}
+solver_parameters = {
+    "mat_type": "matfree",
+    "ksp_type": "gmres",
+    "ksp_monitor": None,
+    "pc_type": "fieldsplit",
+    # Use $\text{diag}(A^{-1}, S^{-1})$ as PC
+    "pc_fieldsplit_type": "schur",
+    "pc_fieldsplit_schur_factorization_type": "diag",
+    "fieldsplit_0": {
+        # AMG on velocity block
+        "ksp_type": "preonly",
+        "pc_type": "python",
+        "pc_python_type": "firedrake.AssembledPC",
+        "assembled_pc_type": "hypre",
+    },
+    "fieldsplit_1": {
+        # Inverse mass matrix to precondition $S$
+        "ksp_type": "richardson",
+        "pc_type": "firedrake.MassInvPC",
+    }
+}
+solve(F == 0, u, solver_parameters=solver_parameters)
+\end{minted}
+  \end{onlyenv}
+\end{frame}
+
 \begin{frame}
   \frametitle{Conclusions}
 
@@ -828,8 +865,6 @@ DoFs ($\times 10^{6}$) & MPI processes & Newton its & Krylov its & Time (s)\\
   \frametitle{References}
   \printbibliography[heading=none]
 \end{frame}
-\egroup
-
 
 \end{document}
 
