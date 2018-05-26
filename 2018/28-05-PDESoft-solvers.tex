@@ -26,7 +26,7 @@
 \newcommand{\colourfiredrake}[1]{\colorbox{red!20}{#1}}
 \newcommand{\colourpetsc}[1]{\colorbox{blue!20}{#1}}
 
-\author{Lawrence Mitchell\inst{1,*} \and Rob Kirby\inst{2}}
+\author{Lawrence Mitchell\inst{1,*} \and Rob Kirby\inst{2,\dagger}}
 \institute{
 \inst{1}Departments of Computing and Mathematics, Imperial College
 London
@@ -34,6 +34,8 @@ London
 \inst{*}\texttt{lawrence.mitchell@imperial.ac.uk}
 \and
 \inst{2}Department of Mathematics, Baylor University
+
+\inst{\dagger}\texttt{robert\_kirby@baylor.edu}
 }
 
 \graphicspath{{./\jobname.figures/}{../pictures/}}
@@ -69,7 +71,7 @@ London
 }
 
 \usepackage{minted}
-\title{Across the PDE/linear algebra divide}
+\title{Solver composition across the PDE/linear algebra divide}
 
 \titlegraphic{\hfill\includegraphics[height=1.1cm]{firedrake-word.pdf}}
 
@@ -778,7 +780,7 @@ DoFs ($\times 10^{6}$) & MPI processes & Newton its & Krylov its & Time (s)\\
 \begin{frame}[fragile]
   \frametitle{Example: P2-P1 Stokes}
   \begin{onlyenv}<1>
-    ``Monolithic'' multigrid with Vanka smoother on each level.
+    Monolithic multigrid with Vanka smoother on each level.
 \begin{minted}[fontsize=\tiny]{python3}
 solver_parameters = {
     "mat_type": "matfree",
@@ -837,23 +839,24 @@ solve(F == 0, u, solver_parameters=solver_parameters)
   \frametitle{Conclusions}
 
   \begin{itemize}
-  \item Composable solvers using UFL to build block preconditioners.
+  \item Composable solvers, using PDE library to easily
+    develop complex block preconditioners.
 
   \item Model formulation decoupled from solver configuration.
 
-  \item Composes with nonlinear solvers that need linearisations: no
-    need to write your own special Newton iteration to get data in.
+  \item Automatically takes advantage of any improvements in both
+    PETSc and Firedrake.
 
-  \item Automatically takes advantage of any improvements in Firedrake
-    (fast matrix actions, etc...)
-
+  \item Same approach works for Schwarz-like methods.
   \end{itemize}
-
   \begin{center}
-    \textcite{Kirby:2018} \arxivlink{1706.01346}{cs.MS}
-
     \url{www.firedrakeproject.org}
   \end{center}
+
+  \begin{flushright}
+    {\footnotesize
+    \textcite{Kirby:2018} \arxivlink{1706.01346}{cs.MS}}
+  \end{flushright}
   \begin{tikzpicture}[remember picture,overlay]
     \node[at=(current page.south west), anchor=south west] {\includegraphics[width=2.5cm]{epsrc-logo}};
   \end{tikzpicture}
