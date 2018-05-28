@@ -1,4 +1,4 @@
-\documentclass[presentation,aspectratio=43]{beamer}
+\documentclass[presentation,aspectratio=169]{beamer}
 \usepackage{tikz}
 \usetikzlibrary{positioning,calc}
 \usetikzlibrary{shapes.geometric}
@@ -7,7 +7,7 @@
 \usepackage{appendixnumberbeamer}
 \usepackage{amsmath}
 \newif\ifwidescreen
-\widescreenfalse
+\widescreentrue
 \date{28th May 2018}
 \usetheme{metropolis}
 
@@ -80,7 +80,7 @@ London
 \setbeamertemplate{title graphic}{
   \vbox to 0pt {
     \vspace*{0.25em}
-    \makebox[1.075\textwidth]{\inserttitlegraphic}%
+    \makebox[1.025\textwidth]{\inserttitlegraphic}%
   }%
   \nointerlineskip%
 }
@@ -99,7 +99,7 @@ London
 \begin{frame}[fragile,t]
   \frametitle{UFL makes it easy to write complex PDEs}
   \begin{onlyenv}<1>
-    \begin{columns}[t]
+    \begin{columns}[T]
       \begin{column}{0.47\framewidth}
         \small
         \begin{block}{Rayleigh-B\'enard convection}
@@ -162,7 +162,7 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
     \end{columns}
   \end{onlyenv}
   \begin{onlyenv}<2>
-    \begin{columns}[t]
+    \begin{columns}[T]
       \begin{column}{0.47\textwidth}
         \begin{block}{Ohta--Kawasaki}
           \small
@@ -278,29 +278,6 @@ while t < ...:
   \end{block}
 \end{frame}
 
-\begin{frame}[fragile]
-  \frametitle{This sounds like hard work}
-  Fortunately, \texttt{petsc4py} makes it easy to write these PCs.
-\begin{minted}[fontsize=\tiny,escapeinside=||,mathescape=true]{python3}
-class MyPC(object):
-    def setUp(self, pc):
-        A, P = pc.getOperators()
-        # A and P are shell matrices, carrying the symbolic
-        # discretisation information.
-        # So I have access to the mesh, function spaces, etc...
-        # Can inspect options dictionary here
-        # do whatever
-    def apply(self, pc, r, e):
-        # Compute approximation to error given current residual
-        # $e \gets A^{-1} r$
-
-solve(..., solver_parameters={"pc_type": "python",
-                              "pc_python_type": "MyPC"})
-\end{minted}
-  PETSc manages all the splitting and nesting already.  So this does
-  the right thing \emph{inside} multigrid, etc\ldots
-\end{frame}
-
 % \begin{frame}
 %   \frametitle{Block preconditioning}
 %   \begin{itemize}
@@ -383,6 +360,29 @@ solve(a == L, x,
   \end{columns}
   \end{block}
 \end{frame}
+\begin{frame}[fragile]
+  \frametitle{This sounds like hard work}
+  Fortunately, \texttt{petsc4py} makes it easy to write these PCs.
+\begin{minted}[fontsize=\tiny,escapeinside=||,mathescape=true]{python3}
+class MyPC(object):
+    def setUp(self, pc):
+        A, P = pc.getOperators()
+        # A and P are shell matrices, carrying the symbolic
+        # discretisation information.
+        # So I have access to the mesh, function spaces, etc...
+        # Can inspect options dictionary here
+        # do whatever
+    def apply(self, pc, r, e):
+        # Compute approximation to error given current residual
+        # $e \gets A^{-1} r$
+
+solve(..., solver_parameters={"pc_type": "python",
+                              "pc_python_type": "MyPC"})
+\end{minted}
+  PETSc manages all the splitting and nesting already.  So this does
+  the right thing \emph{inside} multigrid, etc\ldots
+\end{frame}
+
 \begin{frame}[fragile,t]
   \frametitle{A simple example}
   Matrix-free actions with AMG on the assembled operator.
@@ -417,8 +417,7 @@ solve(a == L, x, solver_parameters=opts)
         {\texttt{assemble(action(a, x))}};
         \node[petsc,below right=of ainv] (ap) {$A_p^{-1}$};
         \node[firedrake,below=of ap] (Ap)
-        {$A_p
-          \leftarrow$\raisebox{0.75pt}{\texttt{assemble(a)}}};
+        {$A_p \leftarrow \text{\texttt{assemble(a)}}$};
         \node[petsc,below=of Ap] (Apinv)
         {\texttt{hypre($A_p$)}};
 
@@ -488,11 +487,13 @@ solve(a == L, x, solver_parameters=opts)
   \end{onlyenv}
 \end{frame}
 
-\begin{frame}[fragile]
+\begin{frame}[fragile,t]
   \frametitle{Implementation}
+  \begin{columns}[T]
+    \begin{column}{0.49\textwidth}
 \begin{minted}[fontsize=\tiny,mathescape,escapeinside=||]{python}
 class OKPC(PCBase):
-    def initialize(self, pc):
+    def setUp(self, pc):
         _, P = pc.getOperators()
         ctx = P.getPythonContext()
         # User information about $\Delta t$, $\theta$, etc...
@@ -502,14 +503,18 @@ class OKPC(PCBase):
         w = TrialFunction(V)
         q = TestFunction(V)
         # $\hat{S} = \inner{q, w} + \epsilon\sqrt{c}\inner{\nabla q, \nabla w}$, $c = \frac{\Delta t \theta}{1 + \Delta t \theta \sigma}$
-        op = assemble(inner(w, q)*dx + |$\epsilon$|*sqrt(c)*inner(grad(w), grad(q))*dx)
+        op = assemble(inner(w, q)*dx + 
+                      |$\epsilon$|*sqrt(c)*inner(grad(w), grad(q))*dx)
         self.ksp = KSP().create(comm=pc.comm)
         self.ksp.setOptionsPrefix(pc.getOptionsPrefix + "hats_")
         self.ksp.setOperators(op.petscmat, op.petscmat)
         self.ksp.setFromOptions()
         mass = assemble(w*q*dx)
         self.mass = mass.petscmat
-        ...
+\end{minted}
+    \end{column}
+    \begin{column}{0.49\textwidth}
+\begin{minted}[fontsize=\tiny,escapeinside=||,mathescape=true]{python3}
     def apply(self, pc, x, y):
         t1, t2 = self.work
         # $t_1 \leftarrow \hat{S}^{-1}x$
@@ -519,127 +524,129 @@ class OKPC(PCBase):
         # $y \leftarrow \hat{S}^{-1}t_2 = \hat{S}^{-1} M \hat{S}^{-1} x$
         self.ksp.solve(t2, y)
 \end{minted}
+    \end{column}
+  \end{columns}
 \end{frame}
 
-% \begin{frame}[fragile]
-%   \frametitle{Usage}
-%   \begin{columns}
-%     \ifwidescreen
-%     \begin{column}{0.5\textwidth}
-%     \else
-%     \hspace{-0.8cm}
-%     \begin{column}{0.35\textwidth}
-%     \fi
-% \begin{minted}[fontsize=\tiny,escapeinside=||]{py}
-% opts = {
-%   "snes_lag_preconditioner": -1,
-%   |\colourfiredrake{”mat\_type”: ”matfree”}|,
-%   |\colourpetsc{”ksp\_type”: ”gmres”}|,
-%   |\colourpetsc{”pc\_type”: ”fieldsplit”}|,
-%   |\colourpetsc{”pc\_fieldsplit\_type”: ”schur”}|,
-%   |\colourpetsc{”pc\_fieldsplit\_schur\_factorization\_type”: ”lower”}|,
-%   |\colourpetsc{”fieldsplit\_0”}|: {
-%      |\colourpetsc{”ksp\_type”: ”chebyshev”}|,
-%      "ksp_max_it": 10,
-%      |\colourfiredrake{”pc\_type”: ”python”}|,
-%      |\colourfiredrake{”pc\_python\_type”: ”firedrake.AssembledPC”}|,
-%      |\colourpetsc{”assembled\_pc\_type”: ”sor”}|},
-%   |\colourpetsc{”fieldsplit\_1”}|: {
-%      |\colourpetsc{”ksp\_type”: ”richardson”}|,
-%      "ksp_max_it": 2,
-%      |\colourfiredrake{”pc\_type”: ”python”}|,
-%      |\colourfiredrake{”pc\_python\_type”: ”OKPC”}|,
-%      |\colourpetsc{”hats\_ksp\_type”: ”richardson”}|,
-%      "hats_ksp_max_it": 5,
-%      |\colourpetsc{”hats\_pc\_type”: ”hypre”}|
-%  }
+\begin{frame}[fragile,t]
+  \frametitle{Usage}
+  \begin{columns}[T]
+    \ifwidescreen
+    \begin{column}{0.5\textwidth}
+      \vspace{-1em}
+    \else
+    \hspace{-0.8cm}
+    \begin{column}{0.35\textwidth}
+    \fi
+\begin{minted}[fontsize=\tiny,escapeinside=||]{py}
+opts = {
+  "snes_lag_preconditioner": -1,
+  |\colourfiredrake{”mat\_type”: ”matfree”}|,
+  |\colourpetsc{”ksp\_type”: ”gmres”}|,
+  |\colourpetsc{”pc\_type”: ”fieldsplit”}|,
+  |\colourpetsc{”pc\_fieldsplit\_type”: ”schur”}|,
+  |\colourpetsc{”pc\_fieldsplit\_schur\_factorization\_type”: ”lower”}|,
+  |\colourpetsc{”fieldsplit\_0”}|: {
+     |\colourpetsc{”ksp\_type”: ”chebyshev”}|,
+     "ksp_max_it": 10,
+     |\colourfiredrake{”pc\_type”: ”python”}|,
+     |\colourfiredrake{”pc\_python\_type”: ”firedrake.AssembledPC”}|,
+     |\colourpetsc{”assembled\_pc\_type”: ”sor”}|},
+  |\colourpetsc{”fieldsplit\_1”}|: {
+     |\colourpetsc{”ksp\_type”: ”richardson”}|,
+     "ksp_max_it": 2,
+     |\colourfiredrake{”pc\_type”: ”python”}|,
+     |\colourfiredrake{”pc\_python\_type”: ”OKPC”}|,
+     |\colourpetsc{”hats\_ksp\_type”: ”richardson”}|,
+     "hats_ksp_max_it": 5,
+     |\colourpetsc{”hats\_pc\_type”: ”hypre”}|
+ }
 
-% appctx = {"parameters": (dt, theta, eps, sigma)}
-% solve(L == 0, z, solver_parameters=opts, appctx=appctx)
-% \end{minted}
-%   \end{column}
-%   \ifwidescreen
-%   \hspace{-0.05\textwidth}
-%   \begin{column}{0.55\textwidth}
-%   \else
-%   \begin{column}{0.65\textwidth}
-%   \fi
-%   \begin{tikzpicture}[scale=0.55, every node/.style={transform shape},
-%     firedrake/.style={rounded rectangle,draw,black, fill=red!20, minimum size=6mm, inner sep=2pt},
-%     petsc/.style={rectangle,draw,black, fill=blue!20, minimum size=6mm, inner sep=2pt},
-%     arrow/.style={-stealth,line width=0.8}]
-%     \node[petsc] (Jinv) {$J^{-1} \approx \mathcal{K}(J,
-%       J_p^{-1})$};
-%     \node[firedrake, below left=0.1cm and 0.3cm of Jinv.south west] (Jx) {$Jx$};
-%     \node[firedrake,below=0.5cm of Jx.south] (jx) {\texttt{assemble(action(J, x))}};
-%     \node[petsc,below right=0.5cm and -0.1cm of Jinv] (Jpinv) {$J_p^{-1} =%
-%       \left[%
-%         \begin{smallmatrix}
-%           A^{-1} & 0\\
-%           0 & S^{-1}
-%         \end{smallmatrix}%
-%       \right]
-%       \left[%
-%       \begin{smallmatrix}
-%         I & 0 \\
-%         -CA^{-1} & 0 \\
-%       \end{smallmatrix}%
-%       \right]
-%       $};
-%     \node[petsc, below left=0.8cm and -1cm of Jpinv] (Ainv)  {$A^{-1}\approx \mathcal{K}(A,A_p^{-1})$};
-%     \node[firedrake, below left=1cm and 1.5cm of Ainv] (Ax) {$Ax$};
-%     \node[firedrake, below=3cm of Ax] (ax) {\texttt{assemble(action(A, x))}};
-%     \node[firedrake, below=1.5cm of Ainv] (Ap)
-%     {$A_p \leftarrow \text{\raisebox{0.5pt}{\texttt{assemble(A\_p)}}}$};
-%     \node[petsc, below=of Ap] (Apinv) {\texttt{SOR($A_p$)}};
+appctx = {"parameters": (dt, theta, eps, sigma)}
+solve(L == 0, z, solver_parameters=opts, appctx=appctx)
+\end{minted}
+  \end{column}
+  \ifwidescreen
+  \begin{column}{0.55\textwidth}
+  \else
+  \begin{column}{0.65\textwidth}
+  \fi
+  \begin{tikzpicture}[scale=0.55, every node/.style={transform shape},
+    firedrake/.style={rounded rectangle,draw,black, fill=red!20, minimum size=6mm, inner sep=2pt},
+    petsc/.style={rectangle,draw,black, fill=blue!20, minimum size=6mm, inner sep=2pt},
+    arrow/.style={-stealth,line width=0.8}]
+    \node[petsc] (Jinv) {$J^{-1} \approx \mathcal{K}(J,
+      J_p^{-1})$};
+    \node[firedrake, below left=0.1cm and 0.3cm of Jinv.south west] (Jx) {$Jx$};
+    \node[firedrake,below=0.5cm of Jx.south] (jx) {\texttt{assemble(action(J, x))}};
+    \node[petsc,below right=0.5cm and -0.1cm of Jinv] (Jpinv) {$J_p^{-1} =%
+      \left[%
+        \begin{smallmatrix}
+          A^{-1} & 0\\
+          0 & S^{-1}
+        \end{smallmatrix}%
+      \right]
+      \left[%
+      \begin{smallmatrix}
+        I & 0 \\
+        -CA^{-1} & 0 \\
+      \end{smallmatrix}%
+      \right]
+      $};
+    \node[petsc, below left=0.8cm and -1cm of Jpinv] (Ainv)  {$A^{-1}\approx \mathcal{K}(A,A_p^{-1})$};
+    \node[firedrake, below left=1cm and 1.5cm of Ainv] (Ax) {$Ax$};
+    \node[firedrake, below=3cm of Ax] (ax) {\texttt{assemble(action(A, x))}};
+    \node[firedrake, below=1.5cm of Ainv] (Ap)
+    {$A_p \leftarrow \text{\raisebox{0.5pt}{\texttt{assemble(A\_p)}}}$};
+    \node[petsc, below=of Ap] (Apinv) {\texttt{SOR($A_p$)}};
 
-%     \node[petsc, below=1.3cm of Jpinv.south east, anchor=north] (Sinv) {$S^{-1} \approx \mathcal{K}(S,
-%       S_p^{-1})$};
-%     \node[petsc, below left=2cm and 0.3cm of Sinv, anchor=north] (S) {$Sx = (M - C A^{-1} B)x$};
-%     \node[firedrake, below=of S] (Cx) {$Cx$};
-%     \node[firedrake, right=of Cx] (Mx) {$Mx$};
-%     \node[firedrake, left=of Cx] (Bx) {$Bx$};
+    \node[petsc, below=1.3cm of Jpinv.south east, anchor=north] (Sinv) {$S^{-1} \approx \mathcal{K}(S,
+      S_p^{-1})$};
+    \node[petsc, below left=2cm and 0.3cm of Sinv, anchor=north] (S) {$Sx = (M - C A^{-1} B)x$};
+    \node[firedrake, below=of S] (Cx) {$Cx$};
+    \node[firedrake, right=of Cx] (Mx) {$Mx$};
+    \node[firedrake, left=of Cx] (Bx) {$Bx$};
 
-%     \node[firedrake, below=1.5cm of Cx] (actionx) {\texttt{assemble(action($\cdot$, x))}};
+    \node[firedrake, below=1.5cm of Cx] (actionx) {\texttt{assemble(action($\cdot$, x))}};
 
-%     \node[firedrake, below right=0.8cm and -0.2cm of Sinv, anchor=north] (Spinv) {$S_p^{-1} = \hat{S}^{-1} M
-%       \hat{S}^{-1}$};
-%     \node[petsc, below=3.25cm of Spinv] (Hatinv) {$\hat{S}^{-1}
-%       \approx \mathcal{K}(\hat{S}, \hat{S}_p^{-1})$};
-%     \node[firedrake, below=1.5cm of Hatinv] (Hat)
-%     {$\hat{S}\text{\raisebox{0.5pt}{ $\leftarrow$ \texttt{assemble(s\_hat)}}}$};
-%     \node[petsc, below=1cm of Hat] (Hathypre) {\texttt{hypre($\hat{S}$)}};
+    \node[firedrake, below right=0.8cm and -0.2cm of Sinv, anchor=north] (Spinv) {$S_p^{-1} = \hat{S}^{-1} M
+      \hat{S}^{-1}$};
+    \node[petsc, below=3.25cm of Spinv] (Hatinv) {$\hat{S}^{-1}
+      \approx \mathcal{K}(\hat{S}, \hat{S}_p^{-1})$};
+    \node[firedrake, below=1.5cm of Hatinv] (Hat)
+    {$\hat{S} \leftarrow \text{\texttt{assemble(hats)}}$};
+    \node[petsc, below=1cm of Hat] (Hathypre) {\texttt{hypre($\hat{S}$)}};
 
-%     \draw[arrow] (Jinv.south west) -- (Jx);
-%     \draw[arrow] (Jx) -- (jx);
-%     \draw[arrow] (Jinv.south east) -- (Jpinv);
+    \draw[arrow] (Jinv.south west) -- (Jx);
+    \draw[arrow] (Jx) -- (jx);
+    \draw[arrow] (Jinv.south east) -- (Jpinv);
 
-%     \draw[arrow] (Jpinv.south west) -- (Ainv.north);
-%     \draw[arrow] (Ainv.south west) -- (Ax);
-%     \draw[arrow] (Ax) -- (ax);
-%     \draw[arrow] (Ainv) -- (Ap);
-%     \draw[arrow] (Ap) -- (Apinv);
-%     \draw[arrow] (Jpinv) -- (Sinv);
-%     \draw[arrow] (Sinv) -- (S);
-%     \draw[arrow] (S) -- (Ainv.south east);
+    \draw[arrow] (Jpinv.south west) -- (Ainv.north);
+    \draw[arrow] (Ainv.south west) -- (Ax);
+    \draw[arrow] (Ax) -- (ax);
+    \draw[arrow] (Ainv) -- (Ap);
+    \draw[arrow] (Ap) -- (Apinv);
+    \draw[arrow] (Jpinv) -- (Sinv);
+    \draw[arrow] (Sinv) -- (S);
+    \draw[arrow] (S) -- (Ainv.south east);
 
-%     \draw[arrow] (S) -- (Bx);
-%     \draw[arrow] (S) -- (Cx);
-%     \draw[arrow] (S) -- (Mx);
+    \draw[arrow] (S) -- (Bx);
+    \draw[arrow] (S) -- (Cx);
+    \draw[arrow] (S) -- (Mx);
 
-%     \draw[arrow] (Bx) -- (actionx);
-%     \draw[arrow] (Cx) -- (actionx);
-%     \draw[arrow] (Mx) -- (actionx);
+    \draw[arrow] (Bx) -- (actionx);
+    \draw[arrow] (Cx) -- (actionx);
+    \draw[arrow] (Mx) -- (actionx);
 
-%     \draw[arrow] (Sinv) -- (Spinv);
-%     \draw[arrow] (Spinv) -- (Mx);
-%     \draw[arrow] (Spinv) -- (Hatinv);
-%     \draw[arrow] (Hatinv) -- (Hat);
-%     \draw[arrow] (Hat) -- (Hathypre);
-%   \end{tikzpicture}
-%     \end{column}
-%   \end{columns}
-% \end{frame}
+    \draw[arrow] (Sinv) -- (Spinv);
+    \draw[arrow] (Spinv) -- (Mx);
+    \draw[arrow] (Spinv) -- (Hatinv);
+    \draw[arrow] (Hatinv) -- (Hat);
+    \draw[arrow] (Hat) -- (Hathypre);
+  \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
 
 \begin{frame}
   \frametitle{Rayleigh-B\'enard solver}
