@@ -1,0 +1,130 @@
+\documentclass[presentation,aspectratio=43]{beamer}
+\usepackage{tikz}
+\usetikzlibrary{positioning,calc}
+\usetikzlibrary{shapes.geometric}
+\usetikzlibrary{backgrounds}% only to show the bounding box
+\usetikzlibrary{shapes,arrows}
+\usepackage{appendixnumberbeamer}
+\usepackage{amsmath}
+\newif\ifwidescreen
+\widescreenfalse
+\date{6th June 2018}
+\usetheme{metropolis}
+
+\metroset{background=light,progressbar=frametitle,numbering=counter}
+
+\renewcommand{\vec}[1]{\ensuremath{\boldsymbol{#1}}}
+\newcommand{\ddt}[1]{\frac{\partial #1}{\partial t}}
+\newcommand{\zhat}{\hat{\vec{z}}}
+\newcommand{\W}{\ensuremath{\mathbb{W}}}
+
+\newcommand{\inner}[1]{\left\langle #1 \right \rangle}
+
+\newcommand{\KSP}[2]{\ensuremath{\mathcal{K}\left(#1, \mathbb{#2}\right)}}
+\newcommand{\ksp}[1]{\KSP{#1}{#1}}
+
+\newcommand{\colourfiredrake}[1]{\colorbox{red!20}{#1}}
+\newcommand{\colourpetsc}[1]{\colorbox{blue!20}{#1}}
+
+\author{Lawrence Mitchell\inst{1,*} \and Rob Kirby\inst{2,\dag}
+  \and Patrick Farrell\inst{3,\ddag}}
+\institute{
+\inst{1}Departments of Computing and Mathematics, Imperial College
+London
+
+\inst{*}\texttt{lawrence.mitchell@imperial.ac.uk}
+\and
+\inst{2}Department of Mathematics, Baylor University
+
+\inst{\dag}\texttt{robert\_kirby@baylor.edu}
+\and
+\inst{3}Mathematical Institute, University of Oxford
+
+\inst{\ddag}\texttt{patrick.farrell@maths.ox.ac.uk}
+}
+
+\graphicspath{{./\jobname.figures/}{../pictures/}}
+\usepackage[url=false,
+            doi=true,
+            isbn=false,
+            style=authoryear,
+            firstinits=true,
+            uniquename=init,
+            backend=biber]{biblatex}
+
+\setbeamertemplate{bibliography item}{}
+\renewcommand{\bibfont}{\fontsize{7}{7}\selectfont}
+\addbibresource{references.bib}
+\newcommand{\arxivlink}[2]{%
+  \href{http://www.arxiv.org/abs/#1}%
+  {{\small\texttt{arXiv:\,#1\,[#2]}}}%
+}
+
+\setlength{\bibitemsep}{1ex}
+\setlength{\fboxsep}{1pt}
+
+\renewbibmacro{in:}{}
+\DeclareFieldFormat[article]{volume}{\textbf{#1}}
+\DeclareFieldFormat{doi}{%
+  doi\addcolon%
+  {\ifhyperref{\href{http://dx.doi.org/#1}{\nolinkurl{#1}}}
+    {\nolinkurl{#1}}}}
+\AtEveryBibitem{%
+\clearfield{pages}%
+\clearfield{issue}%
+\clearfield{number}%
+}
+
+\usepackage{minted}
+\title{PDEs should be the solvers problem}
+
+\titlegraphic{\hfill\includegraphics[height=1.1cm]{firedrake-word.pdf}}
+\begin{document}
+
+% \begin{abstract}
+%   Many optimal solvers for PDEs require access to auxiliary
+%   operators, or compositions thereof, over and above what is easily
+%   offered by PETSc's Amat, Pmat interface.  Although possible,
+%   setting things up ``by hand'' is tricky, error prone, and requires
+%   changing to compare the performance of different solver options.
+%   This is especially the case when we wish to provide
+%   problem-specific data deep in some nested solver.
+
+%   In this talk, I will describe how we address some of these problems in
+%   Firedrake, by augmenting operators (and hence preconditioners) with
+%   the ability to provide auxiliary operators as needed.  By more tightly
+%   coupling the PDE library with the linear algebra, we can make solvers
+%   problem- and discretisation-aware.
+
+%   Recently, we have taken this approach to develop a very flexible
+%   framework for domain-decomposition preconditioning, utilising DMPlex
+%   to define topological patches, and the auxiliary information to
+%   provide operator assembly.  Most of this is not specific to Firedrake,
+%   and so the question naturally arises as to how to develop
+%   discretisation- and problem-aware preconditioning infrastructure that
+%   can live in PETSc, yet be usable by the plethora of PDE libraries in
+%   the wider community.  I do not have the answer to this question, but
+%   am hopeful of useful discussion.
+% \end{abstract}
+
+\bgroup
+\setbeamertemplate{title graphic}{
+  \vbox to 0pt {
+    \vspace*{0.25em}
+    \makebox[1.025\textwidth]{\inserttitlegraphic}%
+  }%
+  \nointerlineskip%
+}
+\setbeamertemplate{background}{%
+  \raisebox{-\paperheight}[0pt][0pt]{%
+    \makebox[\paperwidth][c]{%
+      \includegraphics[width=\paperwidth]{bottom-swoosh}%
+    }%
+  }%
+}
+\begin{frame}
+  \maketitle{}
+\end{frame}
+\egroup
+
+\end{document}
