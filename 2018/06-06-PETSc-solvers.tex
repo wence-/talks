@@ -76,9 +76,9 @@ London
 }
 
 \usepackage{minted}
-\title{PDEs should be the solvers problem}
+\title{PDEs should be the solver's problem}
 
-\titlegraphic{\hfill\includegraphics[height=1.1cm]{firedrake-word.pdf}}
+\titlegraphic{\hfill\includegraphics[height=0.8cm]{firedrake-word.pdf}}
 \begin{document}
 
 % \begin{abstract}
@@ -111,7 +111,7 @@ London
 \setbeamertemplate{title graphic}{
   \vbox to 0pt {
     \vspace*{0.25em}
-    \makebox[1.025\textwidth]{\inserttitlegraphic}%
+    \makebox[1.075\textwidth]{\inserttitlegraphic}%
   }%
   \nointerlineskip%
 }
@@ -127,4 +127,452 @@ London
 \end{frame}
 \egroup
 
+\section{Block preconditioning}
+\begin{frame}
+  \frametitle{A motivating problem,}
+  \begin{block}{Stationary Rayleigh-B\'enard convection}
+    \begin{equation*}
+      \begin{split}
+        -\Delta u + u\cdot\nabla u + \nabla p +
+        \frac{\text{Ra}}{\text{Pr}} \hat{g}T &= 0 \\
+        \nabla \cdot u &= 0 \\
+        - \frac{1}{\text{Pr}} \Delta T + u\cdot \nabla T &= 0
+      \end{split}
+    \end{equation*}
+    Newton linearisation
+    \begin{equation*}
+      \begin{bmatrix}
+        F   & B^T & M_1 \\
+        C   & 0   & 0   \\
+        M_2 & 0 & K
+      \end{bmatrix}
+      \begin{bmatrix}
+        \delta u \\
+        \delta p \\
+        \delta T
+      \end{bmatrix} =
+      \begin{bmatrix}
+        f_1 \\
+        f_2 \\
+        f_3
+      \end{bmatrix}
+    \end{equation*}
+  \end{block}
+\end{frame}
+\begin{frame}
+  \frametitle{and a preconditioner,}
+  {\small
+  For each Newton step, solve
+  \begin{equation*}
+    \KSP{\begin{bmatrix}
+        F & B^T & M_1\\
+        C & 0 & 0 \\
+        M_2 & 0 & K
+      \end{bmatrix}}{J}
+  \end{equation*}
+  using a preconditioner from \textcite{Howle:2012}:
+  \begin{equation*}
+    \mathbb{J} =
+    \begin{bmatrix}
+      \KSP{\begin{bmatrix}
+          F & B^T\\
+          C & 0
+        \end{bmatrix}}{N} & 0\\
+      0 & I
+    \end{bmatrix}
+    \begin{bmatrix}
+      I & 0 & -M_1\\
+      0 & I & 0 \\
+      0 & 0 & I
+    \end{bmatrix}
+    \begin{bmatrix}
+      I & 0 & 0\\
+      0 & I & 0\\
+      0 & 0 &\ksp{K}
+    \end{bmatrix}
+  \end{equation*}
+  with
+  \begin{equation*}
+    \mathbb{N} = \begin{bmatrix}
+      F & 0 \\
+      0 & \mathcal{K}(S_p, \KSP{M_p}{M}(\mathbb{I} + F_p \, \KSP{L_p}{L})
+    \end{bmatrix}
+    \begin{bmatrix}
+      I & 0\\
+      -C & I
+    \end{bmatrix}
+    \begin{bmatrix}
+      \ksp{F} & 0 \\
+      0 & I
+    \end{bmatrix}
+  \end{equation*}
+  and
+  \begin{equation*}
+    S_p = -C \ksp{F} B^T.
+  \end{equation*}
+}
+\end{frame}
+\begin{frame}[fragile,t]
+  \frametitle{and some solver options}
+  \begin{columns}[t]
+    \begin{column}{0.49\textwidth}
+\begin{minted}[fontsize=\tiny,escapeinside=||]{python3}
+-ksp_type fgmres
+-pc_type fieldsplit
+-pc_fieldsplit_type multiplicative
+-pc_fieldsplit_0_fields 0,1
+-pc_fieldsplit_1_fields 2
+   -fieldsplit_0_
+      -ksp_type gmres
+      -pc_type fieldsplit
+      -pc_fieldsplit_type schur
+      -pc_fieldsplit_schur_fact_type lower
+      -fieldsplit_0_ksp_type preonly
+      -fieldsplit_0_pc_type gamg
+      -fieldsplit_1_ksp_type preonly
+      -fieldsplit_1_pc_type |\alert{\textbf{XXX}}|
+   -fieldsplit_1_
+      -ksp_type gmres
+      -pc_type hypre
+\end{minted}
+    \end{column}
+    \hspace{0.02\textwidth}
+    \begin{column}{0.49\textwidth}
+      {\tiny
+      \begin{equation*}
+        \begin{bmatrix}
+          \begin{bmatrix}
+              F & B^T\\
+              C & 0
+            \end{bmatrix}^{-1} & 0\\
+          0 & I
+        \end{bmatrix}
+        \begin{bmatrix}
+          I & 0 & -M_1\\
+          0 & I & 0 \\
+          0 & 0 & I
+        \end{bmatrix}
+        \begin{bmatrix}
+          I & 0 & 0\\
+          0 & I & 0\\
+          0 & 0 & K^{-1}
+        \end{bmatrix}
+      \end{equation*}
+      \\[\baselineskip]
+      \begin{equation*}
+        \begin{bmatrix}
+          F & 0 \\
+          0 & S_p^{-1}
+        \end{bmatrix}
+        \begin{bmatrix}
+          I & 0\\
+          -C & I
+        \end{bmatrix}
+        \begin{bmatrix}
+          F^{-1} & 0 \\
+          0 & I
+        \end{bmatrix}
+      \end{equation*}
+      \\[0.5\baselineskip]
+      \begin{equation*}
+        F^{-1} \approx \text{\texttt{gamg}}(F)
+      \end{equation*}
+      \begin{equation*}
+        S_p^{-1} \approx M_p^{-1}(\mathbb{I} + F_p L_p^{-1})\quad\text{PCD approximation}
+      \end{equation*}
+      \\[0.5\baselineskip]
+      \begin{equation*}
+        K^{-1} \approx \text{\texttt{hypre}}(K)
+      \end{equation*}
+      }
+    \end{column}
+  \end{columns}
+
+  \begin{alertblock}<2->{Problem}
+    How do I get $L_p^{-1}$, $M_p^{-1}$, and $F_p$ into the solver?
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}
+  \frametitle{A wishlist}
+  \begin{itemize}
+  \item Access to standard block preconditioners
+  \item Easy specification of auxiliary operators
+  \item ``Simple'' configuration
+  \item Arbitrary nesting: smoothers inside splits, multigrid,
+    etc\ldots
+  \item \emph{Easy} to extend
+  \end{itemize}
+
+  \begin{alertblock}<2->{Claim}
+    All of these things are possible (straightforward?) if the solver
+    library can call back to the PDE library to create operators.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Idea}
+  \begin{itemize}
+  \item Endow discretised operators with PDE-level information:
+    \begin{itemize}
+    \item what equation/function space?
+    \item boundary conditions, etc\ldots
+    \end{itemize}
+  \item Enable standard fieldsplits on these operators.
+  \item Write custom preconditioners that utilise this information appropriately.
+  \end{itemize}
+  \begin{block}<2->{Extend PETSc with Firedrake-level PCs}
+  \begin{itemize}
+  \item PETSc already provides \emph{algebraic} composition of solvers. \nocite{Brown:2012}
+
+  \item Firedrake can provide auxiliary operators
+
+  \item We just need to combine these appropriately.
+  \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile,t]
+  \frametitle{Implementation: two parts}
+  \begin{block}{A new matrix type}
+    A shell matrix that implements matrix-free actions, and contains
+    the symbolic information about the bilinear form.
+    \begin{columns}
+      \begin{column}{0.5\textwidth}
+      \begin{equation*}
+        y \leftarrow A x
+      \end{equation*}
+    \end{column}
+    \hspace{-0.1\textwidth}
+    \begin{column}{0.7\textwidth}
+\begin{minted}[fontsize=\scriptsize]{python}
+A = assemble(a, mat_type="matfree")
+\end{minted}
+    \end{column}
+    \end{columns}
+    \begin{flushright}
+      \footnotesize Could do this all with assembled matrices if desired.
+    \end{flushright}
+  \end{block}
+  \begin{block}{Custom preconditioners}
+    These matrices do not have entries, we create preconditioners
+    that inspect the UFL and do the appropriate thing.
+    \begin{columns}
+      \begin{column}{0.5\textwidth}
+    \begin{equation*}
+      y \leftarrow \tilde{A}^{-1} x
+    \end{equation*}
+  \end{column}
+  \hspace{-0.1\textwidth}
+  \begin{column}{0.7\textwidth}
+\begin{minted}[fontsize=\scriptsize]{python}
+solve(a == L, x,
+      {"mat_type": "matfree",
+       "pc_type": "python",
+       "pc_python_type": "AssembledPC"})
+\end{minted}
+  \end{column}
+  \end{columns}
+  \end{block}
+\end{frame}
+\begin{frame}[fragile]
+  \frametitle{This sounds like hard work}
+  Fortunately, \texttt{petsc4py} makes it easy to write these PCs.
+\begin{minted}[fontsize=\tiny,escapeinside=||,mathescape=true]{python3}
+class MyPC(object):
+    def setUp(self, pc):
+        A, P = pc.getOperators()
+        # A and P are shell matrices, carrying the symbolic
+        # discretisation information.
+        # So I have access to the mesh, function spaces, etc...
+        # Can inspect options dictionary here
+        # do whatever
+    def apply(self, pc, r, e):
+        # Compute approximation to error given current residual
+        # $e \gets A^{-1} r$
+
+solve(..., solver_parameters={"pc_type": "python",
+                              "pc_python_type": "MyPC"})
+\end{minted}
+  PETSc manages all the splitting and nesting already.  So this does
+  the right thing \emph{inside} multigrid, etc\ldots
+\end{frame}
+
+\begin{frame}[fragile,t]
+  \frametitle{Back to Rayleigh-B\'enard}
+  \begin{onlyenv}<1-2>
+    \begin{alertblock}{Problem}
+      How do I get $L_p^{-1}$, $M_p^{-1}$, and $F_p$ into the solver?
+    \end{alertblock}
+    \begin{alertblock}<2>{Solution}
+      Write a custom PC for that makes them, calling back to the PDE library.
+    \end{alertblock}
+  \end{onlyenv}
+  \begin{onlyenv}<3>
+    \begin{columns}[T]
+      \begin{column}{0.49\textwidth}
+\begin{minted}[fontsize=\tiny,mathescape=true]{python3}
+class PCDPC(PCBase):
+    def initialize(self, pc):
+        _, P = pc.getOperators()
+        prefix = pc.getOptionsPrefix()
+        ctx = P.getPythonContext()
+        p, q = ctx.a.arguments()
+        ...
+        # convection operator
+        fp = Re*dot(grad(p), u0)*q*dx
+        self.Fp = assemble(fp, options_prefix=prefix + "fp_")
+        # pressure laplacian
+        laplace = inner(grad(p), grad(q))*dx
+        Lp = assemble(laplace, bcs=bcs, options_prefix=prefix + "lp_")
+        self.Lksp = PETSc.KSP().create(comm=pc.comm)
+        self.Lksp.incrementTabLevel(1, parent=pc)
+        self.Lksp.setOptionsPrefix(prefix + "lp_")
+        self.Lksp.setOperators(Kp.petscmat)
+        self.Lksp.setFromOptions()
+        # pressure mass matrix
+        mass = Re*p*q*dx
+        Mp = assemble(mass, options_prefix=prefix + "mp_")
+        self.Mksp = PETSc.KSP().create(comm=pc.comm)
+        self.Mksp.incrementTabLevel(1, parent=pc)
+        self.Mksp.setOptionsPrefix(prefix + "mp_")
+        self.Mksp.setOperators(Mp.petscmat)
+        self.Mksp.setFromOptions()
+\end{minted}
+      \end{column}
+      \begin{column}{0.49\textwidth}
+\begin{minted}[fontsize=\tiny,mathescape=true]{python3}
+    def apply(self, pc, x, y):
+        # $y \gets M^{-1}(\mathbb{I} + F_p L_p^{-1})x$
+        z = self.work
+        x.copy(z)
+        self.bcs.apply(z)
+        self.Lksp.solve(z, y)
+        self.Fp.petscmat.mult(y, z)
+        z.axpy(1.0, x)
+        self.Mksp.solve(z, y)
+\end{minted}
+      \end{column}
+    \end{columns}
+  \end{onlyenv}
+\end{frame}
+\begin{frame}[fragile,t]
+  \frametitle{and some more solver options}
+  \begin{columns}[t]
+    \begin{column}{0.49\textwidth}
+\begin{minted}[fontsize=\tiny,escapeinside=||]{python3}
+-ksp_type fgmres
+-pc_type fieldsplit
+-pc_fieldsplit_type multiplicative
+-pc_fieldsplit_0_fields 0,1
+-pc_fieldsplit_1_fields 2
+   -fieldsplit_0_
+      -ksp_type gmres
+      -pc_type fieldsplit
+      -pc_fieldsplit_type schur
+      -pc_fieldsplit_schur_fact_type lower
+      -fieldsplit_0_ksp_type preonly
+      -fieldsplit_0_pc_type gamg
+      -fieldsplit_1_
+         -ksp_type preonly
+         -pc_type python
+         -pc_python_type PCDPC
+         -lp_ksp_type preonly
+         -lp_pc_type hypre
+         -mp_ksp_type preonly
+         -mp_pc_type sor
+   -fieldsplit_1_
+      -ksp_type gmres
+      -pc_type hypre
+\end{minted}
+    \end{column}
+    \hspace{0.02\textwidth}
+    \begin{column}{0.49\textwidth}
+      {\tiny
+        \begin{equation*}
+          \begin{bmatrix}
+            \begin{bmatrix}
+              F & B^T\\
+              C & 0
+            \end{bmatrix}^{-1} & 0\\
+            0 & I
+          \end{bmatrix}
+          \begin{bmatrix}
+            I & 0 & -M_1\\
+            0 & I & 0 \\
+            0 & 0 & I
+          \end{bmatrix}
+          \begin{bmatrix}
+            I & 0 & 0\\
+            0 & I & 0\\
+            0 & 0 & K^{-1}
+          \end{bmatrix}
+        \end{equation*}
+        \\[\baselineskip]
+        \begin{equation*}
+          \begin{bmatrix}
+            F & 0 \\
+            0 & S_p^{-1}
+          \end{bmatrix}
+          \begin{bmatrix}
+            I & 0\\
+            -C & I
+          \end{bmatrix}
+          \begin{bmatrix}
+            F^{-1} & 0 \\
+            0 & I
+          \end{bmatrix}
+        \end{equation*}
+        \\[0.5\baselineskip]
+        \begin{equation*}
+          F^{-1} \approx \text{\texttt{gamg}}(F)
+        \end{equation*}
+        \\[1.25\baselineskip]
+        \begin{equation*}
+          S_p^{-1} \approx M_p^{-1}(\mathbb{I} + F_p L_p^{-1})\quad\text{PCD approximation}
+        \end{equation*}
+        \vspace{-1\baselineskip}
+        \begin{equation*}
+          L_p^{-1} \approx \text{\texttt{hypre}}(L_p)
+        \end{equation*}
+        \vspace{-1\baselineskip}
+        \begin{equation*}
+          M_p^{-1} \approx \text{\texttt{sor}}(M_p)
+        \end{equation*}
+        \\[0.4\baselineskip]
+        \begin{equation*}
+          K^{-1} \approx \text{\texttt{hypre}}(K)
+        \end{equation*}
+      }
+    \end{column}
+  \end{columns}
+  \vspace{-\baselineskip}
+  {\scriptsize \textcite[\S B.4]{Kirby:2018} shows full solver configuration.}
+\end{frame}
+
+\section{Schwarz smoothers}
+
+\begin{frame}
+  \frametitle{Now that I have a hammer\ldots}
+  \ldots can I find some nails?
+  \begin{block}{Building blocks}
+    \begin{itemize}
+    \item Decomposition of mesh into patches\uncover<2->{: \alert{PETSc}}
+    \item Operators on each patch\uncover<3->{: \alert{Firedrake}}
+    \item Solvers for each patch\uncover<4->{: \alert{PETSc}}
+    \item Boundary conditions\uncover<5->{: \alert{Homogeneous
+          Dirichlet only for now}}
+    \end{itemize}
+  \end{block}
+  \begin{uncoverenv}<6->
+    \begin{block}{Idea}
+      \begin{itemize}
+      \item PETSc PC using \texttt{DMPlex} to provide patches
+      \item Callback interface provides operator on each patch to
+        \texttt{PCApply}
+      \item Normal \texttt{KSP} on each patch to do the solve
+      \end{itemize}
+    \end{block}
+  \end{uncoverenv}
+\end{frame}
 \end{document}
