@@ -294,23 +294,6 @@ London
 \end{frame}
 
 \begin{frame}
-  \frametitle{A wishlist}
-  \begin{itemize}
-  \item Access to standard block preconditioners
-  \item Easy specification of auxiliary operators
-  \item ``Simple'' configuration
-  \item Arbitrary nesting: smoothers inside splits, multigrid,
-    etc\ldots
-  \item \emph{Easy} to extend
-  \end{itemize}
-
-  \begin{alertblock}<2->{Claim}
-    All of these things are possible (straightforward?) if the solver
-    library can call back to the PDE library to create operators.
-  \end{alertblock}
-\end{frame}
-
-\begin{frame}
   \frametitle{Idea}
   \begin{itemize}
   \item Endow discretised operators with PDE-level information:
@@ -547,7 +530,7 @@ class PCDPC(PCBase):
     \end{column}
   \end{columns}
   \vspace{-\baselineskip}
-  {\scriptsize \textcite[\S B.4]{Kirby:2018} shows full solver configuration.}
+  {\scriptsize \textcite[\S B.4]{Kirby:2018} shows a complete solver configuration.}
 \end{frame}
 
 \section{Schwarz smoothers}
@@ -555,24 +538,440 @@ class PCDPC(PCBase):
 \begin{frame}
   \frametitle{Now that I have a hammer\ldots}
   \ldots can I find some nails?
-  \begin{block}{Building blocks}
+
+  \begin{block}<2->{Schwarz building blocks}
+    \begin{enumerate}
+    \item Subspace decomposition
+    \item Operators on subspaces
+    \item Solvers on subspaces
+    \item Coarse spaces (not yet)
+    \end{enumerate}
+  \end{block}
+
+  \begin{block}<3->{\texttt{-pc\_type patch}}
     \begin{itemize}
-    \item Decomposition of mesh into patches\uncover<2->{: \alert{PETSc}}
-    \item Operators on each patch\uncover<3->{: \alert{Firedrake}}
-    \item Solvers for each patch\uncover<4->{: \alert{PETSc}}
-    \item Boundary conditions\uncover<5->{: \alert{Homogeneous
-          Dirichlet only for now}}
+    \item \texttt{DMPlex} + \texttt{PetscSection} for subspace decomposition
+    \item Callback interface (to Firedrake for now) to build operators
+    \item \texttt{KSP} on each patch for solves
     \end{itemize}
   \end{block}
-  \begin{uncoverenv}<6->
-    \begin{block}{Idea}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Subspace definition}
+  Each patch defined by set of mesh points on which dofs are free.
+  \begin{block}{Builtin}
+    Specify patches by selecting:
+    \begin{enumerate}
+    \item Mesh points $\{p_i\}$ to iterate over (e.g.~vertices, cells)
+    \item Adjacency relation that gathers points in patch
       \begin{itemize}
-      \item PETSc PC using \texttt{DMPlex} to provide patches
-      \item Callback interface provides operator on each patch to
-        \texttt{PCApply}
-      \item Normal \texttt{KSP} on each patch to do the solve
+      \item[\texttt{star}] points in $\text{star}(p_i)$
+      \item[\texttt{vanka}] points in $\text{closure}(\text{star}(p_i))$
       \end{itemize}
-    \end{block}
-  \end{uncoverenv}
+    \end{enumerate}
+  \end{block}
+  \begin{block}{User-defined}
+    Callback provides \texttt{IS}es for each patch, plus iteration order.
+\begin{minted}[fontsize=\tiny]{c}
+PetscErrorCode UserPatches(PC, PetscInt*, IS**, IS*, void*);
+\end{minted}
+  \end{block}
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{Patch construction: \texttt{star}}
+  \begin{columns}[T]
+    \begin{column}{0.49\textwidth}
+      \begin{tikzpicture}[scale=4]
+        \tikzstyle{v}=[circle, fill, minimum size=0pt, inner sep=0pt]
+        \tikzstyle{c}=[diamond, fill, minimum size=4pt, inner sep=0pt]
+        \tikzstyle{e}=[rectangle, fill, minimum size=3pt, inner sep=0pt]
+        \tikzstyle{select}=[orange, minimum size=5pt]
+        \tikzstyle{star}=[magenta]
+        \tikzstyle{complete}=[brown]
+        \node[v] (v1) at (0, 0) {};
+        \node[v] (v2) at (0.25, 0) {};
+        \node[v] (v3) at (0.5, 0) {};
+        \node[v] (v4) at (0.75, 0) {};
+        \node[v] (v5) at (1, 0) {};
+        \node[v] (v6) at (0, 0.25) {};
+        \node[v] (v7) at (0, 0.5) {};
+        \node[v] (v8) at (0, 0.75) {};
+        \node[v] (v9) at (0, 1) {};
+        \node[v] (v10) at (0.25, 0.25) {};
+        \node[v] (v11) at (0.25, 0.5) {};
+        \node[v] (v12) at (0.25, 0.75) {};
+        \node[v] (v13) at (0.25, 1) {};
+        \node[v] (v14) at (0.5, 0.25) {};
+        \node[v] (v15) at (0.5, 0.5) {};
+        \node[v] (v16) at (0.5, 0.75) {};
+        \node[v] (v17) at (0.5, 1) {};
+        \node[v] (v18) at (0.75, 0.25) {};
+        \node[v] (v19) at (0.75, 0.5) {};
+        \node[v] (v20) at (0.75, 0.75) {};
+        \node[v] (v21) at (0.75, 1) {};
+        \node[v] (v22) at (1, 0.25) {};
+        \node[v] (v23) at (1, 0.5) {};
+        \node[v] (v24) at (1, 0.75) {};
+        \node[v] (v25) at (1, 1) {};
+
+        \draw (v1) -- (v2) -- (v6) -- (v1);
+        \draw (v2) -- (v10) -- (v6);
+        \draw (v2) -- (v3) -- (v10);
+        \draw (v3) -- (v14) -- (v10);
+        \draw (v3) -- (v4) -- (v14);
+        \draw (v4) -- (v18) -- (v14);
+        \draw (v4) -- (v5) -- (v18);
+        \draw (v5) -- (v22) -- (v18);
+
+        \draw (v6) -- (v7) -- (v10);
+        \draw (v7) -- (v11) -- (v10);
+        \draw (v11) -- (v14) -- (v15) -- (v11);
+        \draw (v15) -- (v18) -- (v19) -- (v15);
+        \draw (v19) -- (v22) -- (v23) -- (v19);
+
+        \draw (v7) -- (v8) -- (v11);
+        \draw (v8) -- (v12) -- (v11);
+        \draw (v12) -- (v15) -- (v16) -- (v12);
+        \draw (v16) -- (v19) -- (v20) -- (v16);
+        \draw (v20) -- (v23) -- (v24) -- (v20);
+
+        \draw (v8) -- (v9) -- (v12);
+        \draw (v9) -- (v13) -- (v12);
+        \draw (v13) -- (v16) -- (v17) -- (v13);
+        \draw (v17) -- (v20) -- (v21) -- (v17);
+        \draw (v21) -- (v24) -- (v25) -- (v21);
+
+        \uncover<2->{
+          \node[v, select] at (v15) {};
+        }
+        \uncover<3->{
+          \node[c, star] at (barycentric cs:v11=1,v14=1,v15=1) {};
+          \node[c, star] at (barycentric cs:v14=1,v15=1,v18=1) {};
+          \node[c, star] at (barycentric cs:v15=1,v18=1,v19=1) {};
+          \node[c, star] at (barycentric cs:v11=1,v12=1,v15=1) {};
+          \node[c, star] at (barycentric cs:v12=1,v15=1,v16=1) {};
+          \node[c, star] at (barycentric cs:v15=1,v16=1,v19=1) {};
+          \node[e, star] at (barycentric cs:v11=1,v15=1) {};
+          \node[e, star] at (barycentric cs:v15=1,v19=1) {};
+          \node[e, star] at (barycentric cs:v14=1,v15=1) {};
+          \node[e, star] at (barycentric cs:v15=1,v16=1) {};
+          \node[e, star] at (barycentric cs:v18=1,v15=1) {};
+          \node[e, star] at (barycentric cs:v15=1,v12=1) {};
+        }
+        \uncover<4->{
+          \node[v, complete, minimum size=4pt] at (v14) {};
+          \node[v, complete, minimum size=4pt] at (v18) {};
+          \node[v, complete, minimum size=4pt] at (v11) {};
+          \node[v, complete, minimum size=4pt] at (v19) {};
+          \node[v, complete, minimum size=4pt] at (v12) {};
+          \node[v, complete, minimum size=4pt] at (v16) {};
+          \node[e, complete] at (barycentric cs:v14=1,v18=1) {};
+          \node[e, complete] at (barycentric cs:v12=1,v16=1) {};
+          \node[e, complete] at (barycentric cs:v11=1,v12=1) {};
+          \node[e, complete] at (barycentric cs:v18=1,v19=1) {};
+          \node[e, complete] at (barycentric cs:v14=1,v11=1) {};
+          \node[e, complete] at (barycentric cs:v19=1,v16=1) {};
+        }
+      \end{tikzpicture}
+    \end{column}
+    \hspace{-2em}
+    \begin{column}{0.6\textwidth}
+      {\small
+        \begin{block}{Looping over vertices}
+          \begin{itemize}
+          \item<2-> Select mesh point
+          \item<3-> Add points in star
+          \item<4-> Complete with FEM adjacency
+          \end{itemize}
+        \end{block}
+      }
+    \end{column}
+  \end{columns}
+\end{frame}
+\begin{frame}[t]
+  \frametitle{Patch construction: \texttt{vanka}}
+  \begin{columns}[T]
+    \begin{column}{0.49\textwidth}
+      \begin{tikzpicture}[scale=4]
+        \tikzstyle{v}=[circle, fill, minimum size=0pt, inner sep=0pt]
+        \tikzstyle{c}=[diamond, fill, minimum size=4pt, inner sep=0pt]
+        \tikzstyle{e}=[rectangle, fill, minimum size=3pt, inner sep=0pt]
+        \tikzstyle{select}=[orange, minimum size=5pt]
+        \tikzstyle{star}=[magenta]
+        \tikzstyle{closure}=[blue]
+        \tikzstyle{complete}=[brown]
+        \node[v] (v1) at (0, 0) {};
+        \node[v] (v2) at (0.25, 0) {};
+        \node[v] (v3) at (0.5, 0) {};
+        \node[v] (v4) at (0.75, 0) {};
+        \node[v] (v5) at (1, 0) {};
+        \node[v] (v6) at (0, 0.25) {};
+        \node[v] (v7) at (0, 0.5) {};
+        \node[v] (v8) at (0, 0.75) {};
+        \node[v] (v9) at (0, 1) {};
+        \node[v] (v10) at (0.25, 0.25) {};
+        \node[v] (v11) at (0.25, 0.5) {};
+        \node[v] (v12) at (0.25, 0.75) {};
+        \node[v] (v13) at (0.25, 1) {};
+        \node[v] (v14) at (0.5, 0.25) {};
+        \node[v] (v15) at (0.5, 0.5) {};
+        \node[v] (v16) at (0.5, 0.75) {};
+        \node[v] (v17) at (0.5, 1) {};
+        \node[v] (v18) at (0.75, 0.25) {};
+        \node[v] (v19) at (0.75, 0.5) {};
+        \node[v] (v20) at (0.75, 0.75) {};
+        \node[v] (v21) at (0.75, 1) {};
+        \node[v] (v22) at (1, 0.25) {};
+        \node[v] (v23) at (1, 0.5) {};
+        \node[v] (v24) at (1, 0.75) {};
+        \node[v] (v25) at (1, 1) {};
+
+        \draw (v1) -- (v2) -- (v6) -- (v1);
+        \draw (v2) -- (v10) -- (v6);
+        \draw (v2) -- (v3) -- (v10);
+        \draw (v3) -- (v14) -- (v10);
+        \draw (v3) -- (v4) -- (v14);
+        \draw (v4) -- (v18) -- (v14);
+        \draw (v4) -- (v5) -- (v18);
+        \draw (v5) -- (v22) -- (v18);
+
+        \draw (v6) -- (v7) -- (v10);
+        \draw (v7) -- (v11) -- (v10);
+        \draw (v11) -- (v14) -- (v15) -- (v11);
+        \draw (v15) -- (v18) -- (v19) -- (v15);
+        \draw (v19) -- (v22) -- (v23) -- (v19);
+
+        \draw (v7) -- (v8) -- (v11);
+        \draw (v8) -- (v12) -- (v11);
+        \draw (v12) -- (v15) -- (v16) -- (v12);
+        \draw (v16) -- (v19) -- (v20) -- (v16);
+        \draw (v20) -- (v23) -- (v24) -- (v20);
+
+        \draw (v8) -- (v9) -- (v12);
+        \draw (v9) -- (v13) -- (v12);
+        \draw (v13) -- (v16) -- (v17) -- (v13);
+        \draw (v17) -- (v20) -- (v21) -- (v17);
+        \draw (v21) -- (v24) -- (v25) -- (v21);
+
+        \uncover<2->{
+          \node[v, select] at (v15) {};
+        }
+        \uncover<3->{
+          \node[c, star] at (barycentric cs:v11=1,v14=1,v15=1) {};
+          \node[c, star] at (barycentric cs:v14=1,v15=1,v18=1) {};
+          \node[c, star] at (barycentric cs:v15=1,v18=1,v19=1) {};
+          \node[c, star] at (barycentric cs:v11=1,v12=1,v15=1) {};
+          \node[c, star] at (barycentric cs:v12=1,v15=1,v16=1) {};
+          \node[c, star] at (barycentric cs:v15=1,v16=1,v19=1) {};
+          \node[e, star] at (barycentric cs:v11=1,v15=1) {};
+          \node[e, star] at (barycentric cs:v15=1,v19=1) {};
+          \node[e, star] at (barycentric cs:v14=1,v15=1) {};
+          \node[e, star] at (barycentric cs:v15=1,v16=1) {};
+          \node[e, star] at (barycentric cs:v18=1,v15=1) {};
+          \node[e, star] at (barycentric cs:v15=1,v12=1) {};
+        }
+
+        \uncover<4->{
+          \node[v, closure, minimum size=4pt] at (v14) {};
+          \node[v, closure, minimum size=4pt] at (v18) {};
+          \node[v, closure, minimum size=4pt] at (v11) {};
+          \node[v, closure, minimum size=4pt] at (v19) {};
+          \node[v, closure, minimum size=4pt] at (v12) {};
+          \node[v, closure, minimum size=4pt] at (v16) {};
+          \node[e, closure] at (barycentric cs:v14=1,v18=1) {};
+          \node[e, closure] at (barycentric cs:v12=1,v16=1) {};
+          \node[e, closure] at (barycentric cs:v11=1,v12=1) {};
+          \node[e, closure] at (barycentric cs:v18=1,v19=1) {};
+          \node[e, closure] at (barycentric cs:v14=1,v11=1) {};
+          \node[e, closure] at (barycentric cs:v19=1,v16=1) {};
+        }
+
+        \uncover<5->{
+          \node[v, complete, minimum size=4pt] at (v3) {};
+          \node[v, complete, minimum size=4pt] at (v4) {};
+          \node[v, complete, minimum size=4pt] at (v5) {};
+          \node[v, complete, minimum size=4pt] at (v10) {};
+          \node[v, complete, minimum size=4pt] at (v13) {};
+          \node[v, complete, minimum size=4pt] at (v7) {};
+          \node[v, complete, minimum size=4pt] at (v23) {};
+          \node[v, complete, minimum size=4pt] at (v8) {};
+          \node[v, complete, minimum size=4pt] at (v20) {};
+          \node[v, complete, minimum size=4pt] at (v9) {};
+          \node[v, complete, minimum size=4pt] at (v13) {};
+          \node[v, complete, minimum size=4pt] at (v17) {};
+          \node[c, complete] at (barycentric cs:v3=1,v14=1,v10=1) {};
+          \node[c, complete] at (barycentric cs:v3=1,v4=1,v14=1) {};
+          \node[c, complete] at (barycentric cs:v4=1,v18=1,v14=1) {};
+          \node[c, complete] at (barycentric cs:v4=1,v5=1,v18=1) {};
+          \node[c, complete] at (barycentric cs:v5=1,v22=1,v18=1) {};
+          \node[c, complete] at (barycentric cs:v7=1,v11=1,v10=1) {};
+          \node[c, complete] at (barycentric cs:v10=1,v11=1,v14=1) {};
+          \node[c, complete] at (barycentric cs:v18=1,v19=1,v22=1) {};
+          \node[c, complete] at (barycentric cs:v19=1,v22=1,v23=1) {};
+          \node[c, complete] at (barycentric cs:v7=1,v8=1,v11=1) {};
+          \node[c, complete] at (barycentric cs:v8=1,v12=1,v11=1) {};
+          \node[c, complete] at (barycentric cs:v16=1,v19=1,v20=1) {};
+          \node[c, complete] at (barycentric cs:v19=1,v20=1,v23=1) {};
+          \node[c, complete] at (barycentric cs:v8=1,v9=1,v12=1) {};
+          \node[c, complete] at (barycentric cs:v9=1,v13=1,v12=1) {};
+          \node[c, complete] at (barycentric cs:v12=1,v13=1,v16=1) {};
+          \node[c, complete] at (barycentric cs:v13=1,v16=1,v17=1) {};
+          \node[c, complete] at (barycentric cs:v16=1,v17=1,v20=1) {};
+          \node[e, complete] at (barycentric cs:v3=1,v4=1) {};
+          \node[e, complete] at (barycentric cs:v4=1,v5=1) {};
+          \node[e, complete] at (barycentric cs:v10=1,v14=1) {};
+          \node[e, complete] at (barycentric cs:v18=1,v22=1) {};
+          \node[e, complete] at (barycentric cs:v7=1,v11=1) {};
+          \node[e, complete] at (barycentric cs:v19=1,v23=1) {};
+          \node[e, complete] at (barycentric cs:v8=1,v12=1) {};
+          \node[e, complete] at (barycentric cs:v16=1,v20=1) {};
+          \node[e, complete] at (barycentric cs:v9=1,v13=1) {};
+          \node[e, complete] at (barycentric cs:v13=1,v17=1) {};
+          \node[e, complete] at (barycentric cs:v7=1,v8=1) {};
+          \node[e, complete] at (barycentric cs:v8=1,v9=1) {};
+          \node[e, complete] at (barycentric cs:v10=1,v11=1) {};
+          \node[e, complete] at (barycentric cs:v12=1,v13=1) {};
+          \node[e, complete] at (barycentric cs:v3=1,v14=1) {};
+          \node[e, complete] at (barycentric cs:v16=1,v17=1) {};
+          \node[e, complete] at (barycentric cs:v4=1,v18=1) {};
+          \node[e, complete] at (barycentric cs:v19=1,v20=1) {};
+          \node[e, complete] at (barycentric cs:v5=1,v22=1) {};
+          \node[e, complete] at (barycentric cs:v22=1,v23=1) {};
+          \node[e, complete] at (barycentric cs:v3=1,v10=1) {};
+          \node[e, complete] at (barycentric cs:v4=1,v14=1) {};
+          \node[e, complete] at (barycentric cs:v5=1,v18=1) {};
+          \node[e, complete] at (barycentric cs:v10=1,v7=1) {};
+          \node[e, complete] at (barycentric cs:v22=1,v19=1) {};
+          \node[e, complete] at (barycentric cs:v11=1,v8=1) {};
+          \node[e, complete] at (barycentric cs:v23=1,v20=1) {};
+          \node[e, complete] at (barycentric cs:v12=1,v9=1) {};
+          \node[e, complete] at (barycentric cs:v16=1,v13=1) {};
+          \node[e, complete] at (barycentric cs:v20=1,v17=1) {};
+        }
+      \end{tikzpicture}
+    \end{column}
+    \hspace{-2em}
+    \begin{column}{0.6\textwidth}
+      {\small
+        \begin{block}{Looping over vertices}
+          \begin{itemize}
+          \item<2-> Select mesh point
+          \item<3-> Add points in star
+          \item<4-> Add points in closure
+          \item<5-> Complete with FEM adjacency
+          \end{itemize}
+        \end{block}
+      }
+    \end{column}
+  \end{columns}
+  \begin{block}<6->{Discretisation-independent}
+    \begin{itemize}
+    \item With points selected, \texttt{PetscSection} gives dofs
+    \item Operators ``just do assembly'' on the patch
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Another tool in the box}
+  \begin{itemize}
+  \item Requires slightly more setup than purely algebraic PCs
+  \item Need to feed in operator callback, and some discretisation information
+  \item I do this with the same Python interface as for the block PCs
+  \item Opens up ability for ``monolithic'' multigrid in PETSc
+  \end{itemize}
+
+  Code available at \url{github.com/wence-/ssc}, hopefully in PETSc RSN.
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Example: P2-P1 Stokes}
+  \begin{onlyenv}<1>
+    Monolithic multigrid with Vanka smoother on each level.
+\begin{minted}[fontsize=\tiny]{python3}
+solver_parameters = {
+    "mat_type": "matfree",
+    # Flex-gmres due to nonlinear PC (gmres as smoother)
+    "ksp_type": "fgmres",
+    "pc_type": "mg",
+    "mg_levels": {
+        "ksp_type": "gmres",
+        "ksp_max_it": 2,
+        "pc_type": "python",
+        "pc_python_type": "ssc.PatchPC",
+        "patch_pc_patch_construction_type": "vanka",
+        "patch_pc_patch_construction_dim": 0,  # patches over vertices
+        "patch_pc_patch_vanka_dim": 0,         # what entities are in the constraint space?
+        "patch_pc_patch_exclude_subspace": 1,  # which subspace to exclude?
+        "patch_pc_patch_sub_mat_type": "seqaij",
+        "patch_sub_ksp_type": "preonly",
+        "patch_sub_pc_type": "lu",
+        "patch_sub_pc_factor_shift_type": "nonzero"
+    },
+    "mg_coarse_pc_type": "lu",
+}
+solve(F == 0, u, solver_parameters=solver_parameters)
+\end{minted}
+  \end{onlyenv}
+  \begin{onlyenv}<2>
+    Schur complement only requires change of options.
+\begin{minted}[fontsize=\tiny,mathescape=true]{python3}
+solver_parameters = {
+    "mat_type": "matfree",
+    "ksp_type": "gmres",
+    "ksp_monitor": None,
+    "pc_type": "fieldsplit",
+    # Use $\text{diag}(A^{-1}, S^{-1})$ as PC
+    "pc_fieldsplit_type": "schur",
+    "pc_fieldsplit_schur_factorization_type": "diag",
+    "fieldsplit_0": {
+        # AMG on velocity block
+        "ksp_type": "preonly",
+        "pc_type": "python",
+        "pc_python_type": "firedrake.AssembledPC",
+        "assembled_pc_type": "hypre",
+    },
+    "fieldsplit_1": {
+        # Inverse mass matrix to precondition $S$
+        "ksp_type": "richardson",
+        "pc_type": "firedrake.MassInvPC",
+    }
+}
+solve(F == 0, u, solver_parameters=solver_parameters)
+\end{minted}
+  \end{onlyenv}
+\end{frame}
+\begin{frame}
+  \frametitle{Conclusions}
+
+  \begin{itemize}
+  \item Composable solvers, using PDE library to easily
+    develop complex block preconditioners.
+
+  \item Model formulation decoupled from solver configuration.
+
+  \item Automatically takes advantage of any improvements in both
+    PETSc and Firedrake.
+
+  \item Same approach works for Schwarz-like methods.
+  \end{itemize}
+  \begin{center}
+    \url{www.firedrakeproject.org}
+  \end{center}
+
+  \begin{flushright}
+    {\footnotesize
+    \textcite{Kirby:2018} \arxivlink{1706.01346}{cs.MS}}
+  \end{flushright}
+  \begin{tikzpicture}[remember picture,overlay]
+    \node[at=(current page.south west), anchor=south west] {\includegraphics[width=2.5cm]{epsrc-logo}};
+  \end{tikzpicture}
+\end{frame}
+\appendix
+\begin{frame}
+  \frametitle{References}
+  \printbibliography[heading=none]
 \end{frame}
 \end{document}
