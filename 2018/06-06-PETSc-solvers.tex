@@ -888,59 +888,69 @@ PetscErrorCode UserPatches(PC, PetscInt*, IS**, IS*, void*);
 
 \begin{frame}[fragile]
   \frametitle{Example: P2-P1 Stokes}
-  \begin{onlyenv}<1>
+  \begin{onlyenv}<1-2>
+    \begin{onlyenv}<1>
+      \begin{center}
+        \includegraphics[height=0.8\textheight]{stokes-viscosity}
+      \end{center}
+    \end{onlyenv}
+    \begin{onlyenv}<2>
     Monolithic multigrid with Vanka smoother on each level.
+    \begin{columns}
+      \begin{column}{0.6\textwidth}
 \begin{minted}[fontsize=\tiny]{python3}
-solver_parameters = {
+monolithic_solver_parameters = {
     "mat_type": "matfree",
-    # Flex-gmres due to nonlinear PC (gmres as smoother)
+    "snes_type": "ksponly",
+    "ksp_rtol": 1e-8,
     "ksp_type": "fgmres",
     "pc_type": "mg",
-    "mg_levels": {
-        "ksp_type": "gmres",
-        "ksp_max_it": 2,
+    "mg_levels": {"ksp_type": "gmres",
+        "ksp_max_it": 5,
         "pc_type": "python",
         "pc_python_type": "ssc.PatchPC",
+        "patch_pc_patch_save_operators": True,
         "patch_pc_patch_construction_type": "vanka",
-        "patch_pc_patch_construction_dim": 0,  # patches over vertices
-        "patch_pc_patch_vanka_dim": 0,         # what entities are in the constraint space?
-        "patch_pc_patch_exclude_subspace": 1,  # which subspace to exclude?
+        "patch_pc_patch_partition_of_unity": True,
+        "patch_pc_patch_vanka_dim": 0,
+        "patch_pc_patch_construction_dim": 0,
+        "patch_pc_patch_exclude_subspace": 1,
         "patch_pc_patch_sub_mat_type": "seqaij",
         "patch_sub_ksp_type": "preonly",
         "patch_sub_pc_type": "lu",
-        "patch_sub_pc_factor_shift_type": "nonzero"
-    },
-    "mg_coarse_pc_type": "lu",
-}
-solve(F == 0, u, solver_parameters=solver_parameters)
-\end{minted}
-  \end{onlyenv}
-  \begin{onlyenv}<2>
-    Schur complement only requires change of options.
-\begin{minted}[fontsize=\tiny,mathescape=true]{python3}
-solver_parameters = {
-    "mat_type": "matfree",
-    "ksp_type": "gmres",
-    "ksp_monitor": None,
-    "pc_type": "fieldsplit",
-    # Use $\text{diag}(A^{-1}, S^{-1})$ as PC
-    "pc_fieldsplit_type": "schur",
-    "pc_fieldsplit_schur_factorization_type": "diag",
-    "fieldsplit_0": {
-        # AMG on velocity block
-        "ksp_type": "preonly",
+        "patch_sub_pc_factor_shift_type": "nonzero"},
+    "mg_coarse": {"ksp_type": "preonly",
         "pc_type": "python",
         "pc_python_type": "firedrake.AssembledPC",
-        "assembled_pc_type": "hypre",
-    },
-    "fieldsplit_1": {
-        # Inverse mass matrix to precondition $S$
-        "ksp_type": "richardson",
-        "pc_type": "firedrake.MassInvPC",
-    }
+        "assembled_pc_type": "svd",}
 }
-solve(F == 0, u, solver_parameters=solver_parameters)
 \end{minted}
+      \end{column}
+      \hspace{-1em}
+      \begin{column}{0.4\textwidth}
+\begin{minted}[fontsize=\tiny]{md}
+  0 SNES Function norm 51.1133
+    Residual norms for  solve.
+    0 KSP Residual norm 51.1133
+    1 KSP Residual norm 4.24056
+    2 KSP Residual norm 1.29486
+    3 KSP Residual norm 0.207982
+    4 KSP Residual norm 0.1554
+    5 KSP Residual norm 0.0422543
+    6 KSP Residual norm 0.0278166
+    7 KSP Residual norm 0.00664682
+    8 KSP Residual norm 0.00307886
+    9 KSP Residual norm 0.000731788
+   10 KSP Residual norm 0.000238784
+   11 KSP Residual norm 3.09127e-05
+   12 KSP Residual norm 4.9848e-06
+   13 KSP Residual norm 1.07483e-06
+   14 KSP Residual norm 1.00638e-07
+  1 SNES Function norm 1.00638e-07
+\end{minted}
+      \end{column}
+    \end{columns}
+    \end{onlyenv}
   \end{onlyenv}
 \end{frame}
 \begin{frame}
