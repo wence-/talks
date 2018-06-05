@@ -21,8 +21,6 @@ Q  = FunctionSpace(mesh, Qe)
 Z  = FunctionSpace(mesh, Ze)
 
 x, y = SpatialCoordinate(mesh)
-x = x
-y = y
 Re = (1 + 1e2 * exp(-((x - 0.5)**2 + (y - 0.5)**2)*1000) +
       1e7*exp(-((x - 0.75)**2 + (y - 0.25)**2)*400) +
       1e1*exp(-((x - 0.25)**2 + (y - 0.75)**2)*250) +
@@ -79,7 +77,7 @@ problem = NonlinearVariationalProblem(F, z, bcs)
 
 solver = NonlinearVariationalSolver(problem, nullspace=nsp,
                                     solver_parameters=solver_parameters,
-                                    options_prefix="", appctx=appctx)
+                                    options_prefix="")
 
 pvd = File("output/output.pvd")
 
