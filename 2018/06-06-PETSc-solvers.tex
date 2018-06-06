@@ -6,6 +6,7 @@
 \usetikzlibrary{shapes,arrows}
 \usepackage{appendixnumberbeamer}
 \usepackage{amsmath}
+\usepackage{amssymb}
 \newif\ifwidescreen
 \widescreenfalse
 \date{6th June 2018}
@@ -533,6 +534,33 @@ class PCDPC(PCBase):
   {\scriptsize \textcite[\S B.4]{Kirby:2018} shows a complete solver configuration.}
 \end{frame}
 
+\begin{frame}
+  \frametitle{Weak scaling}
+  Limited by performance of algebraic solvers on subblocks. 
+ \begin{center}
+    \scriptsize
+  \begin{tabular}{c|c|c|c|c}
+DoFs ($\times 10^{6}$) & MPI processes & Newton its & Krylov its & Time (s)\\
+\hline
+0.7405 & 24 & 3 & 16 & 31.7\\
+2.973 & 96 & 3 & 17 & 43.9\\
+11.66 & 384 & 3 & 17 & 56\\
+45.54 & 1536 & 3 & 18 & 85.2\\
+185.6 & 6144 & 3 & 19 & 167\\
+  \end{tabular}
+
+  \begin{tabular}{c|c|c|c|c}
+    DoFs ($\times 10^{6}$) & \multicolumn{2}{|c|}{Navier-Stokes iterations} & \multicolumn{2}{|c}{Temperature iterations}\\
+    & Total & per solve & Total & per solve\\
+\hline
+0.7405 & 329 & 20.6 & 107 & 6.7 \\
+2.973  & 365 & 21.5 & 132 & 7.8 \\
+11.66  & 373 & 21.9 & 137 & 8.1 \\
+45.54  & 403 & 22.4 & 151 & 8.4 \\
+185.6  & 463 & 24.4 & 174 & 9.2 \\
+  \end{tabular}
+  \end{center}
+\end{frame}
 \section{Schwarz smoothers}
 
 \begin{frame}
@@ -886,72 +914,103 @@ PetscErrorCode UserPatches(PC, PetscInt*, IS**, IS*, void*);
   Code available at \url{github.com/wence-/ssc}, hopefully in PETSc RSN.
 \end{frame}
 
-\begin{frame}[fragile]
-  \frametitle{Example: P2-P1 Stokes}
-  \begin{onlyenv}<1-2>
-    \begin{onlyenv}<1>
-      \begin{center}
-        \includegraphics[height=0.8\textheight]{stokes-viscosity}
-      \end{center}
-    \end{onlyenv}
-    \begin{onlyenv}<2>
-    Monolithic multigrid with Vanka smoother on each level.
-    \begin{columns}
-      \begin{column}{0.6\textwidth}
-\begin{minted}[fontsize=\tiny]{python3}
-monolithic_solver_parameters = {
-    "mat_type": "matfree",
-    "snes_type": "ksponly",
-    "ksp_rtol": 1e-8,
-    "ksp_type": "fgmres",
-    "pc_type": "mg",
-    "mg_levels": {"ksp_type": "gmres",
-        "ksp_max_it": 5,
-        "pc_type": "python",
-        "pc_python_type": "ssc.PatchPC",
-        "patch_pc_patch_save_operators": True,
-        "patch_pc_patch_construction_type": "vanka",
-        "patch_pc_patch_partition_of_unity": True,
-        "patch_pc_patch_vanka_dim": 0,
-        "patch_pc_patch_construction_dim": 0,
-        "patch_pc_patch_exclude_subspace": 1,
-        "patch_pc_patch_sub_mat_type": "seqaij",
-        "patch_sub_ksp_type": "preonly",
-        "patch_sub_pc_type": "lu",
-        "patch_sub_pc_factor_shift_type": "nonzero"},
-    "mg_coarse": {"ksp_type": "preonly",
-        "pc_type": "python",
-        "pc_python_type": "firedrake.AssembledPC",
-        "assembled_pc_type": "svd",}
-}
-\end{minted}
-      \end{column}
-      \hspace{-1em}
-      \begin{column}{0.4\textwidth}
-\begin{minted}[fontsize=\tiny]{md}
-  0 SNES Function norm 51.1133
-    Residual norms for  solve.
-    0 KSP Residual norm 51.1133
-    1 KSP Residual norm 4.24056
-    2 KSP Residual norm 1.29486
-    3 KSP Residual norm 0.207982
-    4 KSP Residual norm 0.1554
-    5 KSP Residual norm 0.0422543
-    6 KSP Residual norm 0.0278166
-    7 KSP Residual norm 0.00664682
-    8 KSP Residual norm 0.00307886
-    9 KSP Residual norm 0.000731788
-   10 KSP Residual norm 0.000238784
-   11 KSP Residual norm 3.09127e-05
-   12 KSP Residual norm 4.9848e-06
-   13 KSP Residual norm 1.07483e-06
-   14 KSP Residual norm 1.00638e-07
-  1 SNES Function norm 1.00638e-07
-\end{minted}
-      \end{column}
-    \end{columns}
-    \end{onlyenv}
-  \end{onlyenv}
+% \begin{frame}[fragile]
+%   \frametitle{Example: P2-P1 Stokes}
+%   \begin{onlyenv}<1-2>
+%     \begin{onlyenv}<1>
+%       \begin{center}
+%         \includegraphics[height=0.8\textheight]{stokes-viscosity}
+%       \end{center}
+%     \end{onlyenv}
+%     \begin{onlyenv}<2>
+%     Monolithic multigrid with Vanka smoother on each level.
+%     \begin{columns}
+%       \begin{column}{0.6\textwidth}
+% \begin{minted}[fontsize=\tiny]{python3}
+% monolithic_solver_parameters = {
+%     "mat_type": "matfree",
+%     "snes_type": "ksponly",
+%     "ksp_rtol": 1e-8,
+%     "ksp_type": "fgmres",
+%     "pc_type": "mg",
+%     "mg_levels": {"ksp_type": "gmres",
+%         "ksp_max_it": 5,
+%         "pc_type": "python",
+%         "pc_python_type": "ssc.PatchPC",
+%         "patch_pc_patch_save_operators": True,
+%         "patch_pc_patch_construction_type": "vanka",
+%         "patch_pc_patch_partition_of_unity": True,
+%         "patch_pc_patch_vanka_dim": 0,
+%         "patch_pc_patch_construction_dim": 0,
+%         "patch_pc_patch_exclude_subspace": 1,
+%         "patch_pc_patch_sub_mat_type": "seqaij",
+%         "patch_sub_ksp_type": "preonly",
+%         "patch_sub_pc_type": "lu",
+%         "patch_sub_pc_factor_shift_type": "nonzero"},
+%     "mg_coarse": {"ksp_type": "preonly",
+%         "pc_type": "python",
+%         "pc_python_type": "firedrake.AssembledPC",
+%         "assembled_pc_type": "svd",}
+% }
+% \end{minted}
+%       \end{column}
+%       \hspace{-1em}
+%       \begin{column}{0.4\textwidth}
+% \begin{minted}[fontsize=\tiny]{md}
+%   0 SNES Function norm 51.1133
+%     Residual norms for  solve.
+%     0 KSP Residual norm 51.1133
+%     1 KSP Residual norm 4.24056
+%     2 KSP Residual norm 1.29486
+%     3 KSP Residual norm 0.207982
+%     4 KSP Residual norm 0.1554
+%     5 KSP Residual norm 0.0422543
+%     6 KSP Residual norm 0.0278166
+%     7 KSP Residual norm 0.00664682
+%     8 KSP Residual norm 0.00307886
+%     9 KSP Residual norm 0.000731788
+%    10 KSP Residual norm 0.000238784
+%    11 KSP Residual norm 3.09127e-05
+%    12 KSP Residual norm 4.9848e-06
+%    13 KSP Residual norm 1.07483e-06
+%    14 KSP Residual norm 1.00638e-07
+%   1 SNES Function norm 1.00638e-07
+% \end{minted}
+%       \end{column}
+%     \end{columns}
+%     \end{onlyenv}
+%   \end{onlyenv}
+% \end{frame}
+
+\begin{frame}
+  \frametitle{Stationary Navier-Stokes}
+\newcommand{\PtwoPzero}{\ensuremath{\mathbb{P}_2\text{-}\mathbb{P}_0}}
+\newcommand{\fmw}{\ensuremath{\left(\mathbb{P}_2 + B^F_3\right)}}
+\newcommand{\fmwzero}{\ensuremath{\fmw\text{-}\mathbb{P}_0}}
+Augmented Lagrangian scheme of \textcite{Benzi:2006}.
+
+\PtwoPzero in 2D, extended to 3D using \fmwzero.
+
+{\footnotesize
+    \begin{table}
+      \centering
+      \begin{tabular}{cc|ccccc}
+        \# ref & \# dofs & \multicolumn{5}{c}{Reynolds number} \\
+               && 10 & 100 & 1000 & 5000 & 10000 \\
+        \hline
+        1 & $4.7 \times 10^4$ & 3.67 & 5.67 & 6.50 & 10.00 & 11.00 \\
+        2 & $1.9 \times 10^5$ & 3.67 & 4.33 & 6.33 & 10.50 & 14.00 \\
+        3 & $7.4 \times 10^5$ & 3.33 & 3.67 & 6.80 & 7.50  & 11.50 \\
+        4 & $2.9 \times 10^6$ & 3.33 & 3.67 & 6.60 & 6.50 & 8.00 \\
+        6 & $4.7 \times 10^7$ & 5 & 15.67 & 7.5 & 6 & 6 \\
+      \end{tabular}
+      \caption{Average Krylov iterations per Newton step for 2D BFS}
+      \label{tab:bfs}
+    \end{table}
+  }
+\begin{flushright}
+  {\footnotesize Farrell, Mitchell, Wechsung.  In preparation}
+\end{flushright}
 \end{frame}
 \begin{frame}
   \frametitle{Conclusions}
