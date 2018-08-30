@@ -1,0 +1,31 @@
+\documentclass[presentation,aspectratio=43]{beamer}
+
+\usetheme{metropolis}
+
+\title{A new configurable preconditioner for additive subspace correction methods in
+  PETSc}
+
+\begin{document}
+
+\begin{abstract}
+  Small block overlapping, and non-overlapping, Schwarz methods are
+  theoretically highly attractive as multilevel smoothers for a wide
+  variety of problems that are not amenable to point relaxation
+  methods.  Examples include monolithic Vanka smoothers for Stokes,
+  overlapping vertex-patch decompositions for $H(\text{div})$ and
+  $H(\text{curl})$ problems, along with nearly incompressible
+  elasticity and augmented Lagrangian schemes.
+
+  While it is possible to manually program these different schemes,
+  their use in general purpose libraries has been held back by a lack
+  of generic, composable interfaces.  We present a new approach to the
+  specification and development such additive Schwarz methods in PETSc
+  that cleanly separates the topological space decomposition from the
+  discretisation and assembly of the equations.  Our preconditioner is
+  flexible enough to support overlapping and non-overlapping additive
+  Schwarz methods, and can be used to formulate line, and plane
+  smoothers, Vanka iterations, amongst others.  We illustrate these
+  new features with some examples utilising the Firedrake finite
+  element library.
+\end{abstract}
+\end{document}
