@@ -1,11 +1,8 @@
 \documentclass[presentation]{beamer}
 
 \usepackage{tikz}
-\usetikzlibrary{positioning,calc,matrix}
-\usetikzlibrary{shapes.geometric}
-\usetikzlibrary{arrows}
-\usetikzlibrary{shapes}
-\usetikzlibrary{backgrounds}% only to show the bounding box
+\usetikzlibrary{trees,calc}
+\usepackage{booktabs}
 \usepackage{pgf}
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.13}
@@ -15,8 +12,8 @@
 \usepackage{pifont}
 \newcommand{\cmark}{\ding{51}}
 \newcommand{\xmark}{\ding{55}}
-\DeclareMathOperator{\tr}{tr}
 \DeclareMathOperator{\grad}{grad}
+\DeclareMathOperator{\tr}{tr}
 \let\div\relax
 \DeclareMathOperator{\div}{div}
 \DeclareMathOperator{\curl}{curl}
@@ -48,8 +45,7 @@
 \author{Lawrence Mitchell\inst{1,*} \\ {\scriptsize C.J.~Cotter,
     P.E.~Farrell, D.A.~Ham, M.~Homolya, P.H.J.~Kelly, R.C.~Kirby, F.~Wechsung \ldots}}
 \institute{
-\inst{1}Department of Computer Science, Durham University}
-London
+\inst{1}Department of Computer Science, Durham University
 
 \inst{*}\texttt{lawrence.mitchell@durham.ac.uk}
 }
@@ -57,13 +53,46 @@ London
 \graphicspath{{./\jobname.figures/}{../pictures/}}
 
 \usepackage[url=false,
-            doi=true,
-            isbn=false,
-            style=authoryear,
-            giveninits=true,
-            uniquename=init,
-            backend=biber]{biblatex}
+doi=true,
+isbn=false,
+style=authoryear,
+giveninits=true,
+uniquename=init,
+backend=biber]{biblatex}
 
+\usepackage{xspace}
+\renewcommand{\Re}{\ensuremath{\mathrm{Re}}\xspace}
+\newcommand{\honev}{\ensuremath{{H}^1(\Omega; \mathbb{R}^d)}\xspace}
+\newcommand{\ltwov}{\ensuremath{{L}^2(\Omega; \mathbb{R}^d)}\xspace}
+\newcommand{\ltwo}{\ensuremath{{L}^2(\Omega)}\xspace}
+\newcommand{\laplace}{\ensuremath{\Delta}\,}
+\newcommand{\hess}{\ensuremath{\mathbf{hessian}}\,}
+\newcommand{\rt}{\ensuremath{\mathrm{RT}_0}\xspace}
+\newcommand{\nd}{\ensuremath{\mathrm{ND}_0}\xspace}
+\newcommand{\kerdiv}{\ensuremath{\mathrm{ker}(\mathbf{div})}\xspace}
+\newcommand{\kercurl}{\ensuremath{\mathrm{ker}(\mathbf{curl})}\xspace}
+\newcommand{\eker}{\ensuremath{e^{\mathrm{ker}}}\xspace}
+\newcommand{\ds}{\ \mathrm{d}s}
+\newcommand{\dx}{\ \mathrm{d}x}
+\newcommand{\Pq}{\ensuremath{\mathrm{P}_{Q_h}}}
+\newcommand{\PqK}{\ensuremath{\mathrm{P}_{Q_h(K)}}}
+\newcommand{\Ptwo}{\ensuremath{\mathbb{P}_2}\xspace}
+\newcommand{\Pthree}{\ensuremath{\mathbb{P}_3}\xspace}
+\newcommand{\PtwoPzero}{\ensuremath{[\mathbb{P}_2]^2\mathrm{-}\mathbb{P}_0}\xspace}
+\newcommand{\PthreePzero}{\ensuremath{[\mathbb{P}_3]^3\mathrm{-}\mathbb{P}_0}\xspace}
+\newcommand{\Pzero}{\ensuremath{\mathbb{P}_0}\xspace}
+\newcommand{\Pv}{\ensuremath{\mathbb{P}_v}\xspace}
+\newcommand{\BR}{\ensuremath{\left(\mathbb{P}_1 \oplus B^F_3\right)}\xspace}
+\newcommand{\PoneFB}{\ensuremath{\mathbb{P}_1 \oplus B^F_3}\xspace}
+\newcommand{\PtwoFB}{\ensuremath{\mathbb{P}_2 \oplus B^F_3}\xspace}
+\newcommand{\BRzero}{\ensuremath{\BR^3\mathrm{-}\mathbb{P}_0}\xspace}
+\newcommand{\fmw}{\ensuremath{\left(\mathbb{P}_2 \oplus B^F_3\right)}\xspace}
+\newcommand{\fmwzero}{\ensuremath{\fmw^3\mathrm{-}\mathbb{P}_0}\xspace}
+%\newcommand{\advect}[2]{\ensuremath{(\nabla #1) \cdot #2}}
+\newcommand{\advect}[2]{\ensuremath{(#2 \cdot \nabla) #1}}
+\newcommand{\mesh}{\ensuremath{\mathcal{M}}\xspace}
+\newcommand{\Ac}{\ensuremath{\mathcal{A}}}
+\newcommand{\Bc}{\ensuremath{\mathcal{B}}}
 \setbeamertemplate{bibliography item}{}
 
 \renewcommand{\bibfont}{\fontsize{7}{7}\selectfont}
@@ -150,5 +179,218 @@ London
   - Full Newton
   - Scalability results
   - Future direction H(div)/Scott-Vogelius
+\end{frame}
+
+\begin{frame}
+  \frametitle{Navier-Stokes}
+Find $(u, p) \in \honev \times \ltwo$ such that
+\begin{alignat*}{2}
+  -  \nu \nabla^2 u + \advect{u}{u} + \nabla p &= f \quad && \text{ in } \Omega, \label{eqn:momentum} \\
+  \nabla \cdot u &= 0 \quad && \text{ in } \Omega, \\
+  u &= g \quad && \text{ on } \Gamma_D, \\
+  \nu \nabla u \cdot n &= pn \quad && \text{ on } \Gamma_N,
+\end{alignat*}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Linear saddle point system}
+  After Newton linearization and choosing a spatial discretisation
+\begin{equation} \label{eqn:sp}
+\begin{pmatrix}
+A & B^T \\
+B & 0
+\end{pmatrix}
+\begin{pmatrix}
+\delta u \\ \delta p
+\end{pmatrix}
+=
+\begin{pmatrix}
+b \\ 0
+\end{pmatrix},
+\end{equation}
+
+Challenge: computing inverse.
+
+Augmented Lagrangian scheme
+
+\begin{equation} \label{eqn:spal}
+\begin{pmatrix}
+A + \gamma B^T M_p^{-1} B & B^T \\
+B & 0
+\end{pmatrix}
+\begin{pmatrix}
+\delta u \\ \delta p
+\end{pmatrix}
+=
+\begin{pmatrix}
+b \\ 0
+\end{pmatrix},
+\end{equation}
+
+\begin{equation} \label{eqn:schur}
+S^{-1} \approx (\nu + \gamma) M_p^{-1},
+\end{equation}
+Challenge: $\nu$ and $\gamma$ independent PC for $A + \gamma B^T
+M_p^{-1} B$.  We take $\gamma$ large.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Multilevel solver}
+
+  \resizebox{\textwidth}{!}{
+  \begin{tikzpicture}[
+  every node/.style={draw=black, thick, anchor=west},
+  grow via three points={one child at (0.0,-0.7) and
+  two children at (0.0,-0.7) and (0.0,-1.4)},
+  edge from parent path={(\tikzparentnode.210) |- (\tikzchildnode.west)}]
+  \node {Continuation}
+    child { node {Newton solver with line search}
+      child { node {Krylov solver (FGMRES)}
+        child { node {Block preconditioner}
+          child { node {Approximate Schur complement inverse}}
+          child { node {F-cycle on augmented momentum block}
+              child { node {Coarse grid solver}
+                child { node {LU factorization on assembled matrix}}
+              }
+              child [missing] {}
+              child { node {Prolongation operator}
+                child { node {Local solves over coarse cells}}
+              }
+              child [missing] {}
+              child { node {Relaxation}
+                child { node {GMRES}
+                  child { node {Matrix-free additive star iteration}}
+                }
+              }
+          }
+        }
+      }
+    };
+  \end{tikzpicture}
+  }
+\end{frame}
+
+\begin{frame}
+  \frametitle{$A_\gamma$ preconditioner}
+  Pieces:
+
+  Smoother that is robust wrt $\nu$ and $\gamma$, requires subspace
+  decomposition
+  \begin{equation*}
+    \mathcal{N} = \sum_i \left(V_i \cap \mathcal{N} \right)
+  \end{equation*}
+  \begin{equation*}
+    \mathcal{N} := \{u \in V : (\Pq \nabla \cdot u, \nabla \cdot v) =
+    0 \ \forall\ v \in V\}
+  \end{equation*}
+  \begin{equation*}
+    V = \sum_i V_i
+  \end{equation*}
+
+  Kernel is spanned by basis functions with local support around each
+  vertex.
+
+  Relaxation scheme: \emph{star iteration} (Also used for robust
+  multigrid in $H(\text{div}/\text{curl})$ (AFW 2000).
+\end{frame}
+
+\begin{frame}
+  \frametitle{Prolongation}
+  Need to preserve kernel of Pdiv in prolongation.
+
+  Natural embedding does not do this.
+
+  Solve local Stokes problem on each coarse cell to fix things up.
+
+  P3-P0 expensive.
+
+  P1+FB-P0: inf-sup (via BR)
+
+  Now prolongation is not nested: preserve flux by scaling.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Software abstractions}
+  Schwarz building blocks:
+
+  Subspace decomp
+  Operators on subspaces
+  Solvers on subspaces
+  Coarse spaces (not yet)
+
+  Separate topological decomposition with callback interface for operators
+\end{frame}
+\begin{frame}
+  \frametitle{Flexible selection of patches}
+  Star patches animation
+
+  Coarse cell patch animation.
+
+  Operators just by doing finite element assembly
+\end{frame}
+\begin{frame}
+  \frametitle{Results: 3D lid-driven cavity}
+  \begin{onlyenv}<1>
+    Reynolds number robust convergence.
+    \begin{center}
+      \begin{tabular}{cc|ccccc}
+        \toprule
+        \# refinements & \# dofs & \multicolumn{5}{c}{Reynolds number} \\
+                       && 10 & 100 & 1000 & 2500 & 5000 \\
+        \midrule
+        1 & $2.1 \times 10^6$ & 7.50 & 7.33 & 7.50 & 7.00 & 6.50 \\
+        2 & $1.7 \times 10^7$ & 8.50 & 7.00 & 7.50 & 6.50 & 5.50 \\
+        3 & $1.3 \times 10^8$ & 7.00 & 7.00 & 6.50 & 5.00 & 6.50 \\
+        4 & $1.1 \times 10^9$ & 7.00 & 7.33 & 5.50 & 4.00 & 9.00 \\
+        \bottomrule
+      \end{tabular}
+    \end{center}
+  \end{onlyenv}
+  \begin{onlyenv}<2>
+    
+    \begin{center}
+      \pgfplotstableread[col sep=comma, row sep=\\]{%
+        Cores,Time,Dofs\\
+        48,1.91e2,2134839\\
+        384,2.52e2,16936779\\
+        3072,2.3e2,134930451\\
+        24576,2.55e2,1077196323\\
+      }\datatable
+      \begin{tikzpicture}[scale=0.8]
+        \begin{semilogxaxis}[
+          log basis x=2,
+          ymin=0,
+          xtick=data,
+          xticklabels from table={\datatable}{Cores},
+          extra x ticks={48, 384, 3072, 24576},
+          extra x tick labels={$[2.13]$, $[16.9]$,$[135]$,$[1077]$},
+          extra x tick style={tick label style={yshift=-2ex}},
+          xlabel={Cores\\{}[DoFs $\times 10^6$]},
+          xlabel style={align=center},
+          ylabel near ticks,
+          ylabel style={align=center, text width=4cm},
+          ylabel={Time to solution over all continuation steps [min]},
+          title style={align=center, text width=7cm},
+          ]
+          \addplot+ table[x=Cores,y=Time] {\datatable};
+        \end{semilogxaxis}
+      \end{tikzpicture}
+    \end{center}
+  \end{onlyenv}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Future directions}
+
+  This problem:
+  Better discretisation
+
+  Options: Scott-Vogelius
+
+  H(div)-L2 with penalty scheme for diffusion operator (potential for
+  non-nested mesh hierarchies)
+
+  Technology:
+  Nonlinear schwarz; FAS smoothers.
 \end{frame}
 \end{document}
