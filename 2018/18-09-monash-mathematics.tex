@@ -1,0 +1,154 @@
+\documentclass[presentation]{beamer}
+
+\usepackage{tikz}
+\usetikzlibrary{positioning,calc,matrix}
+\usetikzlibrary{shapes.geometric}
+\usetikzlibrary{arrows}
+\usetikzlibrary{shapes}
+\usetikzlibrary{backgrounds}% only to show the bounding box
+\usepackage{pgf}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.13}
+\usepackage{pgfplotstable}
+\usepackage{appendixnumberbeamer}
+\usepackage{amsmath}
+\usepackage{pifont}
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
+\DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator{\grad}{grad}
+\let\div\relax
+\DeclareMathOperator{\div}{div}
+\DeclareMathOperator{\curl}{curl}
+\date{25th January 2018}
+\usetheme{metropolis}
+\metroset{progressbar=frametitle}
+
+\usepackage{algpseudocode}
+\renewcommand{\vec}[1]{\ensuremath{\boldsymbol{#1}}}
+\newcommand{\ddt}[1]{\frac{\partial #1}{\partial t}}
+\newcommand{\zhat}{\hat{\vec{z}}}
+\newcommand{\W}{\ensuremath{\mathbb{W}}}
+
+\newcommand{\inner}[1]{\left\langle #1 \right \rangle}
+
+\newcommand{\KSP}[2]{\ensuremath{\mathcal{K}\left(#1, \mathbb{#2}\right)}}
+\newcommand{\ksp}[1]{\KSP{#1}{#1}}
+
+\newcommand{\highlight}[1]{\colorbox{red!20}{\color{black} #1}}
+\newcommand{\arxivlink}[2]{%
+  \href{http://www.arxiv.org/abs/#1}%
+  {\texttt{arXiv:\,#1\,[#2]}}%
+}
+\newcommand{\doilink}[1]{%
+  \href{http://dx.doi.org/#1}%
+  {\texttt{doi:\,#1}{}}%
+}
+
+\author{Lawrence Mitchell\inst{1,*} \\ {\scriptsize C.J.~Cotter,
+    P.E.~Farrell, D.A.~Ham, M.~Homolya, P.H.J.~Kelly, R.C.~Kirby, F.~Wechsung \ldots}}
+\institute{
+\inst{1}Department of Computer Science, Durham University}
+London
+
+\inst{*}\texttt{lawrence.mitchell@durham.ac.uk}
+}
+
+\graphicspath{{./\jobname.figures/}{../pictures/}}
+
+\usepackage[url=false,
+            doi=true,
+            isbn=false,
+            style=authoryear,
+            giveninits=true,
+            uniquename=init,
+            backend=biber]{biblatex}
+
+\setbeamertemplate{bibliography item}{}
+
+\renewcommand{\bibfont}{\fontsize{7}{7}\selectfont}
+\addbibresource{references.bib}
+
+\setlength{\bibitemsep}{1ex}
+\setlength{\fboxsep}{1pt}
+
+\renewbibmacro{in:}{}
+\DeclareFieldFormat[article]{volume}{\textbf{#1}}
+\DeclareFieldFormat{doi}{%
+  doi\addcolon%
+  {\scriptsize\ifhyperref{\href{http://dx.doi.org/#1}{\nolinkurl{#1}}}
+    {\nolinkurl{#1}}}}
+\AtEveryBibitem{%
+\clearfield{pages}%
+\clearfield{issue}%
+\clearfield{number}%
+}
+
+\usepackage{minted}
+\RecustomVerbatimEnvironment{Verbatim}{BVerbatim}{}
+
+
+\title{From symbolic mathematics to fast solvers for finite element problems}
+
+\begin{document}
+
+\begin{abstract}
+  One of the great and enduring successes of numerical computing is
+  the capturing of mathematical abstractions in software.  This allows
+  the programmer to express the intent of their code, without
+  specifying its low-level implementation.  We then automate the
+  synthesis of efficient code by using (or writing) compilers.
+
+  In the context of solving numerical PDEs, the finite element method
+  is particularly amenable to this approach.  For many problems, the
+  choice of discretisation completely specifies the mathematical
+  intent.  A symbolic description of the PDE can then be manipulated
+  by a domain-specific compiler to produce a high-performance
+  implementation.
+
+  In this talk, I will present a concrete realisation of these ideas,
+  embodied in the finite element software Firedrake
+  (www.firedrakeproject.org).  I will discuss how capturing and
+  exploiting symbolic structure in numerical software greatly
+  simplifies model development, while simultaneously permitting the
+  synthesis of a high performance implementation.
+
+  I will then discuss recent work extending these same ideas to the
+  development of preconditioners, illustrating with some recent work
+  on scalable solvers for the three-dimensional stationary
+  Navier-Stokes equations.
+\end{abstract}
+
+% People:
+% Jerome Droniou
+% Michael Page
+% Hans de Sterck
+% Philip Hall
+% Steve Siems
+% Yann Bernard
+% Simon Clarke
+% Julie Clutterbuck
+% Anja Slim
+% Kengo Deguchi
+% Christian Thomas
+
+\begin{frame}
+  \frametitle{Outline}
+
+  25 + 5 minutes
+
+  - Finite elements
+  - Code that matches maths
+  - Compilers for this code
+  - Cover sum factorisation
+  - Hybridisation methods
+
+  - Navier-Stokes
+  - Augmented Lagrangian
+  - Multigrid requires characterisation of kernel of div
+  - New: extension of scheme to 3D
+  - Full Newton
+  - Scalability results
+  - Future direction H(div)/Scott-Vogelius
+\end{frame}
+\end{document}
