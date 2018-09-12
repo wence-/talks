@@ -17,7 +17,7 @@
 \let\div\relax
 \DeclareMathOperator{\div}{div}
 \DeclareMathOperator{\curl}{curl}
-\date{25th January 2018}
+\date{18th September 2018}
 \usetheme{metropolis}
 \metroset{progressbar=frametitle}
 
@@ -121,32 +121,34 @@ backend=biber]{biblatex}
 
 \begin{document}
 
-\begin{abstract}
-  One of the great and enduring successes of numerical computing is
-  the capturing of mathematical abstractions in software.  This allows
-  the programmer to express the intent of their code, without
-  specifying its low-level implementation.  We then automate the
-  synthesis of efficient code by using (or writing) compilers.
+\maketitle
 
-  In the context of solving numerical PDEs, the finite element method
-  is particularly amenable to this approach.  For many problems, the
-  choice of discretisation completely specifies the mathematical
-  intent.  A symbolic description of the PDE can then be manipulated
-  by a domain-specific compiler to produce a high-performance
-  implementation.
+% \begin{abstract}
+%   One of the great and enduring successes of numerical computing is
+%   the capturing of mathematical abstractions in software.  This allows
+%   the programmer to express the intent of their code, without
+%   specifying its low-level implementation.  We then automate the
+%   synthesis of efficient code by using (or writing) compilers.
 
-  In this talk, I will present a concrete realisation of these ideas,
-  embodied in the finite element software Firedrake
-  (www.firedrakeproject.org).  I will discuss how capturing and
-  exploiting symbolic structure in numerical software greatly
-  simplifies model development, while simultaneously permitting the
-  synthesis of a high performance implementation.
+%   In the context of solving numerical PDEs, the finite element method
+%   is particularly amenable to this approach.  For many problems, the
+%   choice of discretisation completely specifies the mathematical
+%   intent.  A symbolic description of the PDE can then be manipulated
+%   by a domain-specific compiler to produce a high-performance
+%   implementation.
 
-  I will then discuss recent work extending these same ideas to the
-  development of preconditioners, illustrating with some recent work
-  on scalable solvers for the three-dimensional stationary
-  Navier-Stokes equations.
-\end{abstract}
+%   In this talk, I will present a concrete realisation of these ideas,
+%   embodied in the finite element software Firedrake
+%   (www.firedrakeproject.org).  I will discuss how capturing and
+%   exploiting symbolic structure in numerical software greatly
+%   simplifies model development, while simultaneously permitting the
+%   synthesis of a high performance implementation.
+
+%   I will then discuss recent work extending these same ideas to the
+%   development of preconditioners, illustrating with some recent work
+%   on scalable solvers for the three-dimensional stationary
+%   Navier-Stokes equations.
+% \end{abstract}
 
 % People:
 % Jerome Droniou
@@ -181,6 +183,214 @@ backend=biber]{biblatex}
   - Future direction H(div)/Scott-Vogelius
 \end{frame}
 
+\begin{frame}
+  \frametitle{Finite elements for PDEs}
+  \begin{align*}
+    F(u) &= 0 \text{ in $\Omega$}\\
+    u &= g \text{ on $\Gamma_1$}\\
+    \frac{\partial u}{\partial n} &= h \text{ on $\Gamma_2$}
+  \end{align*}
+  Seek weak solution in some space of functions $V(\Omega)$.
+
+  Now we need to solve the (infinite dimensional) problem, find $u\in V$ s.t.
+  \begin{equation*}
+    \int_\Omega \!F(u) v\, \text{d}x = 0 \quad \forall\, v \in V
+  \end{equation*}
+\end{frame}
+\begin{frame}
+  \frametitle{Finite element crash course}
+  Choose finite dimensional $V_h \subset V$, and seek a solution in
+  that subspace: find $u_h \in V_h$ s.t.
+  \begin{equation*}
+    \int_\Omega \!F(u_h) v_h\, \text{d}x = 0 \quad \forall\, v_h \in V_h
+  \end{equation*}
+\end{frame}
+\begin{frame}
+  \frametitle{Finite element crash course}
+  \begin{overprint}
+    \only<1>{Divide domain $\Omega$\dots
+    \begin{center}
+      \begin{tikzpicture}
+        \draw[very thick, line cap=rect] (0,0) -- (5, 0) (0, 0) arc
+        (180:360:2.5);
+      \end{tikzpicture}
+    \end{center}}
+  \only<2>{\dots{}into triangulation $\mathcal{T}$\dots
+    \begin{center}
+        \begin{tikzpicture}
+          \path (0,0) arc[radius=2.5, start angle=180, end angle=360]
+          node[name=E,pos=0,swap] {} node[name=F,pos=0.25,swap] {}
+          node[name=G,pos=0.5,swap] {} node[name=H,pos=0.82,swap] {}
+          node[name=I,pos=1,swap] {}; \node (A) at (2.5, 0) {}; \node
+          (B) at (1.4, -0.7) {}; \node (C) at (3.4, -1.2) {}; \node
+          (D) at (1.8, -1.5) {};
+
+          \draw[color=black, very thick, line cap=butt, line
+          join=round] (E.center) -- (A.center) -- (I.center) --
+          (H.center) -- (G.center) -- (F.center) -- (E.center) --
+          cycle; \draw[color=black, very thick, line cap=butt, line
+          join=round] (E.center) -- (B.center) -- (D.center) --
+          (F.center) -- (B.center); \draw[color=black, very thick,
+          line cap=butt, line join=round] (G.center) -- (D.center) --
+          (C.center) -- (G.center); \draw[color=black, very thick,
+          line cap=butt, line join=round] (B.center) -- (A.center) --
+          (C.center) -- (B.center); \draw[color=black, very thick,
+          line cap=butt, line join=round] (H.center) -- (C.center) --
+          (I.center);
+        \end{tikzpicture}
+    \end{center}
+  }
+  \only<3>{\dots{}and choose basis with finite support.
+    \begin{center}
+        \begin{tikzpicture}
+          \path (0,0) arc[radius=2.5, start angle=180, end angle=360]
+          node[name=E,pos=0,swap] {} node[name=F,pos=0.25,swap] {}
+          node[name=G,pos=0.5,swap] {} node[name=H,pos=0.82,swap] {}
+          node[name=I,pos=1,swap] {}; \node (A) at (2.5, 0) {}; \node
+          (B) at (1.4, -0.7) {}; \node (C) at (3.4, -1.2) {}; \node
+          (D) at (1.8, -1.5) {};
+
+        \path[fill=gray!50] (E.center) -- (A.center) -- (B.center) --
+        (F.center) --cycle;
+          \draw[color=black, very thick, line cap=butt, line
+          join=round] (E.center) -- (A.center) -- (I.center) --
+          (H.center) -- (G.center) -- (F.center) -- (E.center) --
+          cycle; \draw[color=black, very thick, line cap=butt, line
+          join=round] (E.center) -- (B.center) -- (D.center) --
+          (F.center) -- (B.center); \draw[color=black, very thick,
+          line cap=butt, line join=round] (G.center) -- (D.center) --
+          (C.center) -- (G.center); \draw[color=black, very thick,
+          line cap=butt, line join=round] (B.center) -- (A.center) --
+          (C.center) -- (B.center); \draw[color=black, very thick,
+          line cap=butt, line join=round] (H.center) -- (C.center) --
+          (I.center);
+        \end{tikzpicture}
+      \end{center}
+      }
+  \end{overprint}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Finite element crash course}
+  Integrals become sum over element integrals
+  \begin{equation*}
+    \int_\Omega\! F(u_h) v_h \, \text{d}x =
+    \sum_{e \in \mathcal{T}} \int_e\! F(u_h)v_h\, \text{d}x
+  \end{equation*}
+
+  (Usually) perform element integrals with numerical quadrature
+  \begin{equation*}
+    \int_e F(u_h)v_h\,\text{d}x = \sum_q w_q F(u_h(q)) v_h(q)\,\text{d}x
+  \end{equation*}
+
+  Replace $u_h(q), v_h(q)$ with expansion in finite element basis
+  \begin{align*}
+    u_h(q) &= \sum_i u_h^i \phi_i(q)\\
+    v_h(q) &= \phi_j(q)\\
+  \end{align*}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Abstractly}
+  \begin{itemize}
+  \item Mathematics says ``here is the integral to compute on each
+    element, do that everywhere''
+  \item Doesn't specify \emph{how} to compute the integral
+  \item Doesn't specify \emph{how} to gather the element contributions
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Compilers for finite elements}
+  \begin{block}{Assertion}
+    Once we pick the discretisation, writing the element integral is mechanical.
+  \end{block}
+  \begin{corollary}
+    Computers are good at mechanical things, why don't we get the
+    computer to write the element integral?
+  \end{corollary}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Firedrake \url{www.firedrakeproject.org}}
+
+  \begin{quote}
+    {\normalfont [\ldots]} an automated system for the solution of partial
+    differential equations using the finite element method.
+  \end{quote}
+
+  \begin{onlyenv}<1>
+    \begin{itemize}
+    \item Written in Python.
+    \item Finite element problems specified with \emph{embedded}
+      domain specific language, UFL \parencite{Alnaes:2014} from the
+      FEniCS project.
+    \item \emph{Runtime} compilation to low-level (C) code.
+    \item Explicitly \emph{data parallel} API.
+    \end{itemize}
+
+    \begin{flushright}
+      {\scriptsize F.~Rathgeber, D.A.~Ham, \textbf{LM}, M.~Lange,
+        F.~Luporini, A.T.T.~McRae, G.-T.~Bercea, G.R.~Markall,
+        P.H.J.~Kelly. TOMS,
+        2016. \arxivlink{1501.01809}{cs.MS}\nocite{Rathgeber:2016}}
+    \end{flushright}
+  \end{onlyenv}
+  \begin{onlyenv}<2>
+    \begin{block}{User groups at}
+      Imperial, Oxford, Bath, Leeds, Kiel, Rice, Houston, Exeter, Buffalo,
+      Waterloo, Minnesota, Baylor, Texas A\&M, \dots
+    \end{block}
+  \end{onlyenv}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{An example}
+  \begin{columns}
+    \begin{column}{0.47\framewidth}
+      {\footnotesize
+        Find $(u, p, T) \in V\times W\times Q$ s.t.
+        \begin{align*}
+          \int\!\nabla u \cdot \nabla v + (u \cdot \nabla u) \cdot v \\
+          - p\nabla\cdot v + \frac{\text{Ra}}{\text{Pr}} Tg \hat{z} \cdot v\,\text{d}x &= 0 \\
+          \int\!\nabla\cdot u q\,\text{d}x&= 0\\
+          \int\! (u\cdot \nabla T) S + \text{Pr}^{-1} \nabla T \cdot \nabla
+          S\,\text{d}x &= 0\\
+          \quad \forall\, (v,q,T) \in V\times W \times Q
+        \end{align*}
+        }
+    \end{column}
+      \begin{column}{0.52\framewidth}
+\begin{minted}[fontsize=\tiny]{python}
+from firedrake import *
+mesh = Mesh(...)
+V = VectorFunctionSpace(mesh, "CG", 2)
+W = FunctionSpace(mesh, "CG", 1)
+Q = FunctionSpace(mesh, "CG", 1)
+Z = V * W * Q
+Ra = Constant(...)
+Pr = Constant(...)
+upT = Function(Z)
+u, p, T = split(upT)
+v, q, S = TestFunctions(Z)
+bcs = [...]
+
+F = (inner(grad(u), grad(v))
+     + inner(dot(grad(u), u), v)
+     - inner(p, div(v))
+     + (Ra/Pr)*inner(T*g, v)
+     + inner(div(u), q)
+     + inner(dot(grad(T), u), S)
+     + (1/Pr) * inner(grad(T), grad(S)))*dx
+
+solve(F == 0, upT, bcs=bcs)
+\end{minted}
+      \end{column}
+  \end{columns}
+\end{frame}
+
+
+\section{Addressing the solver issue}
 \begin{frame}
   \frametitle{Navier-Stokes}
 Find $(u, p) \in \honev \times \ltwo$ such that
