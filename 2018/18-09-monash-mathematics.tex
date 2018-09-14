@@ -1,7 +1,7 @@
 \documentclass[presentation]{beamer}
 
 \usepackage{tikz}
-\usetikzlibrary{trees,calc}
+\usetikzlibrary{trees,calc,positioning}
 \usepackage{booktabs}
 \usepackage{pgf}
 \usepackage{pgfplots}
@@ -79,6 +79,7 @@ backend=biber]{biblatex}
 \newcommand{\Ptwo}{\ensuremath{\mathbb{P}_2}\xspace}
 \newcommand{\Pthree}{\ensuremath{\mathbb{P}_3}\xspace}
 \newcommand{\PtwoPzero}{\ensuremath{[\mathbb{P}_2]^2\mathrm{-}\mathbb{P}_0}\xspace}
+\newcommand{\PtwothreePzero}{\ensuremath{[\mathbb{P}_2]^3\mathrm{-}\mathbb{P}_0}\xspace}
 \newcommand{\PthreePzero}{\ensuremath{[\mathbb{P}_3]^3\mathrm{-}\mathbb{P}_0}\xspace}
 \newcommand{\Pzero}{\ensuremath{\mathbb{P}_0}\xspace}
 \newcommand{\Pv}{\ensuremath{\mathbb{P}_v}\xspace}
@@ -166,25 +167,23 @@ backend=biber]{biblatex}
 \begin{frame}
   \frametitle{Outline}
 
-  25 + 5 minutes
-
-  - Finite elements
-  - Code that matches maths
-  - Compilers for this code
-  - Cover sum factorisation
-  - Hybridisation methods
-
-  - Navier-Stokes
-  - Augmented Lagrangian
-  - Multigrid requires characterisation of kernel of div
-  - New: extension of scheme to 3D
-  - Full Newton
-  - Scalability results
-  - Future direction H(div)/Scott-Vogelius
+  \begin{itemize}
+  \item Overview of recent research
+    \begin{itemize}
+    \item Automated finite elements
+    \item Fast implementations thereof
+    \end{itemize}
+  \item Multilevel solvers for coupled problems
+    \begin{itemize}
+    \item Automating more things
+    \item Application to stationary Navier-Stokes
+    \end{itemize}
+  \item Future directions
+  \end{itemize}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Finite elements for PDEs}
+  \frametitle{Finite elements I}
   \begin{align*}
     F(u) &= 0 \text{ in $\Omega$}\\
     u &= g \text{ on $\Gamma_1$}\\
@@ -196,17 +195,13 @@ backend=biber]{biblatex}
   \begin{equation*}
     \int_\Omega \!F(u) v\, \text{d}x = 0 \quad \forall\, v \in V
   \end{equation*}
-\end{frame}
-\begin{frame}
-  \frametitle{Finite element crash course}
-  Choose finite dimensional $V_h \subset V$, and seek a solution in
-  that subspace: find $u_h \in V_h$ s.t.
+  Choose finite dimensional subspace $V_h \subset V$, find $u_h \in V_h$ s.t.
   \begin{equation*}
     \int_\Omega \!F(u_h) v_h\, \text{d}x = 0 \quad \forall\, v_h \in V_h
   \end{equation*}
 \end{frame}
 \begin{frame}
-  \frametitle{Finite element crash course}
+  \frametitle{Finite elements II}
   \begin{overprint}
     \only<1>{Divide domain $\Omega$\dots
     \begin{center}
@@ -271,7 +266,7 @@ backend=biber]{biblatex}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Finite element crash course}
+  \frametitle{Finite elements III}
   Integrals become sum over element integrals
   \begin{equation*}
     \int_\Omega\! F(u_h) v_h \, \text{d}x =
@@ -291,17 +286,13 @@ backend=biber]{biblatex}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Abstractly}
+  \frametitle{Looking for abstractions}
   \begin{itemize}
-  \item Mathematics says ``here is the integral to compute on each
+  \item Maths just says ``here is the integral to compute on each
     element, do that everywhere''
-  \item Doesn't specify \emph{how} to compute the integral
-  \item Doesn't specify \emph{how} to gather the element contributions
+  \item Computer implementation makes these choices
   \end{itemize}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Compilers for finite elements}
+  \uncover<2>{
   \begin{block}{Assertion}
     Once we pick the discretisation, writing the element integral is mechanical.
   \end{block}
@@ -309,6 +300,7 @@ backend=biber]{biblatex}
     Computers are good at mechanical things, why don't we get the
     computer to write the element integral?
   \end{corollary}
+  }
 \end{frame}
 
 \begin{frame}
@@ -338,7 +330,7 @@ backend=biber]{biblatex}
   \end{onlyenv}
   \begin{onlyenv}<2>
     \begin{block}{User groups at}
-      Imperial, Oxford, Bath, Leeds, Kiel, Rice, Houston, Exeter, Buffalo,
+      Imperial, Oxford, Bath, Leeds, Durham, Kiel, Rice, Houston, Exeter, Buffalo,
       Waterloo, Minnesota, Baylor, Texas A\&M, \dots
     \end{block}
   \end{onlyenv}
@@ -389,59 +381,391 @@ solve(F == 0, upT, bcs=bcs)
   \end{columns}
 \end{frame}
 
+\begin{frame}[fragile]
+  \frametitle{Code matches mathematics}
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      \begin{equation*}
+        a(u, v) = \int_\Omega \nabla u \cdot \nabla v\,\text{d}x \quad \forall v \in V
+      \end{equation*}
+\begin{minted}[fontsize=\scriptsize]{python}
+V = FiniteElement("Lagrange", 
+                  triangle, 1)
+u = TrialFunction(V)
+v = TestFunction(V)
+F = dot(grad(u), grad(v))*dx
+\end{minted}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \begin{tikzpicture}
+        \node[draw,rectangle, thick, text width=1in, align=center]
+        (A) {\small Pen and paper}; \node[draw, below=of A,
+        rectangle, thick, text width=1in, align=center] (B) {\small
+          High-level code}; \node[draw, below=of B, rectangle,
+        thick, text width=1in, align=center] (C) {\small Low-level
+          code}; \node[draw, below=of C, rectangle, thick, text
+        width=1in, align=center] (D) {\small Machine code};
+        \draw[-stealth] (A) -> (B) node [midway,right,text
+        width=1in,align=center] {\small Manual}; \draw[-stealth] (B)
+        -> (C) node [midway,right,text width=1in,align=center]
+        {\small Automated}; \draw[-stealth] (C) -> (D) node
+        [midway,right,text width=1in,align=center] {\small
+          Automated};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
 
-\section{Addressing the solver issue}
-\begin{frame}
-  \frametitle{Navier-Stokes}
-Find $(u, p) \in \honev \times \ltwo$ such that
-\begin{alignat*}{2}
-  -  \nu \nabla^2 u + \advect{u}{u} + \nabla p &= f \quad && \text{ in } \Omega, \label{eqn:momentum} \\
-  \nabla \cdot u &= 0 \quad && \text{ in } \Omega, \\
-  u &= g \quad && \text{ on } \Gamma_D, \\
-  \nu \nabla u \cdot n &= pn \quad && \text{ on } \Gamma_N,
-\end{alignat*}
+\begin{frame}[fragile]
+  \frametitle{Automation enables optimisations}
+  Compile UFL (symbolics) into low-level code (implementation).
+  \begin{flushright}
+    {\scriptsize M.~Homolya, \textbf{LM}, F.~Luporini, D.A.~Ham. SIAM
+      SISC (2018). \arxivlink{1705.03667}{cs.MS}}
+  \end{flushright}
+  \begin{itemize}
+  \item Element integral
+    \begin{columns}
+      \begin{column}{0.4\textwidth}
+        \begin{equation*}
+          \int_e \nabla u \cdot \nabla v\,\text{d}x
+        \end{equation*}
+      \end{column}
+      \hspace{-3em}
+      \begin{column}{0.6\textwidth}
+\begin{minted}[fontsize=\scriptsize]{python}
+V = FiniteElement("Lagrange", triangle, 1)
+u = TrialFunction(V)
+v = TestFunction(V)
+a = dot(grad(u), grad(v))*dx
+\end{minted}
+      \end{column}
+    \end{columns}
+  \item Is transformed to a tensor algebra expression
+    {\small \begin{equation*}
+        \sum_q w_q \left| d \right| \sum_{i_5} \left( \sum_{i_3}
+          K_{i_3,i_5} \begin{bmatrix}
+            E^{(1)}_{q,k} & E^{(2)}_{q,k}
+          \end{bmatrix}_{i_3} \right)
+        \left( \sum_{i_4} K_{i_4,i_5} \begin{bmatrix}
+            E^{(1)}_{q,j} & E^{(2)}_{q,j}
+          \end{bmatrix}_{i_4} \right)
+      \end{equation*}}
+  \item Multiple optimisation passes aim to minimise FLOPs required to
+    evaluate this expression.
+  \end{itemize}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Linear saddle point system}
-  After Newton linearization and choosing a spatial discretisation
-\begin{equation} \label{eqn:sp}
-\begin{pmatrix}
-A & B^T \\
-B & 0
-\end{pmatrix}
-\begin{pmatrix}
-\delta u \\ \delta p
-\end{pmatrix}
-=
-\begin{pmatrix}
-b \\ 0
-\end{pmatrix},
-\end{equation}
+  \frametitle{Optimisation passes}
+  \begin{block}{Vectorisation}
+    Align and pad data structures, then use intrinsics or rely on C
+    compiler.
+  \end{block}
 
-Challenge: computing inverse.
+  \begin{block}{Loop transformations \& flop reduction}
+    Solve ILP problem to drive factorisation, code motion, and common
+    subexpression elimination.
+  \end{block}
 
-Augmented Lagrangian scheme
+  \begin{block}{Sum factorisation}
+    Some finite elements use \emph{tensor product} basis functions
+    \begin{equation*}
+      \phi_{i,q} := \phi_{(j,k),(p,r)} = \varphi_{j,p}\varphi_{k,r}
+    \end{equation*}
+    These permit low-complexity algorithms for evaluation of integrals.
+  \end{block}
+\end{frame}
 
-\begin{equation} \label{eqn:spal}
-\begin{pmatrix}
-A + \gamma B^T M_p^{-1} B & B^T \\
-B & 0
-\end{pmatrix}
-\begin{pmatrix}
-\delta u \\ \delta p
-\end{pmatrix}
-=
-\begin{pmatrix}
-b \\ 0
-\end{pmatrix},
-\end{equation}
+\begin{frame}[fragile]
+  \frametitle{Algorithmically optimal implementation}
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      \begin{block}{Computing $\curl-\curl$ action}
+        Find $u \in V \subset H(\curl)$ s.t.
+        {\scriptsize \begin{equation*}
+            \int\!\!\curl u \cdot \curl v \,\text{d}x = \int\!\!B\cdot
+            v\,\text{d}x \quad \forall v \in V.
+          \end{equation*}}
+\begin{minted}[fontsize=\tiny,mathescape]{python}
+NCE = FiniteElement("NCE", hexahedron, degree)
+Q = VectorElement("Q", hexahedron, degree)
+u = Coefficient(NCE) # Solution in $H(\curl)$
+B = Coefficient(Q)   # Coefficient in $H^1$
+v = TestFunction(NCE)
+F = (dot(curl(u), curl(v)) - dot(B, v))*dx
+\end{minted}
+      \end{block}
+    \end{column}
+    \begin{column}{0.6\textwidth}
+      \begin{center}
+        \begin{tikzpicture}[scale=0.9]
+          \begin{loglogaxis}[name=plot, small, title={FLOPs to evaluate $F$},
+            xlabel=Polynomial degree,
+            ylabel=FLOPs, xtick={1,2,4,8,16,32},
+            xticklabels={$1$,$2$,$4$,$8$,$16$,$32$}, axis lines=left, axis
+            line style={-}, log basis x=2,
+            legend entries={Na\"ive, With sum factorisation},
+            legend cell align=left,
+            legend style={at={(0.5,-0.3)},anchor=north,draw=none, fill=none}]
+            \pgfplotstableread[row sep=crcr]{
+              degree flops_vanilla flops_opt\\
+              1 9.78100e+03 6.48100e+03\\
+              2 1.05624e+05 2.78280e+04\\
+              3 6.04110e+05 7.50860e+04\\
+              4 2.36102e+06 1.63395e+05\\
+              5 7.20724e+06 3.09060e+05\\
+              6 1.85105e+07 5.33483e+05\\
+              7 4.18644e+07 8.60322e+05\\
+              8 8.59101e+07 1.31626e+06\\
+              9 1.63287e+08 1.93100e+06\\
+              10 2.91712e+08 2.73728e+06\\
+              11 4.95190e+08 3.77084e+06\\
+              12 8.05352e+08 5.07047e+06\\
+              13 1.26293e+09 6.67796e+06\\
+              14 1.91933e+09 8.63816e+06\\
+              15 2.83841e+09 1.09989e+07\\
+              16 4.09829e+09 1.38110e+07\\
+              17 5.79335e+09 1.71285e+07\\
+              18 8.03637e+09 2.10082e+07\\
+              19 1.09608e+10 2.55101e+07\\
+              20 1.47229e+10 3.06972e+07\\
+              21 1.95048e+10 3.66353e+07\\
+              22 2.55164e+10 4.33937e+07\\
+              23 3.29987e+10 5.10443e+07\\
+              24 4.22266e+10 5.96621e+07\\
+              25 5.35115e+10 6.93253e+07\\
+              26 6.72053e+10 8.01150e+07\\
+              27 8.37026e+10 9.21153e+07\\
+              28 1.03445e+11 1.05413e+08\\
+              29 1.26924e+11 1.20099e+08\\
+              30 1.54686e+11 1.36267e+08\\
+              31 1.87334e+11 1.54011e+08\\
+              32 2.25533e+11 1.73433e+08\\
+            }\data; \pgfplotstableset{create on use/vanilla/.style={create
+                col/expr={1e3*pow(\thisrow{degree},6)}}};
+            \pgfplotstableset{create on use/spectral/.style={create
+                col/expr={5e2*pow(\thisrow{degree},4)}}};
+            
+            \addplot+[mark=none, color=black, line width=1.5pt] table
+            [x=degree,y=flops_vanilla] \data; \addplot+[mark=none,
+            color=black, dashed, line width=1.5pt] table
+            [x=degree,y=flops_opt] \data; \addplot+[mark=none, color=black,
+            dotted, line width=1pt] table [x=degree,y=vanilla] \data
+            coordinate [pos=0.67] (A); \node at (A) [anchor=south east]
+            {$\mathcal{O}(p^6)$}; \addplot+[mark=none, color=black,
+            dotted, line width=1pt] table [x=degree,y=spectral] \data
+            coordinate [pos=0.67] (B); \node at (B) [anchor=north west]
+            {$\mathcal{O}(p^4)$};
+          \end{loglogaxis}
+        \end{tikzpicture}
+      \end{center}    
+    \end{column}
+  \end{columns}  
+\end{frame}
 
-\begin{equation} \label{eqn:schur}
-S^{-1} \approx (\nu + \gamma) M_p^{-1},
-\end{equation}
-Challenge: $\nu$ and $\gamma$ independent PC for $A + \gamma B^T
-M_p^{-1} B$.  We take $\gamma$ large.
+\begin{frame}
+  \frametitle{Application: coastal ocean modelling}
+  \begin{center}
+    \includegraphics[height=0.5\textheight]{thetis-snapshot}
+
+    {\tiny Surface salinity of the Columbia river plume. Credit
+      T.~K\"arn\"a, Finnish Meteorological Institute}
+  \end{center}
+  \vspace{-0.5\baselineskip}
+  Lower numerical mixing, improved results.
+
+  3-8x faster than models with similar quality of results.
+
+  Differentiable: can be used for PDE-constrained optimisation.
+\end{frame}
+\section{What about solvers?}
+
+\begin{frame}
+  \frametitle{Application challenge}
+  \begin{block}{Stationary incompressible Navier-Stokes}
+    Find $(u, p) \in \honev \times \ltwo$ such that
+    \begin{alignat*}{2}
+      -  \nu \nabla^2 u + \advect{u}{u} + \nabla p &= f \quad && \text{ in } \Omega, \label{eqn:momentum} \\
+      \nabla \cdot u &= 0 \quad && \text{ in } \Omega, \\
+      u &= g \quad && \text{ on } \Gamma_D, \\
+      \nu \nabla u \cdot n &= pn \quad && \text{ on } \Gamma_N,
+    \end{alignat*}
+  \end{block}
+  \begin{block}{Linear saddle point system}
+    \begin{equation*}
+      P := \begin{pmatrix}
+        A & B^T \\
+        B & 0
+      \end{pmatrix}
+      \begin{pmatrix}
+        \delta u \\ \delta p
+      \end{pmatrix}
+      =
+      \begin{pmatrix}
+        b \\ 0
+      \end{pmatrix}.
+    \end{equation*}
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Solver choices}
+  Would like $\nu$- and $h$-independent convergence.
+  \begin{block}{Monolithic multigrid: Vanka smoothing}
+    \begin{itemize}
+    \item[\cmark] $h$-independent
+    \item[\xmark] Convergence degrades with $\nu \to 0$.
+    \end{itemize}
+  \end{block}
+  \begin{block}{Block factorisations}
+    \begin{equation*}
+      P^{-1} =
+      \begin{pmatrix}
+        I   & -A^{-1} B^T \\
+        0 & I \\
+      \end{pmatrix}
+      \begin{pmatrix}
+        A^{-1}  & 0 \\
+        0 & S^{-1} \\
+      \end{pmatrix}
+      \begin{pmatrix}
+        I   & 0 \\
+        -BA^{-1} & I \\
+      \end{pmatrix}
+    \end{equation*}
+    Challenges, good approximations to $A^{-1}$ and $S^{-1}$.
+  \end{block}
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Block factorisations, approximating $S^{-1}$}
+  \begin{columns}[t]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Pressure mass ($S^{-1} \approx M_p^{-1}$)}
+        \begin{itemize}
+        \item[\cmark] $h$-independent
+        \item[\xmark] Convergence degrades rapidly with $\nu \to 0$
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{PCD, LSC}
+        \begin{itemize}
+        \item[\cmark] $h$-independent
+        \item[\xmark] Convergence degrades with $\nu \to 0$.
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+  \begin{block}{Augmented Lagrangian}
+    Replace $A \to A + \gamma B^T M_p^{-1}B =: A_\gamma$, doesn't
+    change solution.  Then (Sherman-Morrison)
+    $S^{-1} \approx (\nu + \gamma)M_p^{-1}$
+    \begin{itemize}
+    \item[\cmark] $h$- and $\nu$-independent
+    \item[\xmark] $A_\gamma$ is \emph{much} harder to invert than $A$.
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{A multigrid solver for $A_\gamma$ I: robust smoother}
+  Challenge for multigrid schemes is the large kernel of the
+  $\grad-\div$ term.
+
+  \begin{theorem}[Sch\"oberl (1999), Benzi \& Olshanksii (2006)]
+    A smoother robust wrt $\nu$ and $\gamma$ requires a subspace
+    decomposition
+  \begin{equation*}
+    V = \sum_i V_i
+  \end{equation*}
+  such that the kernel is spanned by the subspaces
+  \begin{equation*}
+    \{u \in V : (\nabla \cdot u, \nabla \cdot v) =
+    0 \ \forall\ v \in V\} =: \mathcal{N} = \sum_i \left(V_i \cap \mathcal{N} \right)
+  \end{equation*}
+  \end{theorem}
+\end{frame}
+
+\begin{frame}
+  \frametitle{A multigrid solver for $A_\gamma$ II: robust
+    prolongation}
+
+  \begin{theorem}[Sch\"oberl (1999)]
+    Let $E_H : V_H \to V_h$, a robust multigrid cycle requires,
+    $\forall u_H \in V_H$:
+    \begin{equation*}
+      \nu \|\nabla(E_H u_H)\|^2_{L^2} + \gamma \|\nabla\cdot (E_H
+      u_H)\|^2_{L^2} \le c (\nu \|\nabla(u_H)\|^2_{L^2} + \gamma \|\nabla\cdot u_H\|^2_{L^2})
+    \end{equation*}
+  \end{theorem}
+
+  For standard $H^1$ elements, $u_H \in \mathcal{N}_H$ does \emph{not}
+  guarantee $E_H u_H \in \mathcal{N}_h$.
+
+  We can arrange for this by solving a local Stokes problem for a
+  correction in the \emph{interior} of each coarse element.
+
+  Requires element pair $V-Q$ that is inf-sup on a \emph{single}
+  refined cell.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The 2D case}
+  Benzi \& Olshanksii (2006) present a scheme using these ideas for 2D
+  Oseen problems.
+
+  They use a $\PtwoPzero$ element pair, along with a discrete
+  $\grad-\div$ term.
+
+  $\mathcal{N}$ is spanned by basis functions with local support
+  around each vertex.
+
+  Smoother: multiplicative \emph{star} iteration.
+\end{frame}
+
+\begin{frame}
+  \frametitle{3D and parallel}
+  \begin{columns}
+    \begin{column}{0.6\textwidth}
+      \begin{block}{Problem}
+        $\PtwothreePzero$ is \emph{not} inf-sup for the local Stokes problems.
+
+        $\PthreePzero$ is, but is tremendously expensive for only $h^2$
+        convergence in the velocity solution.
+      \end{block}
+    \end{column}
+    \begin{column}{0.38\textwidth}
+      \includegraphics[width=3.5cm]{exploded_tet}
+    \end{column}
+  \end{columns}
+
+  \begin{columns}
+    \begin{column}{0.6\textwidth}
+      \begin{block}{Solution}
+        We use an affine-equivalent analog of the Bernard-Raugel
+        element: $[\PoneFB]^{3}\mathrm{-}\Pzero$.
+      \end{block}
+    \end{column}
+    \begin{column}{0.38\textwidth}
+      \includegraphics[width=3cm]{P1FB}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Parallel scalability}
+  \begin{itemize}
+  \item Have not yet treated the advective term
+  \item B\&O use a multiplicative (Gauss-Seidel) smoother
+  \item Difficult to parallelise
+  \item Instead, we have good results using GMRES preconditioned by an
+    additive iteration
+  \item Has the advantage that convergence is independent of parallel
+    decomposition.
+  \end{itemize}
 \end{frame}
 
 \begin{frame}
@@ -481,63 +805,24 @@ M_p^{-1} B$.  We take $\gamma$ large.
 \end{frame}
 
 \begin{frame}
-  \frametitle{$A_\gamma$ preconditioner}
-  Pieces:
-
-  Smoother that is robust wrt $\nu$ and $\gamma$, requires subspace
-  decomposition
-  \begin{equation*}
-    \mathcal{N} = \sum_i \left(V_i \cap \mathcal{N} \right)
-  \end{equation*}
-  \begin{equation*}
-    \mathcal{N} := \{u \in V : (\Pq \nabla \cdot u, \nabla \cdot v) =
-    0 \ \forall\ v \in V\}
-  \end{equation*}
-  \begin{equation*}
-    V = \sum_i V_i
-  \end{equation*}
-
-  Kernel is spanned by basis functions with local support around each
-  vertex.
-
-  Relaxation scheme: \emph{star iteration} (Also used for robust
-  multigrid in $H(\text{div}/\text{curl})$ (AFW 2000).
+  \frametitle{Flexible additive Schwarz smoothers}
+  \begin{itemize}
+  \item Solver needs additive Schwarz preconditioner in two places
+    \begin{itemize}
+    \item Star iteration
+    \item Prolongation correction
+    \end{itemize}
+  \item Implemented generic framework in PETSc \texttt{-pc_type patch}
+  \end{itemize}
+  \begin{Callback interface}
+    \begin{itemize}
+    \item Separate subspace decompostion (topology + discretisation)
+    \item from equation assembly
+    \item Extensible mechanism for defining patches
+    \end{itemize}
+  \end{Callback interface}
 \end{frame}
 
-\begin{frame}
-  \frametitle{Prolongation}
-  Need to preserve kernel of Pdiv in prolongation.
-
-  Natural embedding does not do this.
-
-  Solve local Stokes problem on each coarse cell to fix things up.
-
-  P3-P0 expensive.
-
-  P1+FB-P0: inf-sup (via BR)
-
-  Now prolongation is not nested: preserve flux by scaling.
-\end{frame}
-
-\begin{frame}
-  \frametitle{Software abstractions}
-  Schwarz building blocks:
-
-  Subspace decomp
-  Operators on subspaces
-  Solvers on subspaces
-  Coarse spaces (not yet)
-
-  Separate topological decomposition with callback interface for operators
-\end{frame}
-\begin{frame}
-  \frametitle{Flexible selection of patches}
-  Star patches animation
-
-  Coarse cell patch animation.
-
-  Operators just by doing finite element assembly
-\end{frame}
 \begin{frame}
   \frametitle{Results: 3D lid-driven cavity}
   \begin{onlyenv}<1>
@@ -557,35 +842,45 @@ M_p^{-1} B$.  We take $\gamma$ large.
     \end{center}
   \end{onlyenv}
   \begin{onlyenv}<2>
-    
-    \begin{center}
-      \pgfplotstableread[col sep=comma, row sep=\\]{%
-        Cores,Time,Dofs\\
-        48,1.91e2,2134839\\
-        384,2.52e2,16936779\\
-        3072,2.3e2,134930451\\
-        24576,2.55e2,1077196323\\
-      }\datatable
-      \begin{tikzpicture}[scale=0.8]
-        \begin{semilogxaxis}[
-          log basis x=2,
-          ymin=0,
-          xtick=data,
-          xticklabels from table={\datatable}{Cores},
-          extra x ticks={48, 384, 3072, 24576},
-          extra x tick labels={$[2.13]$, $[16.9]$,$[135]$,$[1077]$},
-          extra x tick style={tick label style={yshift=-2ex}},
-          xlabel={Cores\\{}[DoFs $\times 10^6$]},
-          xlabel style={align=center},
-          ylabel near ticks,
-          ylabel style={align=center, text width=4cm},
-          ylabel={Time to solution over all continuation steps [min]},
-          title style={align=center, text width=7cm},
-          ]
-          \addplot+ table[x=Cores,y=Time] {\datatable};
-        \end{semilogxaxis}
-      \end{tikzpicture}
-    \end{center}
+    \begin{columns}
+      \begin{column}{0.48\textwidth}
+        \pgfplotstableread[col sep=comma, row sep=\\]{%
+          Cores,Time,Dofs\\
+          48,1.91e2,2134839\\
+          384,2.52e2,16936779\\
+          3072,2.3e2,134930451\\
+          24576,2.55e2,1077196323\\
+        }\datatable
+        \begin{tikzpicture}[scale=0.7]
+          \begin{semilogxaxis}[
+            log basis x=2,
+            ymin=0,
+            xtick=data,
+            xticklabels from table={\datatable}{Cores},
+            extra x ticks={48, 384, 3072, 24576},
+            extra x tick labels={$[2.13]$, $[16.9]$,$[135]$,$[1077]$},
+            extra x tick style={tick label style={yshift=-2ex}},
+            xlabel={Cores\\{}[DoFs $\times 10^6$]},
+            xlabel style={align=center},
+            ylabel near ticks,
+            ylabel style={align=center, text width=4cm},
+            ylabel={Time to solution [min]},
+            title style={align=center, text width=7cm},
+            ]
+            \addplot+ table[x=Cores,y=Time] {\datatable};
+          \end{semilogxaxis}
+        \end{tikzpicture}
+      \end{column}
+      \hspace{1em}
+      \begin{column}{0.48\textwidth}
+        \begin{center}
+          \includegraphics[width=\textwidth]{LDC-streamlines}
+
+          {\tiny Velocity streamlines at Reynolds number .  Credit
+            F.~Wechsung, University of Oxford.}
+        \end{center}
+      \end{column}
+    \end{columns}
   \end{onlyenv}
 \end{frame}
 
