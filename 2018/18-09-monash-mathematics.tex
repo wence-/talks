@@ -117,7 +117,7 @@ backend=biber]{biblatex}
 \newcommand{\PthreePzero}{\ensuremath{[\mathbb{P}_3]^3\mathrm{-}\mathbb{P}_0}\xspace}
 \newcommand{\Pzero}{\ensuremath{\mathbb{P}_0}\xspace}
 \newcommand{\Pv}{\ensuremath{\mathbb{P}_v}\xspace}
-\newcommand{\BR}{\ensuremath{\left(\mathbb{P}_1 \oplus B^F_3\right)}\xspace}
+\newcommand{\BR}{\ensuremath{\left[\mathbb{P}_1 \oplus B^F_3\right]}\xspace}
 \newcommand{\PoneFB}{\ensuremath{\mathbb{P}_1 \oplus B^F_3}\xspace}
 \newcommand{\PtwoFB}{\ensuremath{\mathbb{P}_2 \oplus B^F_3}\xspace}
 \newcommand{\BRzero}{\ensuremath{\BR^3\mathrm{-}\mathbb{P}_0}\xspace}
@@ -202,15 +202,13 @@ backend=biber]{biblatex}
   \frametitle{Outline}
 
   \begin{itemize}
-  \item Overview of recent research
+  \item Automated finite elements
     \begin{itemize}
-    \item Automated finite elements
     \item Fast implementations thereof
     \end{itemize}
   \item Multilevel solvers for coupled problems
     \begin{itemize}
-    \item Automating more things
-    \item Application to stationary Navier-Stokes
+    \item Stationary Navier-Stokes
     \end{itemize}
   \item Future directions
   \end{itemize}
@@ -368,23 +366,21 @@ solve(F == 0, upT, bcs=bcs)
 \begin{frame}
   \frametitle{Looking for abstractions}
   \begin{itemize}
-  \item Maths just says ``here is the integral to compute on each
+  \item Mathmatics just says ``here is the integral to compute on each
     element, do that everywhere''
-  \item Computer implementation makes these choices
+  \item Computer implementation chooses how to do so
   \end{itemize}
-  \uncover<2>{
-    \begin{block}{Assertion(s)}
-      Having chosen a discretisation, writing the element integral is ``mechanical''.
+  \begin{block}{Assertion(s)}
+    Having chosen a discretisation, writing the element integral is ``mechanical''.
 
-      With an element integral in hand, integrating over a mesh is
-      ``mechanical''.
-    \end{block}
+    With an element integral in hand, integrating over a mesh is
+    ``mechanical''.
+  \end{block}
 
-    \begin{corollary}
-      Computers are good at mechanical things, why don't we get the
-      computer to write them for us?
-    \end{corollary}
-  }
+  \begin{corollary}
+    Computers are good at mechanical things, why don't we get the
+    computer to write them for us?
+  \end{corollary}
 \end{frame}
 
 \begin{frame}
@@ -436,33 +432,42 @@ solve(F == 0, upT, bcs=bcs)
 \begin{frame}[fragile]
   \frametitle{More automation}
   \begin{columns}
-    \begin{column}{0.5\textwidth}
+    \begin{column}{0.45\textwidth}
       \begin{equation*}
         a(u, v) = \int_\Omega \nabla u \cdot \nabla v\,\text{d}x \quad \forall v \in V
       \end{equation*}
 \begin{minted}[fontsize=\scriptsize]{python}
-V = FiniteElement("Lagrange", triangle, 1)
+V = FiniteElement("Lagrange",
+                  triangle, 1)
 u = TrialFunction(V)
 v = TestFunction(V)
 F = dot(grad(u), grad(v))*dx
 \end{minted}
     \end{column}
-    \hspace{0.1\textwidth}
-    \begin{column}{0.3\textwidth}
+    \hspace{0.05\textwidth}
+    \begin{column}{0.45\textwidth}
       \begin{tikzpicture}
-        \node[draw,rectangle, thick, text width=1in, align=center]
-        (A) {\small Pen and paper}; \node[draw, below=of A,
-        rectangle, thick, text width=1in, align=center] (B) {\small
-          High-level code}; \node[draw, below=of B, rectangle,
-        thick, text width=1in, align=center] (C) {\small Low-level
-          code}; \node[draw, below=of C, rectangle, thick, text
-        width=1in, align=center] (D) {\small Machine code};
+        \node[draw,rectangle, thick, text width=1in, align=center] (A)
+        {\small Pen and paper};
+
+        \node[draw, below=of A, rectangle, thick, text width=1in,
+        align=center] (B) {\small High-level code};
+
+        \node[draw, below=of B, rectangle, thick, text width=1in,
+        align=center] (C) {\small Low-level code};
+
+        \node[draw, below=of C, rectangle, thick, text width=1in,
+        align=center] (D) {\small Machine code};
+
         \draw[-stealth] (A) -> (B) node [midway,right,text
-        width=1in,align=center] {\small Manual}; \draw[-stealth] (B)
-        -> (C) node [midway,right,text width=1in,align=center]
-        {\small Automated}; \draw[-stealth] (C) -> (D) node
-        [midway,right,text width=1in,align=center] {\small
-          Automated};
+        width=1in,align=center] {\small Manual};
+
+        \draw[-stealth] (B) -> (C) node [midway, right, text
+        width=1in, align=center]
+        {\small Automated};
+
+        \draw[-stealth] (C) -> (D) node [midway, right, text
+        width=1.5in, align=center] {\small Automated (gcc)};
       \end{tikzpicture}
     \end{column}
   \end{columns}
@@ -493,6 +498,7 @@ a = dot(grad(u), grad(v))*dx
 \end{minted}
       \end{column}
     \end{columns}
+    \hspace{0.5\baselineskip}
   \item Is transformed to a tensor algebra expression
     {\small \begin{equation*}
         \sum_q w_q \left| d \right| \sum_{i_5} \left( \sum_{i_3}
@@ -510,23 +516,23 @@ a = dot(grad(u), grad(v))*dx
 
 \begin{frame}
   \frametitle{Optimisation passes}
-  \begin{block}{Vectorisation}
-    Align and pad data structures, then use intrinsics or rely on C
-    compiler.
-  \end{block}
-
-  \begin{block}{Loop transformations \& flop reduction}
-    Solve ILP problem to drive factorisation, code motion, and common
-    subexpression elimination.
-  \end{block}
-
   \begin{block}{Sum factorisation}
     Spectral elements typically use \emph{tensor product} basis functions
     \begin{equation*}
       \phi_{i,q} := \phi_{(j,k),(p,r)} = \varphi_{j,p}\varphi_{k,r}
     \end{equation*}
-    These permit low-complexity algorithms for evaluation of integrals.
+    Tensor algebra maintains this structure, compiler exploits it for
+    low-complexity evaluation of integrals.
   \end{block}
+  \begin{block}{Loop transformations}
+    Solve ILP problem to reorder loops, and decide how to split
+    complicated expressions.
+  \end{block}
+  \begin{block}{Vectorisation}
+    Low-level rearrangement to ease the job of C compilers in
+    generating efficient code.
+  \end{block}
+
 \end{frame}
 
 \begin{frame}[fragile]
@@ -656,7 +662,8 @@ F = (dot(curl(u), curl(v)) - dot(B, v))*dx
       \nu \nabla u \cdot n &= pn \quad && \text{ on } \Gamma_N,
     \end{alignat*}
   \end{block}
-  \begin{block}{Linear saddle point system}
+  \begin{block}{Discretise and linearise}
+    Need to solve linear saddle point system
     \begin{equation*}
       P := \begin{pmatrix}
         A & B^T \\
@@ -675,21 +682,38 @@ F = (dot(curl(u), curl(v)) - dot(B, v))*dx
 
 \begin{frame}
   \frametitle{Challenges for solvers}
-  Want a \emph{scalable} solver for high resolution and large
-  Reynolds number ($\nu \to 0$).
-  \begin{block}{Scalable \& Robust}
-    Growth in time to solution is (at worst)
-    $\mathcal{O}(n\log n)$ for problem with $n$ dofs.
+  \begin{block}{Desired properties}
     \begin{itemize}
-    \item[\xmark] Direct methods (LU factorisation).
-    \item[\cmark] Iterative solvers with multilevel preconditioning.
+    \item Growth in time to solution is (at worst)
+      $\mathcal{O}(n\log n)$.
+    \item Convergence does not degree with $\nu \to 0$.
     \end{itemize}
   \end{block}
+  \begin{columns}[t]
+    \begin{column}{0.5\textwidth}
+      \begin{block}{Direct methods}
+        \begin{itemize}
+        \item[\cmark] Convergence independent of $\nu$
+        \item[\xmark] Time to solution $\mathcal{O}(n^2)$ (3D).
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \begin{block}{Krylov methods}
+        \begin{itemize}
+        \item[\cmark] Time to solution $\mathcal{O}(n \log n)$ (with
+          multilevel preconditioner)
+        \item[\xmark] Convergence independent of $\nu$ challenging
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
 \end{frame}
+
 \begin{frame}
   \frametitle{Challenges for solvers}
   Want $\nu$- and $h$-independent convergence.
-  \begin{block}{Monolithic multigrid: Vanka smoothing}
+  \begin{block}{Monolithic multigrid: Vanka, Braess-Sarazin smoothing}
     \begin{itemize}
     \item[\cmark] $h$-independent
     \item[\xmark] Convergence degrades with $\nu \to 0$.
@@ -729,7 +753,7 @@ F = (dot(curl(u), curl(v)) - dot(B, v))*dx
         \end{block}
       \end{column}
       \begin{column}{0.48\textwidth}
-        \begin{block}{PCD, LSC}
+        \begin{block}{PCD, LSC ($S^{-1} \approx M_p^{-1} F_p L_p^{-1}$)}
           \begin{itemize}
           \item[\cmark] $h$-independent
           \item[\xmark] Convergence degrades with $\nu \to 0$.
@@ -756,12 +780,14 @@ F = (dot(curl(u), curl(v)) - dot(B, v))*dx
       \end{equation*}
       Discrete solution unchanged, since $B\delta u = 0$.
 
-      Then $S^{-1} \approx (\nu + \gamma)M_p^{-1}$
+      Then $S^{-1} \approx (\nu + \gamma)M_p^{-1}$ (gets better as
+      $\gamma \to \infty$).
       \begin{itemize}
       \item[\cmark] $h$- and $\nu$-independent
       \item[\xmark] $A_\gamma$ is \emph{much} harder to invert than $A$.
       \end{itemize}
-      Developed 3D version of scheme presented in \textcite{Benzi:2006}.
+      Developed 3D multigrid scheme for $A_\gamma$ extending 2D
+      preconditioner of \textcite{Benzi:2006}.
     \end{block}
   }
 \end{frame}
@@ -858,12 +884,6 @@ F = (dot(curl(u), curl(v)) - dot(B, v))*dx
       \node at (barycentric cs:v11=1,v12=1,v15=1) (s4) {};
       \node at (barycentric cs:v12=1,v15=1,v16=1) (s5) {};
       \node at (barycentric cs:v15=1,v16=1,v19=1) (s6) {};
-      % \node[e, star] at (barycentric cs:v11=1,v15=1) (s7) {};
-      % \node[e, star] at (barycentric cs:v15=1,v19=1) (s8) {};
-      % \node[e, star] at (barycentric cs:v14=1,v15=1) (s9) {};
-      % \node[e, star] at (barycentric cs:v15=1,v16=1) (s10) {};
-      % \node[e, star] at (barycentric cs:v18=1,v15=1) (s11) {};
-      % \node[e, star] at (barycentric cs:v15=1,v12=1) (s12) {};
       \draw[thick,blue] \convexpath{s1,s4,s5,s6,s3,s2}{1pt};
 
       \node[v, select, red] at (v11) {};
@@ -872,20 +892,6 @@ F = (dot(curl(u), curl(v)) - dot(B, v))*dx
       \node at (barycentric cs:v7=1,v10=1,v11=1) (ss3) {};
       \node at (barycentric cs:v14=1,v10=1,v11=1) (ss4) {};
       \draw[thick, red] \convexpath{ss4,ss3,ss2,ss1,s4,s1}{1pt};
-      % \uncover<4->{
-      %   \node[v, complete, minimum size=4pt] at (v14) {};
-      %   \node[v, complete, minimum size=4pt] at (v18) {};
-      %   \node[v, complete, minimum size=4pt] at (v11) {};
-      %   \node[v, complete, minimum size=4pt] at (v19) {};
-      %   \node[v, complete, minimum size=4pt] at (v12) {};
-      %   \node[v, complete, minimum size=4pt] at (v16) {};
-      %   \node[e, complete] at (barycentric cs:v14=1,v18=1) {};
-      %   \node[e, complete] at (barycentric cs:v12=1,v16=1) {};
-      %   \node[e, complete] at (barycentric cs:v11=1,v12=1) {};
-      %   \node[e, complete] at (barycentric cs:v18=1,v19=1) {};
-      %   \node[e, complete] at (barycentric cs:v14=1,v11=1) {};
-      %   \node[e, complete] at (barycentric cs:v19=1,v16=1) {};
-      % }
     \end{tikzpicture}
   \end{center}
 \end{frame}
@@ -901,9 +907,8 @@ F = (dot(curl(u), curl(v)) - dot(B, v))*dx
       u_H)\|^2_{L^2} \le c (\nu \|\nabla(u_H)\|^2_{L^2} + \gamma \|\nabla\cdot u_H\|^2_{L^2})
     \end{equation*}
   \end{theorem}
-
-  Fix by solving a local Stokes problem for a
-  correction in the \emph{interior} of each coarse element.
+  Can fix by solving a small Stokes problem for a correction
+  in the \emph{interior} of each coarse cell.
     \begin{center}
     \begin{tikzpicture}[scale=4]
       \tikzstyle{v}=[circle, fill, minimum size=0pt, inner sep=0pt]
@@ -988,26 +993,6 @@ F = (dot(curl(u), curl(v)) - dot(B, v))*dx
 \end{frame}
 
 \begin{frame}
-  \frametitle{Flexible additive Schwarz smoothers}
-  \begin{itemize}
-  \item Solver needs additive Schwarz smoothers in two places.
-  \item Available in PETSc 3.10 \texttt{-pc\_type patch}
-  \end{itemize}
-  \begin{block}{Extensible callback interface}
-    \begin{itemize}
-    \item Separate subspace decompostion (topology + discretisation)
-    \item from equation assembly
-    \item Extensible mechanism for defining patches
-    \item Flexibly supports Vanka, line- and plane-smoothers, \dots
-    \item Easy experimentation!
-    \end{itemize}
-  \end{block}
-  \begin{flushright}
-    {\scriptsize \textbf{LM}, M.G.~Knepley, P.E.~Farrell, In preparation.}
-  \end{flushright}
-\end{frame}
-
-\begin{frame}
   \frametitle{3D element pair}
   \begin{columns}
     \begin{column}{0.6\textwidth}
@@ -1029,7 +1014,7 @@ F = (dot(curl(u), curl(v)) - dot(B, v))*dx
     \begin{column}{0.6\textwidth}
       \begin{block}{Solution}
         We use an affine-equivalent analog of the Bernard-Raugel
-        element: $[\PoneFB]^{3}\mathrm{-}\Pzero$.
+        element: $\BRzero$.
       \end{block}
     \end{column}
     \begin{column}{0.38\textwidth}
@@ -1038,6 +1023,26 @@ F = (dot(curl(u), curl(v)) - dot(B, v))*dx
       \end{center}
     \end{column}
   \end{columns}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Preconditioner for flexible additive Schwarz smoothers}
+  \begin{itemize}
+  \item Solver needs additive Schwarz smoothers in two places.
+  \item New in PETSc 3.10 \texttt{-pc\_type patch}
+  \end{itemize}
+  \begin{block}{Extensible callback interface}
+    \begin{itemize}
+    \item Separate subspace decompostion (topology + discretisation)
+    \item from equation assembly
+    \item Extensible mechanism for defining patches
+    \item Flexibly supports Vanka, line- and plane-smoothers, \dots
+    \item Easy experimentation!
+    \end{itemize}
+  \end{block}
+  \begin{flushright}
+    {\scriptsize \textbf{LM}, M.G.~Knepley, P.E.~Farrell, In preparation.}
+  \end{flushright}
 \end{frame}
 
 \begin{frame}[fragile]
@@ -1143,17 +1148,35 @@ Python        4    108      153   558
 \end{frame}
 
 \begin{frame}
-  \frametitle{Future directions}
-
-  This problem:
-  Better discretisation
-
-  Options: Scott-Vogelius
-
-  H(div)-L2 with penalty scheme for diffusion operator (potential for
-  non-nested mesh hierarchies)
-
-  Technology:
-  Nonlinear schwarz; FAS smoothers.
+  \frametitle{Going forward}
+  \begin{itemize}
+  \item $\BRzero$ is not a great discretisation
+  \item Same ideas should apply to \emph{pressure robust} schemes
+    (e.g.~Scott-Vogelius, $H(\div)-L^2$ mixed methods)
+  \item Application of same ideas directly to nonlinear multigrid?
+  \end{itemize}
+  \begin{block}{Idea}
+    \begin{itemize}
+    \item Preconditioners are formulated in mathematics on paper
+    \item They \emph{should} be formulated in mathematics on computer
+    \end{itemize}
+  \end{block}
+\end{frame}
+\begin{frame}
+  \frametitle{Conclusions \& directions}
+  \begin{block}{Automated finite elements}
+    \begin{itemize}
+    \item Enable significant experimentation
+    \item Better code than many humans
+    \item Productive mechanism to collaborate with computer science
+    \end{itemize}
+  \end{block}
+  \begin{block}{Fast solvers}
+    \begin{itemize}
+    \item How to capture mathematical ``building blocks'' in code?
+    \item Each class PDE presents different challenges, can we avoid
+      doing everything ``from scratch'' each time?
+    \end{itemize}
+  \end{block}
 \end{frame}
 \end{document}
