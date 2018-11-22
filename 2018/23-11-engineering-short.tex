@@ -2,44 +2,8 @@
 
 \usepackage{booktabs}
 \usepackage{tikz}
-\usetikzlibrary{trees,calc,positioning}
-\usetikzlibrary{shapes, shapes.geometric}
-% https://tex.stackexchange.com/questions/27171/padded-boundary-of-convex-hull
-\newcommand{\convexpath}[2]{
-  [
-  create hullcoords/.code={
-    \global\edef\namelist{#1}
-    \foreach [count=\counter] \nodename in \namelist {
-      \global\edef\numberofnodes{\counter}
-      \coordinate (hullcoord\counter) at (\nodename);
-    }
-    \coordinate (hullcoord0) at (hullcoord\numberofnodes);
-    \pgfmathtruncatemacro\lastnumber{\numberofnodes+1}
-    \coordinate (hullcoord\lastnumber) at (hullcoord1);
-  },
-  create hullcoords
-  ]
-  ($(hullcoord1)!#2!-90:(hullcoord0)$)
-  \foreach [
-  evaluate=\currentnode as \previousnode using \currentnode-1,
-  evaluate=\currentnode as \nextnode using \currentnode+1
-  ] \currentnode in {1,...,\numberofnodes} {
-    let \p1 = ($(hullcoord\currentnode) - (hullcoord\previousnode)$),
-    \n1 = {atan2(\y1,\x1) + 90},
-    \p2 = ($(hullcoord\nextnode) - (hullcoord\currentnode)$),
-    \n2 = {atan2(\y2,\x2) + 90},
-    \n{delta} = {Mod(\n2-\n1,360) - 360}
-    in
-    {arc [start angle=\n1, delta angle=\n{delta}, radius=#2]}
-    -- ($(hullcoord\nextnode)!#2!-90:(hullcoord\currentnode)$)
-  }
-}
+\usetikzlibrary{positioning}
 \usepackage{booktabs}
-\usepackage{pgf}
-\usepackage{pgfplots}
-\pgfplotsset{compat=1.13}
-\usepackage{pgfplotstable}
-\usepackage{appendixnumberbeamer}
 \usepackage{amsmath}
 \usepackage{pifont}
 \newcommand{\cmark}{\ding{51}}
@@ -77,7 +41,8 @@
 \author{Lawrence Mitchell\inst{1,*} \\ {\scriptsize C.J.~Cotter,
     P.E.~Farrell, D.A.~Ham, M.~Homolya, P.H.J.~Kelly, R.C.~Kirby, F.~Wechsung, \ldots}}
 \institute{
-  E333 (Christopherson)
+  E333 (Christopherson)  
+
   \inst{1}Department of Computer Science, Durham University
 
   \inst{*}\texttt{lawrence.mitchell@durham.ac.uk}
@@ -157,7 +122,12 @@ backend=biber]{biblatex}
 
 \begin{document}
 
+\begin{frame}[plain,noframenumbering]
+\begin{tikzpicture}[overlay, remember picture]
+\node[below left = 0.25cm of current page.north east, anchor=north east] {\includegraphics[height=1.25cm]{durham-logo}};
+\end{tikzpicture}
 \maketitle
+\end{frame}
 
 \begin{frame}
   \frametitle{Previously}
