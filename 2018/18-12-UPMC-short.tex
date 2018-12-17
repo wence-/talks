@@ -1,0 +1,1121 @@
+\documentclass[presentation, 10pt]{beamer}
+
+\usepackage{booktabs}
+\usepackage{tikz}
+\usetikzlibrary{trees,calc,positioning}
+\usetikzlibrary{shapes, shapes.geometric}
+% https://tex.stackexchange.com/questions/27171/padded-boundary-of-convex-hull
+\newcommand{\convexpath}[2]{
+  [
+  create hullcoords/.code={
+    \global\edef\namelist{#1}
+    \foreach [count=\counter] \nodename in \namelist {
+      \global\edef\numberofnodes{\counter}
+      \coordinate (hullcoord\counter) at (\nodename);
+    }
+    \coordinate (hullcoord0) at (hullcoord\numberofnodes);
+    \pgfmathtruncatemacro\lastnumber{\numberofnodes+1}
+    \coordinate (hullcoord\lastnumber) at (hullcoord1);
+  },
+  create hullcoords
+  ]
+  ($(hullcoord1)!#2!-90:(hullcoord0)$)
+  \foreach [
+  evaluate=\currentnode as \previousnode using \currentnode-1,
+  evaluate=\currentnode as \nextnode using \currentnode+1
+  ] \currentnode in {1,...,\numberofnodes} {
+    let \p1 = ($(hullcoord\currentnode) - (hullcoord\previousnode)$),
+    \n1 = {atan2(\y1,\x1) + 90},
+    \p2 = ($(hullcoord\nextnode) - (hullcoord\currentnode)$),
+    \n2 = {atan2(\y2,\x2) + 90},
+    \n{delta} = {Mod(\n2-\n1,360) - 360}
+    in
+    {arc [start angle=\n1, delta angle=\n{delta}, radius=#2]}
+    -- ($(hullcoord\nextnode)!#2!-90:(hullcoord\currentnode)$)
+  }
+}
+\usepackage{booktabs}
+\usepackage{pgf}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.16}
+\usepackage{pgfplotstable}
+\usepackage{appendixnumberbeamer}
+\usepackage{amsmath}
+\usepackage{pifont}
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
+\DeclareMathOperator{\grad}{grad}
+\DeclareMathOperator{\tr}{tr}
+\let\div\relax
+\DeclareMathOperator{\div}{div}
+\DeclareMathOperator{\curl}{curl}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\date{December 18, 2018}
+\usetheme{metropolis}
+\metroset{progressbar=frametitle}
+
+\usepackage{algpseudocode}
+\renewcommand{\vec}[1]{\ensuremath{\boldsymbol{#1}}}
+\newcommand{\ddt}[1]{\frac{\partial #1}{\partial t}}
+\newcommand{\zhat}{\hat{\vec{z}}}
+\newcommand{\W}{\ensuremath{\mathbb{W}}}
+
+\newcommand{\inner}[1]{\left\langle #1 \right \rangle}
+
+\newcommand{\KSP}[2]{\ensuremath{\mathcal{K}\left(#1, \mathbb{#2}\right)}}
+\newcommand{\ksp}[1]{\KSP{#1}{#1}}
+
+\newcommand{\highlight}[1]{\colorbox{red!20}{\color{black} #1}}
+\newcommand{\arxivlink}[2]{%
+  \href{https://www.arxiv.org/abs/#1}%
+  {\texttt{arXiv:\,#1\,[#2]}}%
+}
+\newcommand{\doilink}[1]{%
+  \href{https://dx.doi.org/#1}%
+  {\texttt{doi:\,#1}{}}%
+}
+
+\author{Lawrence Mitchell\inst{1,*} \and Patrick E.~Farrell\inst{2}
+  \and Florian Wechsung\inst{2}}
+\institute{
+\inst{1}Department of Computer Science, Durham University
+
+\inst{*}\texttt{lawrence.mitchell@durham.ac.uk}
+
+\inst{2}Mathematical Institute, University of Oxford
+}
+
+\graphicspath{{./\jobname.figures/}{../pictures/}}
+
+\usepackage[url=false,
+doi=true,
+isbn=false,
+style=authoryear,
+maxnames=5,
+giveninits=true,
+uniquename=init,
+backend=biber]{biblatex}
+
+\usepackage{xspace}
+\let\Re\relax
+\DeclareMathOperator{\Re}{Re}
+\newcommand{\honev}{\ensuremath{{H}^1(\Omega; \mathbb{R}^d)}\xspace}
+\newcommand{\ltwov}{\ensuremath{{L}^2(\Omega; \mathbb{R}^d)}\xspace}
+\newcommand{\ltwo}{\ensuremath{{L}^2(\Omega)}\xspace}
+\newcommand{\laplace}{\ensuremath{\Delta}\,}
+\newcommand{\rt}{\ensuremath{\mathrm{RT}_0}\xspace}
+\newcommand{\nd}{\ensuremath{\mathrm{ND}_0}\xspace}
+% \let\ker\relax
+% \DeclareMathOperator{\ker}{ker}
+\newcommand{\kerdiv}{\ker\div}
+\newcommand{\kercurl}{\ker\curl}
+\newcommand{\eker}{\ensuremath{e^{\ker}}\xspace}
+\newcommand{\ds}{\ \text{d}s}
+\newcommand{\dx}{\ \text{d}x}
+\newcommand{\Pq}{\ensuremath{\mathrm{P}_{Q_h}}}
+\newcommand{\PqK}{\ensuremath{\mathrm{P}_{Q_h(K)}}}
+\newcommand{\Ptwo}{\ensuremath{\mathbb{P}_2}\xspace}
+\newcommand{\Pthree}{\ensuremath{\mathbb{P}_3}\xspace}
+\newcommand{\PtwoPzero}{\ensuremath{[\mathbb{P}_2]^2\mathrm{-}\mathbb{P}_0}\xspace}
+\newcommand{\PtwothreePzero}{\ensuremath{[\mathbb{P}_2]^3\mathrm{-}\mathbb{P}_0}\xspace}
+\newcommand{\PthreePzero}{\ensuremath{[\mathbb{P}_3]^3\mathrm{-}\mathbb{P}_0}\xspace}
+\newcommand{\Pzero}{\ensuremath{\mathbb{P}_0}\xspace}
+\newcommand{\Pv}{\ensuremath{\mathbb{P}_v}\xspace}
+\newcommand{\BR}{\ensuremath{\left[\mathbb{P}_1 \oplus B^F_3\right]}\xspace}
+\newcommand{\PoneFB}{\ensuremath{\mathbb{P}_1 \oplus B^F_3}\xspace}
+\newcommand{\PtwoFB}{\ensuremath{\mathbb{P}_2 \oplus B^F_3}\xspace}
+\newcommand{\BRzero}{\ensuremath{\BR^3\mathrm{-}\mathbb{P}_0}\xspace}
+\newcommand{\fmw}{\ensuremath{\left(\mathbb{P}_2 \oplus B^F_3\right)}\xspace}
+\newcommand{\fmwzero}{\ensuremath{\fmw^3\mathrm{-}\mathbb{P}_0}\xspace}
+%\newcommand{\advect}[2]{\ensuremath{(\nabla #1) \cdot #2}}
+\newcommand{\advect}[2]{\ensuremath{(#2 \cdot \nabla) #1}}
+\newcommand{\mesh}{\ensuremath{\mathcal{M}}\xspace}
+\newcommand{\Ac}{\ensuremath{\mathcal{A}}}
+\newcommand{\Bc}{\ensuremath{\mathcal{B}}}
+\setbeamertemplate{bibliography item}{}
+
+\titlegraphic{\hfill\includegraphics[height=0.8cm]{durham-logo}}
+
+\renewcommand{\bibfont}{\fontsize{7}{7}\selectfont}
+\addbibresource{references.bib}
+
+\setlength{\bibitemsep}{1ex}
+\setlength{\fboxsep}{1pt}
+
+\renewbibmacro{in:}{}
+\DeclareFieldFormat[article]{volume}{\textbf{#1}}
+\DeclareFieldFormat{doi}{%
+  doi\addcolon%
+  {\scriptsize\ifhyperref{\href{http://dx.doi.org/#1}{\nolinkurl{#1}}}
+    {\nolinkurl{#1}}}}
+\AtEveryBibitem{%
+\clearfield{pages}%
+\clearfield{issue}%
+\clearfield{number}%
+}
+
+\usepackage{minted}
+\RecustomVerbatimEnvironment{Verbatim}{BVerbatim}{}
+
+
+\title{Reynolds-robust preconditioning for Navier--Stokes}
+
+\begin{document}
+
+\maketitle
+
+\section{Firedrake overview}
+
+\begin{frame}[fragile]
+  \frametitle{Code that looks like maths}
+  \begin{columns}
+    \begin{column}{0.47\framewidth}
+      {\footnotesize
+        Find $(u, p, T) \in V\times W\times Q$ s.t.
+        \begin{align*}
+          \int\!\nabla u \cdot \nabla v + (u \cdot \nabla u) \cdot v \\
+          - p\nabla\cdot v + \frac{\text{Ra}}{\text{Pr}} Tg \hat{z} \cdot v\,\text{d}x &= 0 \\
+          \int\!\nabla\cdot u q\,\text{d}x&= 0\\
+          \int\! (u\cdot \nabla T) S + \text{Pr}^{-1} \nabla T \cdot \nabla
+          S\,\text{d}x &= 0\\
+          \quad \forall\, (v,q,T) \in V\times W \times Q
+        \end{align*}
+        }
+    \end{column}
+      \begin{column}{0.52\framewidth}
+\begin{minted}[fontsize=\tiny]{python}
+from firedrake import *
+mesh = Mesh(...)
+V = VectorFunctionSpace(mesh, "CG", 2)
+W = FunctionSpace(mesh, "CG", 1)
+Q = FunctionSpace(mesh, "CG", 1)
+Z = V * W * Q
+Ra = Constant(...)
+Pr = Constant(...)
+upT = Function(Z)
+u, p, T = split(upT)
+v, q, S = TestFunctions(Z)
+bcs = [...]
+
+F = (inner(grad(u), grad(v))
+     + inner(dot(grad(u), u), v)
+     - inner(p, div(v))
+     + (Ra/Pr)*inner(T*g, v)
+     + inner(div(u), q)
+     + inner(dot(grad(T), u), S)
+     + (1/Pr) * inner(grad(T), grad(S)))*dx
+
+solve(F == 0, upT, bcs=bcs)
+\end{minted}
+      \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{Looking for abstractions}
+  \begin{itemize}
+  \item Mathematics just says ``here is the integral to compute on each
+    element, do that everywhere''
+  \item Computer implementation chooses how to do so
+  \end{itemize}
+  \begin{block}{Assertion(s)}
+    \vspace{0.25\baselineskip}
+    Having chosen a discretisation, writing the element integral is ``mechanical''.
+
+    With an element integral in hand, integrating over a mesh is
+    ``mechanical''.
+  \end{block}
+
+  \begin{corollary}
+    \vspace{0.25\baselineskip}
+    Computers are good at mechanical things, why don't we get the
+    computer to write them for us?
+  \end{corollary}
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{Firedrake \url{www.firedrakeproject.org}}
+
+  \begin{overlayarea}{\textwidth}{\textheight}
+    \begin{onlyenv}<1>
+  \begin{columns}
+    \begin{column}{0.8\textwidth}
+      \begin{quote}
+        {\normalfont [\ldots]} an automated system for the solution of
+        partial differential equations using the finite element
+        method.
+      \end{quote}
+    \end{column}
+    \begin{column}{0.2\textwidth}
+      \includegraphics[width=0.8\textwidth]{firedrake-small}
+    \end{column}
+  \end{columns}
+      \begin{itemize}
+      \item Written in Python.
+      \item Finite element problems specified with \emph{embedded}
+        domain specific language, UFL \parencite{Alnaes:2014} from the
+        FEniCS project.
+      \item \emph{Runtime} compilation to optimised, low-level (C)
+        code.
+      \item PETSc for meshes and (algebraic) solvers.
+      \end{itemize}
+
+    \begin{flushright}
+      {\scriptsize F.~Rathgeber, D.A.~Ham, \textbf{LM}, M.~Lange,
+        F.~Luporini, A.T.T.~McRae, G.-T.~Bercea, G.R.~Markall,
+        P.H.J.~Kelly. ACM Transactions on Mathematical Software,
+        2016. \arxivlink{1501.01809}{cs.MS}\nocite{Rathgeber:2016}}
+    \end{flushright}
+  \end{onlyenv}
+  \begin{onlyenv}<2>
+    \begin{block}{Particular strengths}
+      \begin{itemize}
+      \item Geophysical fluid dynamics (one structured dimension)
+        
+      \item Extensible interface for multigrid and block
+        preconditioning
+      \item All\textsuperscript{(*)} the finite elements
+      \end{itemize}
+
+      \textsuperscript{(*)} Not actually all of them
+    \end{block}
+    \begin{block}{User groups at}
+      \begin{itemize}
+      \item Imperial, Oxford, Bath, Leeds, Durham, Kiel, Rice,
+        Houston, Exeter, Buffalo, Waterloo, Minnesota, Baylor, Texas
+        A\&M, \dots
+      \item Annual user \& developer meeting this year had 45
+        attendees.
+      \item Next meeting (2019) probably in Durham in September.
+      \end{itemize}
+    \end{block}
+  \end{onlyenv}
+\end{overlayarea}
+\end{frame}
+
+
+\begin{frame}[fragile]
+  \frametitle{Automation makes your code short}
+  \begin{columns}
+    \begin{column}{0.45\textwidth}
+      \begin{equation*}
+        a(u, v) = \int_\Omega \nabla u \cdot \nabla v\,\text{d}x \quad \forall v \in V
+      \end{equation*}
+\begin{minted}[fontsize=\scriptsize]{python}
+V = FiniteElement("Lagrange",
+                  triangle, 1)
+u = TrialFunction(V)
+v = TestFunction(V)
+F = dot(grad(u), grad(v))*dx
+\end{minted}
+    \end{column}
+    \hspace{0.05\textwidth}
+    \begin{column}{0.45\textwidth}
+      \begin{tikzpicture}
+        \node[draw,rectangle, thick, text width=1in, align=center] (A)
+        {\small Pen and paper};
+
+        \node[draw, below=of A, rectangle, thick, text width=1in,
+        align=center] (B) {\small High-level code};
+
+        \node[draw, below=of B, rectangle, thick, text width=1in,
+        align=center] (C) {\small Low-level code};
+
+        \node[draw, below=of C, rectangle, thick, text width=1in,
+        align=center] (D) {\small Machine code};
+
+        \draw[-stealth] (A) -> (B) node [midway,right,text
+        width=1in,align=center] {\small Manual};
+
+        \draw[-stealth] (B) -> (C) node [midway, right, text
+        width=1in, align=center]
+        {\small Automated};
+
+        \draw[-stealth] (C) -> (D) node [midway, right, text
+        width=1.5in, align=center] {\small Automated (gcc)};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}[fragile, t]
+  \frametitle{Automation enables optimisations}
+  Compile UFL (symbolics) into low-level code (implementation).
+  \vspace{-\baselineskip}
+  \begin{flushright}
+    {\scriptsize M.~Homolya, \textbf{LM}, F.~Luporini, D.A.~Ham. SIAM
+      SISC (2018). \arxivlink{1705.03667}{cs.MS}\nocite{Homolya:2018}}
+  \end{flushright}
+  \vspace{-0.5\baselineskip}
+  \begin{itemize}
+  \item Element integral
+    \begin{columns}
+      \begin{column}{0.4\textwidth}
+        \begin{equation*}
+          \int_e \nabla u \cdot \nabla v\,\text{d}x
+        \end{equation*}
+      \end{column}
+      \hspace{-3em}
+      \begin{column}{0.6\textwidth}
+\begin{minted}[fontsize=\scriptsize]{python}
+V = FiniteElement("Lagrange", triangle, 1)
+u = TrialFunction(V)
+v = TestFunction(V)
+a = dot(grad(u), grad(v))*dx
+\end{minted}
+      \end{column}
+    \end{columns}
+    \hspace{0.5\baselineskip}
+  \item Is transformed to a tensor algebra expression
+    {\small \begin{equation*}
+        \sum_q w_q \left| d \right| \sum_{i_5} \left( \sum_{i_3}
+          K_{i_3,i_5} \begin{bmatrix}
+            E^{(1)}_{q,k} & E^{(2)}_{q,k}
+          \end{bmatrix}_{i_3} \right)
+        \left( \sum_{i_4} K_{i_4,i_5} \begin{bmatrix}
+            E^{(1)}_{q,j} & E^{(2)}_{q,j}
+          \end{bmatrix}_{i_4} \right)
+      \end{equation*}}
+  \item Multiple optimisation passes aim to minimise FLOPs required to
+    evaluate this expression.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{Optimisation passes}
+  \begin{block}{Sum factorisation}
+    \vspace{0.25\baselineskip}
+    Spectral elements typically use \emph{tensor product} basis functions
+    \begin{equation*}
+      \phi_{i,q} := \phi_{(j,k),(p,r)} = \varphi_{j,p}\varphi_{k,r}
+    \end{equation*}
+    Tensor algebra maintains this structure, compiler exploits it for
+    low-complexity evaluation of integrals.
+    \vspace{-\baselineskip}
+    \begin{flushright}
+      {\scriptsize M.~Homolya, R.C.~Kirby, D.A.~Ham, \arxivlink{1711.02473}{cs.MS}\nocite{Homolya:2017a}}
+    \end{flushright}
+  \end{block}
+  \vspace{-0.5\baselineskip}
+  \begin{block}{Loop transformations}
+    \vspace{0.25\baselineskip}
+    Solve ILP problem to reorder loops, and decide how to split
+    complicated expressions.\nocite{Luporini:2017}
+  \end{block}
+  \begin{block}{Vectorisation}
+    \vspace{0.25\baselineskip}
+    Low-level rearrangement to ease the job of C compilers in
+    generating efficient code.\nocite{Luporini:2015}
+  \end{block}
+
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Algorithmically optimal implementation}
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      \begin{block}{Computing $\curl-\curl$ action}
+        Find $u \in V \subset H(\curl)$ s.t.
+        {\scriptsize \begin{equation*}
+            \int\!\!\curl u \cdot \curl v \,\text{d}x = \int\!\!B\cdot
+            v\,\text{d}x \quad \forall v \in V.
+          \end{equation*}}
+\begin{minted}[fontsize=\tiny,mathescape]{python}
+NCE = FiniteElement("NCE", hexahedron, degree)
+Q = VectorElement("Q", hexahedron, degree)
+u = Coefficient(NCE)
+B = Coefficient(Q)
+v = TestFunction(NCE)
+F = (dot(curl(u), curl(v)) - dot(B, v))*dx
+\end{minted}
+      \end{block}
+    \end{column}
+    \begin{column}{0.6\textwidth}
+      \begin{center}
+        \begin{tikzpicture}[scale=0.9]
+          \begin{loglogaxis}[name=plot, small, title={FLOPs to evaluate $F$},
+            xlabel=Polynomial degree,
+            ylabel=FLOPs, xtick={1,2,4,8,16,32},
+            xticklabels={$1$,$2$,$4$,$8$,$16$,$32$}, axis lines=left, axis
+            line style={-}, log basis x=2,
+            legend entries={Na\"ive, With sum factorisation},
+            legend cell align=left,
+            legend style={at={(0.5,-0.3)},anchor=north,draw=none, fill=none}]
+            \pgfplotstableread[row sep=crcr]{
+              degree flops_vanilla flops_opt\\
+              1 9.78100e+03 6.48100e+03\\
+              2 1.05624e+05 2.78280e+04\\
+              3 6.04110e+05 7.50860e+04\\
+              4 2.36102e+06 1.63395e+05\\
+              5 7.20724e+06 3.09060e+05\\
+              6 1.85105e+07 5.33483e+05\\
+              7 4.18644e+07 8.60322e+05\\
+              8 8.59101e+07 1.31626e+06\\
+              9 1.63287e+08 1.93100e+06\\
+              10 2.91712e+08 2.73728e+06\\
+              11 4.95190e+08 3.77084e+06\\
+              12 8.05352e+08 5.07047e+06\\
+              13 1.26293e+09 6.67796e+06\\
+              14 1.91933e+09 8.63816e+06\\
+              15 2.83841e+09 1.09989e+07\\
+              16 4.09829e+09 1.38110e+07\\
+              17 5.79335e+09 1.71285e+07\\
+              18 8.03637e+09 2.10082e+07\\
+              19 1.09608e+10 2.55101e+07\\
+              20 1.47229e+10 3.06972e+07\\
+              21 1.95048e+10 3.66353e+07\\
+              22 2.55164e+10 4.33937e+07\\
+              23 3.29987e+10 5.10443e+07\\
+              24 4.22266e+10 5.96621e+07\\
+              25 5.35115e+10 6.93253e+07\\
+              26 6.72053e+10 8.01150e+07\\
+              27 8.37026e+10 9.21153e+07\\
+              28 1.03445e+11 1.05413e+08\\
+              29 1.26924e+11 1.20099e+08\\
+              30 1.54686e+11 1.36267e+08\\
+              31 1.87334e+11 1.54011e+08\\
+              32 2.25533e+11 1.73433e+08\\
+            }\data; \pgfplotstableset{create on use/vanilla/.style={create
+                col/expr={1e3*pow(\thisrow{degree},6)}}};
+            \pgfplotstableset{create on use/spectral/.style={create
+                col/expr={5e2*pow(\thisrow{degree},4)}}};
+
+            \addplot+[mark=none, color=black, line width=1.5pt] table
+            [x=degree,y=flops_vanilla] \data; \addplot+[mark=none,
+            color=black, dashed, line width=1.5pt] table
+            [x=degree,y=flops_opt] \data; \addplot+[mark=none, color=black,
+            dotted, line width=1pt] table [x=degree,y=vanilla] \data
+            coordinate [pos=0.67] (A); \node at (A) [anchor=south east]
+            {$\mathcal{O}(p^6)$}; \addplot+[mark=none, color=black,
+            dotted, line width=1pt] table [x=degree,y=spectral] \data
+            coordinate [pos=0.67] (B); \node at (B) [anchor=north west]
+            {$\mathcal{O}(p^4)$};
+          \end{loglogaxis}
+        \end{tikzpicture}
+      \end{center}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\section{Preconditioning}
+\begin{frame}[t]
+  \frametitle{The problem}
+  \begin{block}{Stationary incompressible Navier--Stokes}
+    \vspace{0.25\baselineskip}
+    Find $(u, p) \in \honev \times \ltwo$ such that
+    \begin{alignat*}{2}
+      -  \Re^{-1} \nabla^2 u + \advect{u}{u} + \nabla p &= f \quad && \text{ in } \Omega, \\
+      \nabla \cdot u &= 0 \quad && \text{ in } \Omega, \\
+      u &= g \quad && \text{ on } \Gamma_D, \\
+      \Re^{-1} \nabla u \cdot n &= pn \quad && \text{ on } \Gamma_N,
+    \end{alignat*}
+
+    For $\Re \gg 1$ Navier--Stokes admits multiple solutions. Can we find them?
+  \end{block}
+  
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{Solving for the Newton step}
+  \begin{block}{Newton linearisation}
+    \begin{alignat*}{2}
+      - \Re^{-1} \nabla^2 u + (u \cdot \nabla) w + (w \cdot \nabla) u) +
+      \nabla p &= f \quad && \text{ in } \Omega, \\
+      \nabla \cdot u &= \quad && \text { in } \Omega.\\
+    \end{alignat*}
+  \end{block}
+  \vspace{-2\baselineskip}
+  \begin{columns}[t]
+    \begin{column}{0.5\textwidth}
+      \begin{block}{LU factorisation}
+        \begin{itemize}
+        \item[\cmark] Scales well with $\Re \to \infty$
+        \item[\xmark] Scales poorly with dof count
+        \end{itemize}
+      \end{block}
+    \begin{alertblock}{This work}
+      \begin{itemize}
+      \item[\cmark] Scales well with $\Re \to \infty$
+      \item[\cmark] Scales well with dof count
+      \end{itemize}
+    \end{alertblock}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \begin{block}{Existing preconditioners}
+        \begin{itemize}
+        \item[\xmark] Scale badly with $\Re \to \infty$
+        \item[\cmark] Scale well with dof count
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{Backing off to Stokes}
+
+  \begin{block}{Stokes' equations}
+    \vspace{0.25\baselineskip}
+    Find $(u, p) \in \honev \times \ltwo$ such that
+    \begin{alignat*}{2}
+      -  \Re^{-1} \nabla^2 u + \nabla p &= f \quad && \text{ in } \Omega, \\
+      \nabla \cdot u &= 0 \quad && \text{ in } \Omega, \\
+    \end{alignat*}
+  \end{block}
+  \begin{block}{Discretisation}
+    \vspace{0.25\baselineskip}
+    Discretising with inf-sup stable element pair results in:
+    \begin{equation*}
+      Jx := \begin{pmatrix}
+        A & B^T \\
+        B & 0
+      \end{pmatrix}
+      \begin{pmatrix}
+        u \\ p
+      \end{pmatrix}
+      =
+      \begin{pmatrix}
+        b \\ 0
+      \end{pmatrix}.
+    \end{equation*}
+  \end{block}
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{Block preconditioning}
+  \begin{block}{Block factorisations [Murphy, Golub, Wathen (2000)]}
+    \vspace{0.25\baselineskip}
+    Build preconditioners based on
+    \begin{equation*}
+      J^{-1} =
+      \begin{pmatrix}
+        I   & -A^{-1} B^T \\
+        0 & I \\
+      \end{pmatrix}
+      \begin{pmatrix}
+        A^{-1}  & 0 \\
+        0 & S^{-1} \\
+      \end{pmatrix}
+      \begin{pmatrix}
+        I   & 0 \\
+        -BA^{-1} & I \\
+      \end{pmatrix}
+    \end{equation*}
+    Where $S$ is the (dense) Schur complement
+    \begin{equation*}
+      S = - B A^{-1} B^T
+    \end{equation*}
+  \end{block}
+  \begin{block}{PDE-specific challenges}
+    \vspace{0.25\baselineskip}
+    Find fast approximations $\tilde{A}^{-1}$ and $\tilde{S}^{-1}$ to
+    $A^{-1}$ and $S^{-1}$.
+  \end{block}
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{Choosing $\tilde{A}^{-1}$ and $\tilde{S}^{-1}$}
+
+  \begin{block}{Stokes [Silvester \& Wathen (1994)]}
+    \vspace{0.25\baselineskip}
+    Multigrid for $\tilde{A}^{-1}$ and choose $\tilde{S}^{-1} = -Q^{-1}$ ($Q$ the pressure mass matrix).
+  \end{block}
+  \begin{alertblock}{Bad news}
+    \vspace{0.25\baselineskip}
+    For Navier--Stokes, choosing $\tilde{S}^{-1} = -Q^{-1}$ degrades like $\mathcal{O}(\Re^2)$
+  \end{alertblock}
+  \begin{block}{PCD for Navier--Stokes}
+    \vspace{0.25\baselineskip}
+    Approximate $S^{-1}$ with convection-diffusion solves on the
+    pressure space. Performs better than $-Q^{-1}$, but \dots
+  \end{block}
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{Performance of PCD approximation}
+
+  Setup: v3.5 of IFISS, regularised 2D lid-driven cavity, $Q_1-P_0$
+  element pair.
+
+  \begin{table}[htbp]
+    \centering
+    \begin{tabular}{cc|c@{\hspace{9pt}}c@{\hspace{9pt}}c@{\hspace{9pt}}c@{\hspace{9pt}}c}
+      \toprule
+      $1/h$ & \# dofs            & \multicolumn{5}{c}{Reynolds number}                 \\
+            &                    & 10   & 100  & 1000  & 5000          & 10000         \\
+      \midrule
+      $2^4$ & $8.34 \times 10^2$ & 22.0 & 40.4 & 103.3 & \texttt{NaNF} & -             \\
+      $2^5$ & $3.20 \times 10^3$ & 23.0 & 41.3 & 137.7 & \texttt{NaNF} & -             \\
+      $2^6$ & $1.25 \times 10^4$ & 24.5 & 42.0 & 157.0 & 386.0         & \texttt{NaNF} \\
+      $2^7$ & $4.97 \times 10^4$ & 25.5 & 42.7 & 149.0 & 482.0         & 747.5         \\
+      $2^8$ & $1.98 \times 10^5$ & 26.0 & 44.0 & 137.0 & 492.5         & 852.5         \\
+      \bottomrule
+    \end{tabular}
+    \caption{Number of outer Krylov iterations per Newton step with PCD}
+  \end{table}
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{Augmented Lagrangian preconditioners}
+  \vspace{2\baselineskip}
+  \begin{quote}
+    We describe an effective solver for the discrete Oseen problem
+    [\dots] this approach results in fast convergence, independent of
+    the mesh size and largely insensitive to the viscosity.
+
+    \begin{flushright}
+      {\normalfont [Benzi \& Olshanksii (2006)]}
+    \end{flushright}
+  \end{quote}
+
+  \vspace{2\baselineskip}
+  \begin{block}{Observation}
+    \begin{itemize}
+    \item[\cmark] Reynolds-robust preconditioning
+    \item[\xmark] No-one else appears to have implemented the full scheme
+      (2006--2018)
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{Objectives}
+  \begin{itemize}
+  \item Can we make the first general implementation of the method? \cmark
+  \item Can we extend the solver and discretisation to three
+    dimensions? \cmark
+  \item Can we extend the solver to a discretisation that enforces
+    \begin{equation*}
+      \nabla \cdot u = 0
+    \end{equation*}
+    pointwise? Crucial for velocity error estimates at high $\Re$. \textcolor{gray}{\cmark}
+  \end{itemize}
+  \uncover<2>{
+    \begin{block}{Three ideas}
+      \begin{enumerate}
+      \item Control Schur complement with an augmented Lagrangian term
+      \item Kernel-capturing multigrid relaxation
+      \item Robust multigrid prolongation
+      \end{enumerate}
+    \end{block}
+    \vspace{-\baselineskip}
+    \begin{flushright}
+      {\scriptsize P.E.~Farrell, \textbf{LM}, F.~Wechsung \arxivlink{1810.03315}{math.NA}\nocite{Farrell:2018}}
+    \end{flushright}
+  }
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{Idea 1: controlling the Schur complement}
+
+  Add an \emph{augmented Lagrangian} term.
+
+  \begin{block}{Stokes again}
+    \begin{equation*}
+      u = \argmin_{v \in \honev} \frac{1}{2} \int \nabla : \nabla \dx
+      - \int f \cdot v \dx \uncover<2->{+ \frac{\gamma}{2} \int (\nabla \cdot v)^2 \dx}
+    \end{equation*}
+    Subject to $\nabla \cdot v = 0$
+  \end{block}
+
+  \pause Doesn't change solution, since $\nabla \cdot v = 0$
+  \pause
+  \begin{theorem}[Hestenes, Fortin, Glowinski, Olshanksii, \dots]
+    \vspace{0.25\baselineskip}
+    As $\gamma \to \infty$, the Schur complement is well
+    approximated by $S^{-1} \sim -(1 + \gamma)Q^{-1}$.
+  \end{theorem}
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{\dots or discretely}
+  \begin{block}{Discrete augmented Lagrangian stabilisation}
+    \vspace{0.25\baselineskip}
+    \begin{equation*}
+      \begin{pmatrix}
+        A + \gamma B^T Q^{-1} B & B^T \\
+        B & 0
+      \end{pmatrix}
+      \begin{pmatrix}
+        u \\ p
+      \end{pmatrix}
+      =
+      \begin{pmatrix}
+        b \\ 0
+      \end{pmatrix}
+    \end{equation*}
+  \end{block}
+
+  Doesn't change solution, since $B u = 0$
+  \begin{block}{Same result}
+    \vspace{0.25\baselineskip}
+    As $\gamma \to \infty$, the Schur complement is well approximated
+    by $S^{-1} \sim -(1 + \gamma)Q^{-1}$.
+  \end{block}
+
+  \pause
+
+  \begin{alertblock}{Not just for Stokes}
+    \vspace{0.25\baselineskip}
+    Crucially, this property \emph{still} holds for Navier--Stokes.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{Conservation of misery}
+  Augmented Lagrangian scheme moves difficulty from $\tilde{S}^{-1}$
+  to $\tilde{A}^{-1}$.
+
+  We now must solve either: find $u \in V \subseteq \honev$ such that
+  \begin{block}{Continuous stabilisation}
+    \begin{equation*}
+      \Re^{-1} (\nabla u, \nabla v) + ((w \cdot \nabla)u, v) + ((u \cdot
+      \nabla)w, v) + \gamma(\nabla \cdot u, \nabla \cdot v) = (f, v)
+    \end{equation*}
+  \end{block}
+  \vspace{-0.5\baselineskip}
+  or 
+  \begin{block}{Discrete stabilisation}
+    \begin{equation*}
+    \Re^{-1} (\nabla u, \nabla v) + ((w \cdot \nabla)u, v) + ((u \cdot \nabla)w, v) + \gamma(\overline{\nabla \cdot u}, \overline{\nabla \cdot v}) = (f, v)
+  \end{equation*}
+  \end{block}
+  \vspace{-0.5\baselineskip}
+  for all $v \in V$, where $\overline{x}$ is the $L^2$ projection onto the discrete pressure space.
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{Idea 2: kernel-capturing multigrid relaxation}
+  Consider the problem: for $\alpha, \beta \in \mathbb{R}$, find $u \in V$ such that
+  \begin{equation*}
+    \alpha a(u, v) + \beta b(u, v) = (f, v) \quad \forall v \in V,
+  \end{equation*}
+  where $a$ is SPD, and $b$ is symmetric positive semidefinite.
+
+  \begin{block}{Relaxation method}
+    \vspace{0.25\baselineskip}
+    Choose a subspace decomposition
+    \begin{equation*}
+      V = \sum_i V_i,
+    \end{equation*}
+    solve the problem on each subspace and combine the updates.
+  \end{block}
+  \begin{exampleblock}{Example}
+    \vspace{0.25\baselineskip}
+    If each $V_i$ is the span of a single basis function, this defines a
+    Jacobi (Gauss-Seidel) iteration.
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{Idea 2: kernel-capturing multigrid relaxation}
+  \begin{theorem}[Sch\"oberl (1999); Lee, Wu, Xu, Zikatanov (2007)]
+    \vspace{0.25\baselineskip}
+    Let the kernel be
+    \begin{equation*}
+      \mathcal{N} := \{ u \in V : b(u, v) = 0 \,\, \forall v \in V \}.
+    \end{equation*}
+    If the subspace decomposition \emph{captures the kernel}
+    \begin{equation*}
+      \mathcal{N} = \sum_i \mathcal{N} \cap V_i,
+    \end{equation*}
+    then convergence of the relaxation defined by this decomposition
+    will be \emph{independent} of $\alpha$ and $\beta$.
+    \nocite{Schoeberl:1999,Lee:2007}
+  \end{theorem}
+
+  \begin{corollary}
+    \vspace{0.25\baselineskip}
+    Capturing the kernel of the augmented Lagrangian term results in a robust multigrid method.
+  \end{corollary}
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{The kernel of $\overline{\nabla \cdot}$}
+  \begin{theorem}[Sch\"oberl (1999)]
+    \vspace{0.25\baselineskip}
+    Choose \emph{discrete} stabilisation, and \emph{piecewise constant} pressures. The \emph{star} decomposition $V = \sum_i V_i$ given by:
+    \begin{center}
+      \begin{tikzpicture}[scale=4]
+        \tikzstyle{v}=[circle, fill, minimum size=0pt, inner sep=0pt]
+        \tikzstyle{c}=[diamond, fill, minimum size=4pt, inner sep=0pt]
+        \tikzstyle{e}=[rectangle, fill, minimum size=3pt, inner sep=0pt]
+        \tikzstyle{select}=[minimum size=5pt]
+        \node[v] (v1) at (0, 0) {};
+        \node[v] (v2) at (0.25, 0) {};
+        \node[v] (v3) at (0.5, 0) {};
+        \node[v] (v4) at (0.75, 0) {};
+        \node[v] (v5) at (1, 0) {};
+        \node[v] (v6) at (0, 0.25) {};
+        \node[v] (v7) at (0, 0.5) {};
+        \node[v] (v8) at (0, 0.75) {};
+        \node[v] (v9) at (0, 1) {};
+        \node[v] (v10) at (0.25, 0.25) {};
+        \node[v] (v11) at (0.25, 0.5) {};
+        \node[v] (v12) at (0.25, 0.75) {};
+        \node[v] (v13) at (0.25, 1) {};
+        \node[v] (v14) at (0.5, 0.25) {};
+        \node[v] (v15) at (0.5, 0.5) {};
+        \node[v] (v16) at (0.5, 0.75) {};
+        \node[v] (v17) at (0.5, 1) {};
+        \node[v] (v18) at (0.75, 0.25) {};
+        \node[v] (v19) at (0.75, 0.5) {};
+        \node[v] (v20) at (0.75, 0.75) {};
+        \node[v] (v21) at (0.75, 1) {};
+        \node[v] (v22) at (1, 0.25) {};
+        \node[v] (v23) at (1, 0.5) {};
+        \node[v] (v24) at (1, 0.75) {};
+        \node[v] (v25) at (1, 1) {};
+
+        \draw[thin,gray] (v1) -- (v2) -- (v6) -- (v1);
+        \draw[thin,gray] (v2) -- (v10) -- (v6);
+        \draw[thin,gray] (v2) -- (v3) -- (v10);
+        \draw[thin,gray] (v3) -- (v14) -- (v10);
+        \draw[thin,gray] (v3) -- (v4) -- (v14);
+        \draw[thin,gray] (v4) -- (v18) -- (v14);
+        \draw[thin,gray] (v4) -- (v5) -- (v18);
+        \draw[thin,gray] (v5) -- (v22) -- (v18);
+        \draw[thin,gray] (v6) -- (v7) -- (v10);
+        \draw[thin,gray] (v7) -- (v11) -- (v10);
+        \draw[thin,gray] (v11) -- (v14) -- (v15) -- (v11);
+        \draw[thin,gray] (v15) -- (v18) -- (v19) -- (v15);
+        \draw[thin,gray] (v19) -- (v22) -- (v23) -- (v19);
+        \draw[thin,gray] (v7) -- (v8) -- (v11);
+        \draw[thin,gray] (v8) -- (v12) -- (v11);
+        \draw[thin,gray] (v12) -- (v15) -- (v16) -- (v12);
+        \draw[thin,gray] (v16) -- (v19) -- (v20) -- (v16);
+        \draw[thin,gray] (v20) -- (v23) -- (v24) -- (v20);
+        \draw[thin,gray] (v8) -- (v9) -- (v12);
+        \draw[thin,gray] (v9) -- (v13) -- (v12);
+        \draw[thin,gray] (v13) -- (v16) -- (v17) -- (v13);
+        \draw[thin,gray] (v17) -- (v20) -- (v21) -- (v17);
+        \draw[thin,gray] (v21) -- (v24) -- (v25) -- (v21);
+
+        \node[v, select, blue!75!green] at (v15) {};
+        \node at (barycentric cs:v11=1,v14=1,v15=1) (s1) {};
+        \node at (barycentric cs:v14=1,v15=1,v18=1) (s2) {};
+        \node at (barycentric cs:v15=1,v18=1,v19=1) (s3) {};
+        \node at (barycentric cs:v11=1,v12=1,v15=1) (s4) {};
+        \node at (barycentric cs:v12=1,v15=1,v16=1) (s5) {};
+        \node at (barycentric cs:v15=1,v16=1,v19=1) (s6) {};
+        \draw[thick,blue!75!green] \convexpath{s1,s4,s5,s6,s3,s2}{1pt};
+
+        \node[v, select, blue!75!green] at (v11) {};
+        \node at (barycentric cs:v12=1,v11=1,v8=1) (ss1) {};
+        \node at (barycentric cs:v7=1,v11=1,v8=1) (ss2){};
+        \node at (barycentric cs:v7=1,v10=1,v11=1) (ss3) {};
+        \node at (barycentric cs:v14=1,v10=1,v11=1) (ss4) {};
+        \draw[thick, blue!75!green] \convexpath{ss4,ss3,ss2,ss1,s4,s1}{1pt};
+      \end{tikzpicture}
+    \end{center}
+    captures the kernel of $\overline{\nabla \cdot }$.
+  \end{theorem}
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{Idea 3: robust prolongation for
+    $\overline{\nabla \cdot}$}
+  \begin{theorem}[Sch\"oberl (1999)]
+    \vspace{0.25\baselineskip}
+    Let the prolongation $\mathbb{P} : V_H \to V_h$. For the multigrid
+    cycle to be robust we require:
+    \begin{equation*}
+      \Re^{-1} \| \nabla \mathbb{P} u_H \|^2_{L^2} + \gamma \|\overline{\nabla \cdot \mathbb{P} u_H}\|^2_{L^2} \le c \left(\Re^{-1} \| \nabla u_H \|^2_{L^2} + \gamma \|\overline{\nabla \cdot u_H}\|^2_{L^2}\right) \quad \forall u_H \in V_H,
+    \end{equation*}
+    with $c$ independent of $\Re$.
+  \end{theorem}
+  Can ensure this by solving a small Stokes problem in each coarse cell:
+  \begin{center}
+    \begin{tikzpicture}[scale=3]
+      \tikzstyle{v}=[circle, fill, minimum size=0pt, inner sep=0pt]
+      \tikzstyle{c}=[diamond, fill, minimum size=4pt, inner sep=0pt]
+      \tikzstyle{e}=[rectangle, fill, minimum size=3pt, inner sep=0pt]
+      \tikzstyle{select}=[minimum size=5pt]
+      \node[v] (v1) at (0, 0) {};
+      \node[v] (v2) at (0.25, 0) {};
+      \node[v] (v3) at (0.5, 0) {};
+      \node[v] (v4) at (0.75, 0) {};
+      \node[v] (v5) at (1, 0) {};
+      \node[v] (v6) at (0, 0.25) {};
+      \node[v] (v7) at (0, 0.5) {};
+      \node[v] (v8) at (0, 0.75) {};
+      \node[v] (v9) at (0, 1) {};
+      \node[v] (v10) at (0.25, 0.25) {};
+      \node[v] (v11) at (0.25, 0.5) {};
+      \node[v] (v12) at (0.25, 0.75) {};
+      \node[v] (v13) at (0.25, 1) {};
+      \node[v] (v14) at (0.5, 0.25) {};
+      \node[v] (v15) at (0.5, 0.5) {};
+      \node[v] (v16) at (0.5, 0.75) {};
+      \node[v] (v17) at (0.5, 1) {};
+      \node[v] (v18) at (0.75, 0.25) {};
+      \node[v] (v19) at (0.75, 0.5) {};
+      \node[v] (v20) at (0.75, 0.75) {};
+      \node[v] (v21) at (0.75, 1) {};
+      \node[v] (v22) at (1, 0.25) {};
+      \node[v] (v23) at (1, 0.5) {};
+      \node[v] (v24) at (1, 0.75) {};
+      \node[v] (v25) at (1, 1) {};
+
+      \draw[thin,gray] (v1) -- (v2) -- (v6) -- (v1);
+      \draw[thin,gray] (v2) -- (v10) -- (v6);
+      \draw[thin,gray] (v2) -- (v3) -- (v10);
+      \draw[thin,gray] (v3) -- (v14) -- (v10);
+      \draw[thin,gray] (v3) -- (v4) -- (v14);
+      \draw[thin,gray] (v4) -- (v18) -- (v14);
+      \draw[thin,gray] (v4) -- (v5) -- (v18);
+      \draw[thin,gray] (v5) -- (v22) -- (v18);
+      \draw[thin,gray] (v6) -- (v7) -- (v10);
+      \draw[thin,gray] (v7) -- (v11) -- (v10);
+      \draw[thin,gray] (v11) -- (v14) -- (v15) -- (v11);
+      \draw[thin,gray] (v15) -- (v18) -- (v19) -- (v15);
+      \draw[thin,gray] (v19) -- (v22) -- (v23) -- (v19);
+      \draw[thin,gray] (v7) -- (v8) -- (v11);
+      \draw[thin,gray] (v8) -- (v12) -- (v11);
+      \draw[thin,gray] (v12) -- (v15) -- (v16) -- (v12);
+      \draw[thin,gray] (v16) -- (v19) -- (v20) -- (v16);
+      \draw[thin,gray] (v20) -- (v23) -- (v24) -- (v20);
+      \draw[thin,gray] (v8) -- (v9) -- (v12);
+      \draw[thin,gray] (v9) -- (v13) -- (v12);
+      \draw[thin,gray] (v13) -- (v16) -- (v17) -- (v13);
+      \draw[thin,gray] (v17) -- (v20) -- (v21) -- (v17);
+      \draw[thin,gray] (v21) -- (v24) -- (v25) -- (v21);
+
+      \draw[very thick, black] (v1) -- (v5);
+      \draw[very thick, black] (v1) -- (v9);
+      \draw[very thick, black] (v3) -- (v17);
+      \draw[very thick, black] (v5) -- (v25);
+      \draw[very thick, black] (v9) -- (v25);
+      \draw[very thick, black] (v7) -- (v23);
+      \draw[very thick, black] (v3) -- (v7);
+      \draw[very thick, black] (v9) -- (v5);
+      \draw[very thick, black] (v17) -- (v23);
+
+      \node[v, select, blue!75!green] at (barycentric cs:v7=1,v3=1,v15=1) (cc1) {};
+      \node at (barycentric cs:v3=1,v10=1,v14=1) (fc1) {};
+      \node at (barycentric cs:v14=1,v15=1,v11=1) (fc2) {};
+      \node at (barycentric cs:v7=1,v10=1,v11=1) (fc3) {};
+      \draw[thick, blue!75!green] \convexpath{fc3,fc2,fc1}{1pt};
+
+      \node[v, select, blue!75!green] at (barycentric cs:v7=1,v9=1,v15=1) (cc2) {};
+      \node at (barycentric cs:v7=1,v8=1,v11=1) (fc4) {};
+      \node at (barycentric cs:v8=1,v9=1,v12=1) (fc5) {};
+      \node at (barycentric cs:v11=1,v12=1,v15=1) (fc6) {};
+      \draw[thick, blue!75!green] \convexpath{fc4,fc5,fc6}{1pt};
+    \end{tikzpicture}
+  \end{center}
+\end{frame}
+
+
+\begin{frame}[fragile]
+  \frametitle{Full solver}
+  \resizebox{\textwidth}{!}{
+    \begin{tikzpicture}[
+      every node/.style={draw=black, thick, anchor=west},
+      grow via three points={one child at (0.0,-0.7) and
+        two children at (0.0,-0.7) and (0.0,-1.4)},
+      edge from parent path={(\tikzparentnode.210) |- (\tikzchildnode.west)}]
+      \node {Continuation}
+      child { node {Newton solver with line search}
+        child { node {Krylov solver (FGMRES)}
+          child { node {Block preconditioner}
+            child { node {Approximate Schur complement inverse}}
+            child { node {F-cycle on augmented momentum block}
+              child { node {Coarse grid solver}
+                child { node {LU factorization}}
+              }
+              child [missing] {}
+              child { node {Prolongation operator}
+                child { node {Local solves over coarse cells}}
+              }
+              child [missing] {}
+              child { node {Relaxation}
+                child { node {GMRES}
+                  child { node {Additive star iteration}}
+                }
+              }
+            }
+          }
+        }
+      };
+    \end{tikzpicture}
+  }
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{2D regularised lid-driven cavity}
+  \begin{table}[htbp]
+    \centering
+    \begin{tabular}{cc|ccccc}
+      \toprule
+      \# refinements & \# dofs & \multicolumn{5}{c}{Reynolds number} \\
+                     && 10 & 100 & 1000 & 5000 & 10000 \\
+      \midrule
+      1 & $1.0 \times 10^4$ & 3.00 &  4.00 &  5.33 & 8.50 & 11.0 \\
+      2 & $4.1 \times 10^4$ & 2.50 &  3.67 &  6.00 & 8.00 & 9.50 \\
+      3 & $1.6 \times 10^5$ & 2.50 &  3.00 &  5.67 & 7.50 & 9.00 \\
+      4 & $6.6 \times 10^5$ & 2.50 &  3.00 &  5.00 & 7.00 & 8.00 \\
+      \bottomrule
+    \end{tabular}
+    \caption{Average outer Krylov iterations per Newton step for the
+      2D regularised lid-driven cavity.}
+    \label{tab:ourldc}
+  \end{table}
+\end{frame}
+
+\begin{frame}
+  \frametitle{3D regularised lid-driven cavity}
+  \begin{table}
+    \centering
+    \begin{tabular}{cc|ccccc}
+      \toprule
+      \# refinements & \# dofs & \multicolumn{5}{c}{Reynolds number} \\
+                     && 10 & 100 & 1000 & 2500 & 5000 \\
+      \midrule
+      1 & $2.1 \times 10^6$ & 7.50 & 7.33 & 7.50 & 7.00 & 6.50 \\
+      2 & $1.7 \times 10^7$ & 8.50 & 7.00 & 7.50 & 6.50 & 5.50 \\
+      3 & $1.3 \times 10^8$ & 7.00 & 7.00 & 6.50 & 5.00 & 6.50 \\
+      4 & $1.1 \times 10^9$ & 7.00 & 7.33 & 5.50 & 4.00 & 9.00 \\
+      \bottomrule
+    \end{tabular}
+    \caption{Average outer Krylov iterations per Newton step for the 3D regularised lid-driven cavity.}
+  \end{table}
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{Conclusions \& outlook}
+  \begin{block}{Main conclusion}
+    \vspace{0.215\baselineskip}
+    Solving the Navier--Stokes equations in a $\Re$-robust way \emph{is} possible.
+  \end{block}
+  \begin{block}{Ongoing work}
+    \vspace{0.125\baselineskip}
+    Better element pair, by choosing exact subcomplexes of
+    \begin{equation*}
+      \mathbb{R} \xrightarrow{\operatorname{id}} H^2 \xrightarrow{\grad} H^1(\curl)
+      \xrightarrow{\curl} H^1 \xrightarrow{\div} L^2 \xrightarrow{\operatorname{null}} 0,
+    \end{equation*}
+    such that the subspace of $H^1(\curl)$ has a local basis.
+  \end{block}
+  \begin{block}{Other PDEs}
+    \begin{columns}[t]
+      \begin{column}{0.5\textwidth}
+        \begin{itemize}
+        \item $H(\curl)$ Riesz map \cmark
+        \item $H(\div)$ Riesz map \cmark
+        \item Biharmonic $I + \nabla^2$ \textcolor{gray}{\cmark}
+        \item Vanka (monolithic multigrid) for Stokes \cmark
+        \end{itemize}
+      \end{column}
+      \begin{column}{0.5\textwidth}
+        \begin{itemize}
+        \item non-Newtonian Navier--Stokes?
+        \item nearly incompressible hyperelasticity?
+        \item \dots
+        \end{itemize}
+      \end{column}
+    \end{columns}
+  \end{block}
+\end{frame}
+\end{document}
