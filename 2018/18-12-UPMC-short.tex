@@ -212,7 +212,7 @@ solve(F == 0, upT, bcs=bcs)
 \end{frame}
 
 \begin{frame}[t]
-  \frametitle{Looking for abstractions}
+  \frametitle{Code that looks like maths}
   \begin{itemize}
   \item Mathematics just says ``here is the integral to compute on each
     element, do that everywhere''
@@ -279,7 +279,7 @@ solve(F == 0, upT, bcs=bcs)
 
       \textsuperscript{(*)} Not actually all of them
     \end{block}
-    \begin{block}{User groups at}
+    \begin{block}{User groups}
       \begin{itemize}
       \item Imperial, Oxford, Bath, Leeds, Durham, Kiel, Rice,
         Houston, Exeter, Buffalo, Waterloo, Minnesota, Baylor, Texas
@@ -408,93 +408,6 @@ a = dot(grad(u), grad(v))*dx
     generating efficient code.\nocite{Luporini:2015}
   \end{block}
 
-\end{frame}
-
-\begin{frame}[fragile]
-  \frametitle{Algorithmically optimal implementation}
-  \begin{columns}
-    \begin{column}{0.5\textwidth}
-      \begin{block}{Computing $\curl-\curl$ action}
-        Find $u \in V \subset H(\curl)$ s.t.
-        {\scriptsize \begin{equation*}
-            \int\!\!\curl u \cdot \curl v \,\text{d}x = \int\!\!B\cdot
-            v\,\text{d}x \quad \forall v \in V.
-          \end{equation*}}
-\begin{minted}[fontsize=\tiny,mathescape]{python}
-NCE = FiniteElement("NCE", hexahedron, degree)
-Q = VectorElement("Q", hexahedron, degree)
-u = Coefficient(NCE)
-B = Coefficient(Q)
-v = TestFunction(NCE)
-F = (dot(curl(u), curl(v)) - dot(B, v))*dx
-\end{minted}
-      \end{block}
-    \end{column}
-    \begin{column}{0.6\textwidth}
-      \begin{center}
-        \begin{tikzpicture}[scale=0.9]
-          \begin{loglogaxis}[name=plot, small, title={FLOPs to evaluate $F$},
-            xlabel=Polynomial degree,
-            ylabel=FLOPs, xtick={1,2,4,8,16,32},
-            xticklabels={$1$,$2$,$4$,$8$,$16$,$32$}, axis lines=left, axis
-            line style={-}, log basis x=2,
-            legend entries={Na\"ive, With sum factorisation},
-            legend cell align=left,
-            legend style={at={(0.5,-0.3)},anchor=north,draw=none, fill=none}]
-            \pgfplotstableread[row sep=crcr]{
-              degree flops_vanilla flops_opt\\
-              1 9.78100e+03 6.48100e+03\\
-              2 1.05624e+05 2.78280e+04\\
-              3 6.04110e+05 7.50860e+04\\
-              4 2.36102e+06 1.63395e+05\\
-              5 7.20724e+06 3.09060e+05\\
-              6 1.85105e+07 5.33483e+05\\
-              7 4.18644e+07 8.60322e+05\\
-              8 8.59101e+07 1.31626e+06\\
-              9 1.63287e+08 1.93100e+06\\
-              10 2.91712e+08 2.73728e+06\\
-              11 4.95190e+08 3.77084e+06\\
-              12 8.05352e+08 5.07047e+06\\
-              13 1.26293e+09 6.67796e+06\\
-              14 1.91933e+09 8.63816e+06\\
-              15 2.83841e+09 1.09989e+07\\
-              16 4.09829e+09 1.38110e+07\\
-              17 5.79335e+09 1.71285e+07\\
-              18 8.03637e+09 2.10082e+07\\
-              19 1.09608e+10 2.55101e+07\\
-              20 1.47229e+10 3.06972e+07\\
-              21 1.95048e+10 3.66353e+07\\
-              22 2.55164e+10 4.33937e+07\\
-              23 3.29987e+10 5.10443e+07\\
-              24 4.22266e+10 5.96621e+07\\
-              25 5.35115e+10 6.93253e+07\\
-              26 6.72053e+10 8.01150e+07\\
-              27 8.37026e+10 9.21153e+07\\
-              28 1.03445e+11 1.05413e+08\\
-              29 1.26924e+11 1.20099e+08\\
-              30 1.54686e+11 1.36267e+08\\
-              31 1.87334e+11 1.54011e+08\\
-              32 2.25533e+11 1.73433e+08\\
-            }\data; \pgfplotstableset{create on use/vanilla/.style={create
-                col/expr={1e3*pow(\thisrow{degree},6)}}};
-            \pgfplotstableset{create on use/spectral/.style={create
-                col/expr={5e2*pow(\thisrow{degree},4)}}};
-
-            \addplot+[mark=none, color=black, line width=1.5pt] table
-            [x=degree,y=flops_vanilla] \data; \addplot+[mark=none,
-            color=black, dashed, line width=1.5pt] table
-            [x=degree,y=flops_opt] \data; \addplot+[mark=none, color=black,
-            dotted, line width=1pt] table [x=degree,y=vanilla] \data
-            coordinate [pos=0.67] (A); \node at (A) [anchor=south east]
-            {$\mathcal{O}(p^6)$}; \addplot+[mark=none, color=black,
-            dotted, line width=1pt] table [x=degree,y=spectral] \data
-            coordinate [pos=0.67] (B); \node at (B) [anchor=north west]
-            {$\mathcal{O}(p^4)$};
-          \end{loglogaxis}
-        \end{tikzpicture}
-      \end{center}
-    \end{column}
-  \end{columns}
 \end{frame}
 
 \section{Preconditioning}
@@ -1117,5 +1030,10 @@ F = (dot(curl(u), curl(v)) - dot(B, v))*dx
       \end{column}
     \end{columns}
   \end{block}
+\end{frame}
+
+\begin{frame}[allowframebreaks, t]
+  \frametitle{References}
+  \printbibliography[heading=none]
 \end{frame}
 \end{document}
