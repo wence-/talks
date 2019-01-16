@@ -1,0 +1,51 @@
+\documentclass[presentation,aspectratio=43]{beamer}
+
+\usetheme{metropolis}
+
+\author{Lawrence Mitchell\inst{1,*} \\
+  \and {\scriptsize
+    P.~E.~Farrell (Oxford)
+    \and
+    R.~C.~Kirby (Baylor)
+    \and
+    M.~G.~Knepley (Buffalo)
+    \and
+    F.~Wechsung (Oxford)}}
+\institute{
+  \inst{1}Department of Computer Science, Durham University\\
+  \inst{*}\texttt{lawrence.mitchell@durham.ac.uk}}
+
+\title{Flexible computational abstractions for complex
+  preconditioners}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+  Small block overlapping, and non-overlapping, Schwarz methods are
+  theoretically highly attractive as multilevel smoothers for a wide
+  variety of problems that are not amenable to point relaxation
+  methods.  Examples include monolithic Vanka smoothers for Stokes,
+  overlapping vertex-patch decompositions for $H(\text{div})$ and
+  $H(\text{curl})$ problems, along with nearly incompressible
+  elasticity, and augmented Lagrangian schemes.
+
+  While it is possible to manually program these different schemes,
+  their use in general purpose libraries has been held back by a lack
+  of generic, composable interfaces. We present a new approach to the
+  specification and development such additive Schwarz methods in PETSc
+  that cleanly separates the topological space decomposition from the
+  discretisation and assembly of the equations. Our preconditioner is
+  flexible enough to support overlapping and non-overlapping additive
+  Schwarz methods, and can be used to formulate line, and plane
+  smoothers, Vanka iterations, amongst others. I will illustrate these
+  new features with some examples utilising the Firedrake finite
+  element library, in particular how the design of an approriate
+  computational interface enables these schemes to be used as building
+  blocks inside block preconditioners.
+
+  This is joint work with Patrick Farrell and Florian Wechsung
+  (Oxford), and Matt Knepley (Buffalo).
+\end{abstract}
+\end{document}
