@@ -1,0 +1,48 @@
+\documentclass[presentation,aspectratio=43]{beamer}
+
+\usetheme{metropolis}
+
+\author{Lawrence Mitchell\inst{1,*} \\
+  \and {\scriptsize
+    P.~E.~Farrell (Oxford)
+    \and
+    R.~C.~Kirby (Baylor)
+    \and
+    M.~G.~Knepley (Buffalo)}}
+\institute{
+  \inst{1}Department of Computer Science, Durham University\\
+  \inst{*}\texttt{lawrence.mitchell@durham.ac.uk}}
+
+\title{Robust multigrid solvers for the incompressible Navier-Stokes equations}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+  At the core of the numerical simulation of physical systems is the
+  task of inverting discrete representations (matrices) of the
+  continuous equations.
+
+  A key goal is to find methods to invert these operators that
+  are both fast (at worst O(n log n) in the number of degrees of
+  freedom), and robust to parameters in the equations.
+
+  In most cases, we achieve the former by exploiting sparsity in the
+  discretisation to define a hierarchy of scales: the multigrid method
+  is a prototypical example of this.
+
+  Addressing the second point is more delicate, and a lot depends on
+  the form of the equations in question. For nearly singular symmetric
+  operators, a robust approach is developed by Lee, Wu, Xu, and
+  Zikatanov (2007). To make use of this theory in practical
+  applications requires one to characterise the basis of the singular
+  part of the operator. I will discuss some recent breakthroughs in
+  this characterisation and finish with some numerically motivated
+  conjectures regarding finite element bases on tetrahedral meshes.
+
+  This is joint work with Patrick Farrell, L. Ridgway Scott, and
+  Florian Wechsung. Some parts are presented in
+  https://arxiv.org/abs/1810.03315.
+\end{abstract}
+\end{document}
