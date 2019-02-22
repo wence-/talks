@@ -41,4 +41,55 @@
   new features with some examples utilising the Firedrake finite
   element library.
 \end{abstract}
+
+\begin{frame}
+  \frametitle{Multigrid for X}
+  \begin{itemize}
+  \item Multigrid in H(div) and H(curl)
+  \item Schoeberl (incompressible elasticity)
+  \item Vanka (monolithic multigrid)
+  \item Lee et al. (Abstract convergence theory)
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Unifying observation}
+  \begin{itemize}
+  \item Decompose subspace based on topological decomposition of mesh
+  \item Solve little problems based on assembly of patches
+  \item Combine additively or multiplicatively
+  \item Possibly (e.g. Vanka) apply some contraints in the assembly
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Idea}
+  \begin{itemize}
+  \item Use mesh data structure to provide topological decomposition
+    in preconditioner
+  \item 
+  \end{itemize}
+\end{frame}
+\begin{frame}
+  \frametitle{Now that I have a hammer\ldots}
+  \ldots can I find some nails?
+
+  \begin{block}<2->{Schwarz building blocks}
+    \begin{enumerate}
+    \item Subspace decomposition
+    \item Operators on subspaces
+    \item Solvers on subspaces
+    \item Coarse spaces (not yet)
+    \end{enumerate}
+  \end{block}
+
+  \begin{block}<3->{\texttt{-pc\_type patch}}
+    \begin{itemize}
+    \item \texttt{DMPlex} + \texttt{PetscSection} for subspace decomposition
+    \item Callback interface (to Firedrake for now) to build operators
+    \item \texttt{KSP} on each patch for solves
+    \end{itemize}
+  \end{block}
+\end{frame}
+
 \end{document}
