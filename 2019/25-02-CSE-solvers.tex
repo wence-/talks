@@ -1,5 +1,6 @@
 \documentclass[presentation,aspectratio=43,10pt]{beamer}
 
+\usepackage{mathtools}
 \usepackage{hyperref}
 \newcommand{\arxivlink}[2]{{\texttt{arXiv:\,\href{https://arxiv.org/abs/#1}{#1\,[#2]}}}}
 
@@ -158,19 +159,66 @@ backend=biber]{biblatex}
 % \end{abstract}
 
 \begin{frame}
-  \frametitle{Multigrid for X}
-  \begin{itemize}
-  \item Multigrid in H(div) and H(curl) \parencite{Arnold:2000}
-    \only<1>{\includegraphics[width=0.8\textwidth]{hdivcurl}}
-  \item Schoeberl (incompressible elasticity) \parencite{Schoeberl:1999}
-    \only<2>{\includegraphics[width=0.5\textwidth]{elasticity}}
-  \item Benzi \& Olshanskii (Navier--Stokes) \parencite{Benzi:2006}
-  \item Vanka (monolithic multigrid)
-    \only<3>{\includegraphics[width=0.8\textwidth]{vanka}}
-  \item Lee et al. (Abstract convergence theory) \parencite{Lee:2007}
-  \item Pavarino (Schoeberl) patch smoothers for high order H1. \parencite{Pavarino:1993}
-  \item Line smoothing for advective problems 
-  \end{itemize}
+  \frametitle{Some motivating preconditioners}
+
+  \begin{onlyenv}<1>
+    \begin{block}{$p$-independent preconditioners for elliptic problems}
+      [Each subspace is generated from]
+      $V_i^p = V^p \cap H^1_0(\Omega_i^{'})$ where $\Omega_i^{'}$ is the open square
+      centered at the ith vertex
+      \begin{center}
+        \includegraphics[width=3cm]{pavarino}
+      \end{center}
+      \begin{flushright}
+        \textcite{Pavarino:1993} \hspace{4em}
+      \end{flushright}
+    \end{block}
+  \end{onlyenv}
+
+  \begin{onlyenv}<2>
+    \begin{block}{Multigrid for nearly incompressible elasticity}
+      The suggested smoother is block Jacobi smoother, which takes
+      care of the kernel [...]. These kernel basis functions are
+      captured by subspaces $V_{l,i}$ as shown
+      \begin{center}
+        \includegraphics[height=3cm]{schoeberl}
+      \end{center}
+      \begin{flushright}
+        \textcite{Schoeberl:1999} \hspace{4em}
+      \end{flushright}
+    \end{block}
+  \end{onlyenv}
+
+  \begin{onlyenv}<3>
+    \begin{block}{Multigrid in $H(\div)$ and $H(\curl)$}
+      To define the Schwarz smoothers, we can use a decomposition of
+      $V_h$ into local patches consisting of all elements surrounding
+      either an edge or a vertex.
+
+      \begin{center}
+        \includegraphics[height=2.5cm]{arnold}
+      \end{center}
+      \begin{flushright}
+        \textcite{Arnold:2000} \hspace{4em}
+      \end{flushright}
+    \end{block}
+  \end{onlyenv}
+
+  \begin{onlyenv}<4>
+    \begin{block}{An augmented Lagrangian approach to the Oseen problem}
+      We use a block Gauss-Seidel method [...] based on the
+      decomposition $V_h = \sum_{i=0}^l V_i$ [...For] P2-P0 finite
+      elements the natural choice is to gather nodel DOFs for velocity
+      inside ovals [around a vertex]
+
+      \begin{center}
+        \includegraphics[height=2.5cm]{benzi}
+      \end{center}
+      \begin{flushright}
+        \textcite{Benzi:2006} \hspace{4em}
+      \end{flushright}
+    \end{block}
+  \end{onlyenv}
 \end{frame}
 
 \begin{frame}
@@ -193,20 +241,6 @@ backend=biber]{biblatex}
   \item Build and solve little problems on the resulting patches
   \item Combine additively or multiplicatively
   \end{itemize}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Appropriate decompositions}
-  \begin{itemize}
-  \item Choice of spaces determines appropriate space decomposition
-  \item e.g. H(div): vertex or edge-based
-  \item Vanka: (cellwise: MAC (RT0-P0)); (vertex-based: P2-P1)
-  \item High order H1: vertex-based
-  \item Navier--Stokes: vertex-based
-  \end{itemize}
-  \begin{corollary}
-    Need choice to come from library that controls discretisation/PDE
-  \end{corollary}
 \end{frame}
 
 \begin{frame}
@@ -268,7 +302,7 @@ backend=biber]{biblatex}
     solve for)
   \end{itemize}
 \end{frame}
-\begin{frame}[fragile]
+\begin{frame}[fragile,t]
   \frametitle{Patch assembly}
   \begin{itemize}
   \item If we only want homogeneous Dirichlet, can use list of dofs to
@@ -278,20 +312,35 @@ backend=biber]{biblatex}
   \item Naturally extends to \emph{nonlinear} smoothers
   \end{itemize}
 
-  \begin{block}{PDE library support}
-    \begin{itemize}
-    \item Works if you use \texttt{DMPlex} + \texttt{PetscDS}
+  \begin{onlyenv}<1>
+    \begin{block}{Callbacks}
+\begin{minted}[fontsize=\scriptsize]{c}
+ /* Patch Jacobian */
+ UserComputeOp(PC, PetscInt point, Vec state, Mat op, IS cells, 
+               PetscInt n, PetscInt *dofmap, void *ctx);
+ /* Patch Residual */
+ UserComputeF(PC, PetscInt point, Vec state, Vec f, IS cells, 
+              PetscInt n, PetscInt *dofmapWithBcs, PetscInt *dofmap,
+              void *ctx);
+\end{minted}
+    \end{block}
+  \end{onlyenv}
+  \begin{onlyenv}<2>
+    \begin{block}{PDE library support}
+      \begin{itemize}
+      \item Works if you use \texttt{DMPlex} + \texttt{PetscDS}
 \begin{minted}[fontsize=\scriptsize]{sh}
 -pc_type patch
 \end{minted}
-    \item Works in Firedrake
+      \item Works in Firedrake
 \begin{minted}[fontsize=\scriptsize]{sh}
 -pc_type python -pc_python_type firedrake.PatchPC
 # Also
 -snes_type python -snes_python_type firedrake.PatchSNES
 \end{minted}
-    \end{itemize}
-  \end{block}
+      \end{itemize}
+    \end{block}
+  \end{onlyenv}
 \end{frame}
 
 \section{Examples}
