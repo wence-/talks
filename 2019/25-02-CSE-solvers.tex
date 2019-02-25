@@ -159,9 +159,23 @@ backend=biber]{biblatex}
 % \end{abstract}
 
 \begin{frame}
-  \frametitle{Some motivating preconditioners}
+  \frametitle{Some motivating schemes}
 
   \begin{onlyenv}<1>
+    \begin{block}{Coupled multigrid for Stokes/Navier--Stokes}
+      In the SCGS scheme four velocites and one pressure
+      corresponding to one finite difference node are simultaneously
+      updated by inverting a (small) matrix of equatioins.
+
+      \begin{center}
+        \includegraphics[height=3cm]{vanka}
+      \end{center}
+      \begin{flushright}
+        \textcite{Vanka:1986} \hspace{4em}
+      \end{flushright}
+    \end{block}
+  \end{onlyenv}
+  \begin{onlyenv}<2>
     \begin{block}{$p$-independent preconditioners for elliptic problems}
       [Each subspace is generated from]
       $V_i^p = V^p \cap H^1_0(\Omega_i^{'})$ where $\Omega_i^{'}$ is the open square
@@ -175,7 +189,7 @@ backend=biber]{biblatex}
     \end{block}
   \end{onlyenv}
 
-  \begin{onlyenv}<2>
+  \begin{onlyenv}<3>
     \begin{block}{Multigrid for nearly incompressible elasticity}
       The suggested smoother is block Jacobi smoother, which takes
       care of the kernel [...]. These kernel basis functions are
@@ -189,7 +203,7 @@ backend=biber]{biblatex}
     \end{block}
   \end{onlyenv}
 
-  \begin{onlyenv}<3>
+  \begin{onlyenv}<4>
     \begin{block}{Multigrid in $H(\div)$ and $H(\curl)$}
       To define the Schwarz smoothers, we can use a decomposition of
       $V_h$ into local patches consisting of all elements surrounding
@@ -204,7 +218,7 @@ backend=biber]{biblatex}
     \end{block}
   \end{onlyenv}
 
-  \begin{onlyenv}<4>
+  \begin{onlyenv}<5>
     \begin{block}{An augmented Lagrangian approach to the Oseen problem}
       We use a block Gauss-Seidel method [...] based on the
       decomposition $V_h = \sum_{i=0}^l V_i$ [...For] P2-P0 finite
@@ -807,85 +821,120 @@ backend=biber]{biblatex}
     Taylor-Hood: use patch around vertices and gather closure of star
     \nocite{Vanka:1986}
   \end{block}
-  \pause
   \begin{columns}
-    \begin{column}{0.5\textwidth}
-      \begin{center}
-        \begin{tikzpicture}[scale=4]
-          \tikzstyle{v}=[circle, fill, minimum size=0pt, inner sep=0pt]
-          \tikzstyle{c}=[diamond, fill, minimum size=4pt, inner sep=0pt]
-          \tikzstyle{e}=[rectangle, fill, minimum size=3pt, inner sep=0pt]
-          \tikzstyle{select}=[draw, minimum size=3pt]
-          \foreach \i/\k in {0/0, 0.25/1, 0.5/2, 0.75/3} {
-            \foreach \j/\l in {0/0, 0.25/1, 0.5/2, 0.75/3} {
-              \node[v] (v\k\l) at (\i, \j) {};
+    \begin{column}{0.4\textwidth}
+      \begin{onlyenv}<1>
+        \begin{center}
+          \begin{tikzpicture}[scale=4]
+            \tikzstyle{v}=[circle, fill, minimum size=0pt, inner sep=0pt]
+            \tikzstyle{c}=[diamond, fill, minimum size=4pt, inner sep=0pt]
+            \tikzstyle{e}=[rectangle, fill, minimum size=3pt, inner sep=0pt]
+            \tikzstyle{select}=[draw, minimum size=3pt]
+            \foreach \i/\k in {0/0, 0.25/1, 0.5/2, 0.75/3} {
+              \foreach \j/\l in {0/0, 0.25/1, 0.5/2, 0.75/3} {
+                \node[v] (v\k\l) at (\i, \j) {};
+              }
             }
-          }
 
-          \foreach \i in {0, 0.25, 0.5, 0.75} {
-            \foreach \j/\k in {0/0.25, 0.25/0.5, 0.5/0.75} {
-              \draw[thin, gray] (\i, \j) -- (\i, \k);
-              \draw[thin, gray] (\j, \i) -- (\k, \i);
+            \foreach \i in {0, 0.25, 0.5, 0.75} {
+              \foreach \j/\k in {0/0.25, 0.25/0.5, 0.5/0.75} {
+                \draw[thin, gray] (\i, \j) -- (\i, \k);
+                \draw[thin, gray] (\j, \i) -- (\k, \i);
+              }
             }
-          }
-          \foreach \i/\j in {0/0.25, 0.25/0.5, 0.5/0.75} {
-            \foreach \k/\l in {0/0.25, 0.25/0.5, 0.5/0.75} {
-              \draw[thin, gray] (\i, \l) -- (\j, \k);
+            \foreach \i/\j in {0/0.25, 0.25/0.5, 0.5/0.75} {
+              \foreach \k/\l in {0/0.25, 0.25/0.5, 0.5/0.75} {
+                \draw[thin, gray] (\i, \l) -- (\j, \k);
+              }
             }
-          }
-          \foreach \a/\b in {0/1, 1/2, 2/3} {
-            \foreach \c/\d in {1/0, 2/1, 3/2} {
-              \node (c\a\c-\b\c-\b\d) at (barycentric cs:v\a\c=1,v\b\c=1,v\b\d=1) {};
-              \node (c\a\d-\b\d-\a\c) at (barycentric cs:v\a\d=1,v\b\d=1,v\a\c=1) {};
+            \foreach \a/\b in {0/1, 1/2, 2/3} {
+              \foreach \c/\d in {1/0, 2/1, 3/2} {
+                \node (c\a\c-\b\c-\b\d) at (barycentric cs:v\a\c=1,v\b\c=1,v\b\d=1) {};
+                \node (c\a\d-\b\d-\a\c) at (barycentric cs:v\a\d=1,v\b\d=1,v\a\c=1) {};
+              }
             }
-          }
-          \node[c, select] at (c12-22-21) {};
-          \node[c, select] at (c02-12-11) {};
-          \node[c, select] at (c11-21-12) {};
+            \node[c, select] at (c12-22-21) {};
+            \node[c, select] at (c02-12-11) {};
+            \node[c, select] at (c11-21-12) {};
 
-          \draw[thick] \convexpath{v02,v12,v11}{1pt};
-          \draw[thick] \convexpath{v12,v21,v11}{1pt};
-          \draw[thick] \convexpath{v12,v22,v21}{1pt};
-        \end{tikzpicture}
-      \end{center}
+            \draw[thick] \convexpath{v02,v12,v11}{1pt};
+            \draw[thick] \convexpath{v12,v21,v11}{1pt};
+            \draw[thick] \convexpath{v12,v22,v21}{1pt};
+          \end{tikzpicture}
+        \end{center}
+      \end{onlyenv}
+      \begin{onlyenv}<2>
+        \begin{center}
+          \begin{tikzpicture}[scale=4]
+            \tikzstyle{v}=[circle, fill, minimum size=0pt, inner sep=0pt]
+            \tikzstyle{c}=[diamond, fill, minimum size=4pt, inner sep=0pt]
+            \tikzstyle{e}=[rectangle, fill, minimum size=3pt, inner sep=0pt]
+            \tikzstyle{select}=[draw, minimum size=3pt]
+            \foreach \i/\k in {0/0, 0.25/1, 0.5/2, 0.75/3} {
+              \foreach \j/\l in {0/0, 0.25/1, 0.5/2, 0.75/3} {
+                \node[v] (v\k\l) at (\i, \j) {};
+              }
+            }
+
+            \foreach \i in {0, 0.25, 0.5, 0.75} {
+              \foreach \j/\k in {0/0.25, 0.25/0.5, 0.5/0.75} {
+                \draw[thin, gray] (\i, \j) -- (\i, \k);
+                \draw[thin, gray] (\j, \i) -- (\k, \i);
+              }
+            }
+            \foreach \i/\j in {0/0.25, 0.25/0.5, 0.5/0.75} {
+              \foreach \k/\l in {0/0.25, 0.25/0.5, 0.5/0.75} {
+                \draw[thin, gray] (\i, \l) -- (\j, \k);
+              }
+            }
+            \foreach \a/\b in {0/1, 1/2, 2/3} {
+              \foreach \c/\d in {1/0, 2/1, 3/2} {
+                \node (c\a\c-\b\c-\b\d) at (barycentric cs:v\a\c=1,v\b\c=1,v\b\d=1) {};
+                \node (c\a\d-\b\d-\a\c) at (barycentric cs:v\a\d=1,v\b\d=1,v\a\c=1) {};
+              }
+            }
+            \node[v, select] at (v12) {};
+            \node[v, select] at (v21) {};
+
+            \draw[thick] \convexpath{v03,v13,v22,v21,v11,v02}{1pt};
+            \draw[thick] \convexpath{v12,v22,v31,v30,v20,v11}{1pt};
+          \end{tikzpicture}
+        \end{center}
+      \end{onlyenv}
     \end{column}
-    \begin{column}{0.5\textwidth}
-      \begin{center}
-        \begin{tikzpicture}[scale=4]
-          \tikzstyle{v}=[circle, fill, minimum size=0pt, inner sep=0pt]
-          \tikzstyle{c}=[diamond, fill, minimum size=4pt, inner sep=0pt]
-          \tikzstyle{e}=[rectangle, fill, minimum size=3pt, inner sep=0pt]
-          \tikzstyle{select}=[draw, minimum size=3pt]
-          \foreach \i/\k in {0/0, 0.25/1, 0.5/2, 0.75/3} {
-            \foreach \j/\l in {0/0, 0.25/1, 0.5/2, 0.75/3} {
-              \node[v] (v\k\l) at (\i, \j) {};
-            }
-          }
-
-          \foreach \i in {0, 0.25, 0.5, 0.75} {
-            \foreach \j/\k in {0/0.25, 0.25/0.5, 0.5/0.75} {
-              \draw[thin, gray] (\i, \j) -- (\i, \k);
-              \draw[thin, gray] (\j, \i) -- (\k, \i);
-            }
-          }
-          \foreach \i/\j in {0/0.25, 0.25/0.5, 0.5/0.75} {
-            \foreach \k/\l in {0/0.25, 0.25/0.5, 0.5/0.75} {
-              \draw[thin, gray] (\i, \l) -- (\j, \k);
-            }
-          }
-          \foreach \a/\b in {0/1, 1/2, 2/3} {
-            \foreach \c/\d in {1/0, 2/1, 3/2} {
-              \node (c\a\c-\b\c-\b\d) at (barycentric cs:v\a\c=1,v\b\c=1,v\b\d=1) {};
-              \node (c\a\d-\b\d-\a\c) at (barycentric cs:v\a\d=1,v\b\d=1,v\a\c=1) {};
-            }
-          }
-          \node[v, select] at (v12) {};
-          \node[v, select] at (v21) {};
-
-          \draw[thick] \convexpath{v03,v13,v22,v21,v11,v02}{1pt};
-          \draw[thick] \convexpath{v12,v22,v31,v30,v20,v11}{1pt};
-        \end{tikzpicture}
-      \end{center}
+    \begin{column}{0.6\textwidth}
+      \begin{onlyenv}<1>
+\begin{minted}[fontsize=\scriptsize]{python}
+{"ksp_type": "cg",
+ "pc_type": "mg",
+ "mg_levels": {
+    "pc_type": "python",
+    "pc_python_type": "firedrake.PatchPC",
+    "patch": {
+       "pc_patch_construct_codim": 0,
+       "pc_patch_construct_type": "vanka",
+       "pc_patch_exclude_subspaces": 1,
+    }
+ }
+}
+\end{minted}
+      \end{onlyenv}
+      \begin{onlyenv}<2>
+\begin{minted}[fontsize=\scriptsize]{python}
+{"ksp_type": "cg",
+ "pc_type": "mg",
+ "mg_levels": {
+    "pc_type": "python",
+    "pc_python_type": "firedrake.PatchPC",
+    "patch": {
+       "pc_patch_construct_dim": 0,
+       "pc_patch_construct_type": "vanka",
+       "pc_patch_exclude_subspaces": 1,
+    }
+ }
+}
+\end{minted}
+      \end{onlyenv}
     \end{column}
   \end{columns}
 \end{frame}
@@ -902,7 +951,9 @@ backend=biber]{biblatex}
     \end{itemize}
   \item Still quite expensive, but at least we don't have to assemble
     global problems on every patch
-  \item Could improve with performance colouring
+  \item Could probably improve performance with colouring
+  \item Not yet found a case where this is better than global
+    linearisation. Perhaps something with local nonlinearities?
   \end{itemize}
 \end{frame}
 
