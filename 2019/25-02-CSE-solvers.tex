@@ -95,6 +95,20 @@ backend=biber]{biblatex}
 \usepackage{tikz}
 \usetikzlibrary{trees,calc,positioning}
 \usetikzlibrary{shapes, shapes.geometric}
+\usetikzlibrary{arrows,chains,positioning,fit,backgrounds,calc,shapes,
+  shadows,scopes,decorations.markings,plotmarks}
+
+\newcommand*{\tettextsize}{\footnotesize}
+\tikzstyle{line} = [draw, -, thick]
+\tikzstyle{nodraw} = [draw, fill, circle, minimum width=0pt, inner sep=0pt]
+\tikzstyle{sieve} = [line, circle, font=\tettextsize, inner sep=0pt,
+  minimum size=12pt]
+
+\tikzstyle{cell} = [sieve, fill=blue!60]
+\tikzstyle{facet} = [sieve, fill=green!35]
+\tikzstyle{edge} = [sieve, fill=red!35]
+\tikzstyle{vertex} = [sieve, fill=blue!35]
+
 % https://tex.stackexchange.com/questions/27171/padded-boundary-of-convex-hull
 \newcommand{\convexpath}[2]{
   [
@@ -390,6 +404,109 @@ backend=biber]{biblatex}
   \end{onlyenv}
 \end{frame}
 
+\begin{frame}[t]
+  \frametitle{DMPlex notation}
+  Description of patches uses DMPlex nomenclature
+  \begin{columns}
+    \begin{column}{0.4\textwidth}
+      \begin{block}{Mesh}
+        \begin{center}
+          \begin{tikzpicture}
+            \input{\jobname.figures/tet_simple.tex}
+          \end{tikzpicture}
+        \end{center}
+      \end{block}
+    \end{column}
+    \begin{column}{0.6\textwidth}
+      \begin{block}{Graph representation}
+        \begin{center}
+          \begin{onlyenv}<1>
+            \begin{tikzpicture}
+              \input{\jobname.figures/tet_graph.tex}
+            \end{tikzpicture}
+          \end{onlyenv}
+          \begin{onlyenv}<2>
+            \begin{tikzpicture}
+              \input{\jobname.figures/tet_graph.tex}
+              \begin{scope}[overlay, remember picture, rounded corners]
+                \filldraw[fill opacity=0.2]
+                ([xshift= 3pt, yshift=-3pt] 7.south east) --
+                ([xshift= 3pt, yshift= 3pt] 7.north east) --
+                ([xshift=-3pt, yshift= 3pt] 5.north west) --
+                ([xshift=-3pt, yshift=-3pt] 5.south west) --
+                cycle;
+                \node[cell, fill=black, opacity=0.6] at (1.center) {};
+              \end{scope}
+            \end{tikzpicture}
+
+            \texttt{cone(5) = \{9, 10, 11\}}
+          \end{onlyenv}
+          \begin{onlyenv}<3>
+            \begin{tikzpicture}
+              \input{\jobname.figures/tet_graph.tex}
+              \begin{scope}[overlay, remember picture, rounded corners]
+                \filldraw[fill opacity=0.2]
+                ([xshift= 1pt, yshift=-3pt] 1.south east) --
+                ([xshift=-3pt, yshift= 1pt] 2.north west) --
+                ([xshift= 3pt, yshift=-1pt] 7.south east) --
+                ([xshift=-3pt, yshift= 1pt] 8.north west) --
+                ([xshift= 3pt, yshift=-1pt] 13.south east) --
+                ([xshift= 3pt, yshift= 3pt] 13.north east) --
+                ([xshift=-2pt, yshift= 3pt] 11.north west) --
+                ([xshift=-2pt, yshift= 0pt] 5.west) --
+                ([xshift=-1pt, yshift=-3pt] 1.south west) --
+                cycle;
+                \node[cell, fill=black, opacity=0.6] at (1.center) {};
+              \end{scope}
+            \end{tikzpicture}
+
+            \texttt{closure(5) = \{1, 2, 3, 9, 10, 11}\}
+          \end{onlyenv}
+          \begin{onlyenv}<4>
+            \begin{tikzpicture}
+              \input{\jobname.figures/tet_graph.tex}
+              \begin{scope}[overlay, remember picture, rounded corners]
+                \filldraw[fill opacity=0.2]
+                ([xshift= 3pt, yshift=-3pt] 10.south east) --
+                ([xshift= 3pt, yshift= 3pt] 10.north east) --
+                ([xshift=-3pt, yshift= 3pt] 8.north west) --
+                ([xshift=-3pt, yshift=-3pt] 8.south west) --
+                cycle;
+                \node[cell, fill=black, opacity=0.6] at (14.center) {};
+              \end{scope}
+            \end{tikzpicture}
+
+            \texttt{support(4) = \{12, 13, 14\}}
+          \end{onlyenv}
+          \begin{onlyenv}<5>
+            \begin{tikzpicture}
+              \input{\jobname.figures/tet_graph.tex} 
+              \begin{scope}[overlay, remember picture, rounded corners]
+                \filldraw[fill opacity=0.2]
+                ([xshift= 0pt, yshift= 3pt] 14.north west) --
+                ([xshift= 3pt, yshift=-3pt] 13.south east) --
+                ([xshift=-3pt, yshift= 1pt] 8.north west) --
+                ([xshift= 3pt, yshift=-1pt] 7.south east) --
+                ([xshift=-3pt, yshift= 1pt] 2.north west) --
+                ([xshift=-3pt, yshift= 1pt] 2.south west) --
+                ([xshift= 0pt, yshift=-3pt] 0.south west) --
+                ([xshift= 0pt, yshift=-3pt] 0.south east) --
+                ([xshift= 3pt, yshift=-1pt] 4.south east) --
+                ([xshift= 3pt, yshift= 0pt] 10.east) --
+                ([xshift= 2pt, yshift= 3pt] 14.north east) --
+                cycle;
+                \node[cell, fill=black, opacity=0.6] at (14.center) {};
+              \end{scope}
+            \end{tikzpicture}
+
+            \texttt{star(4) = \{0, 6, 7, 8, 12, 13, 14\}}
+          \end{onlyenv}
+        \end{center}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
 \begin{frame}[fragile]
   \frametitle{Nearly incompressible elasticity}
   \vspace*{-1.5\baselineskip}
@@ -412,47 +529,38 @@ backend=biber]{biblatex}
     \begin{column}{0.6\textwidth}
       \begin{onlyenv}<1>
 \begin{minted}[fontsize=\scriptsize]{python}
-{"ksp_type": "cg",
- "pc_type": "mg",
- "mg_levels": {
-    "pc_type": "python",
-    "pc_python_type": "firedrake.PatchPC",
-    "patch": {
+-ksp_type cg
+-pc_type mg
+-mg_levels_
+   -pc_type python
+   -pc_python_type firedrake.PatchPC
+   -patch_
 
 
-    }
- }
-}
 \end{minted}
       \end{onlyenv}
       \begin{onlyenv}<2>
 \begin{minted}[fontsize=\scriptsize]{python}
-{"ksp_type": "cg",
- "pc_type": "mg",
- "mg_levels": {
-    "pc_type": "python",
-    "pc_python_type": "firedrake.PatchPC",
-    "patch": {
-      "pc_patch_construct_dim": 0,
+-ksp_type cg
+-pc_type mg
+-mg_levels_
+   -pc_type python
+   -pc_python_type firedrake.PatchPC
+   -patch_
+      -pc_patch_construct_dim 0
 
-    }
- }
-}
 \end{minted}
       \end{onlyenv}
       \begin{onlyenv}<3->
 \begin{minted}[fontsize=\scriptsize]{python}
-{"ksp_type": "cg",
- "pc_type": "mg",
- "mg_levels": {
-    "pc_type": "python",
-    "pc_python_type": "firedrake.PatchPC",
-    "patch": {
-      "pc_patch_construct_dim": 0,
-      "pc_patch_construct_type": "star",
-    }
- }
-}
+-ksp_type cg
+-pc_type mg
+-mg_levels_
+   -pc_type python
+   -pc_python_type firedrake.PatchPC
+   -patch_
+      -pc_patch_construct_dim 0
+      -pc_patch_construct_type star
 \end{minted}
       \end{onlyenv}
     \end{column}
@@ -551,47 +659,38 @@ backend=biber]{biblatex}
     \begin{column}{0.6\textwidth}
       \begin{onlyenv}<1>
 \begin{minted}[fontsize=\scriptsize]{python}
-{"ksp_type": "cg",
- "pc_type": "mg",
- "mg_levels": {
-    "pc_type": "python",
-    "pc_python_type": "firedrake.PatchPC",
-    "patch": {
+-ksp_type cg
+-pc_type mg
+-mg_levels_
+   -pc_type python
+   -pc_python_type firedrake.PatchPC
+   -patch_
 
 
-    }
- }
-}
 \end{minted}
       \end{onlyenv}
       \begin{onlyenv}<2>
 \begin{minted}[fontsize=\scriptsize]{python}
-{"ksp_type": "cg",
- "pc_type": "mg",
- "mg_levels": {
-    "pc_type": "python",
-    "pc_python_type": "firedrake.PatchPC",
-    "patch": {
-       "pc_patch_construct_dim": 1,
+-ksp_type cg
+-pc_type mg
+-mg_levels_
+   -pc_type python
+   -pc_python_type firedrake.PatchPC
+   -patch_
+      -pc_patch_construct_dim 0
 
-    }
- }
-}
 \end{minted}
       \end{onlyenv}
       \begin{onlyenv}<3->
 \begin{minted}[fontsize=\scriptsize]{python}
-{"ksp_type": "cg",
- "pc_type": "mg",
- "mg_levels": {
-    "pc_type": "python",
-    "pc_python_type": "firedrake.PatchPC",
-    "patch": {
-       "pc_patch_construct_dim": 1,
-       "pc_patch_construct_type": "star",
-    }
- }
-}
+-ksp_type cg
+-pc_type mg
+-mg_levels_
+   -pc_type python
+   -pc_python_type firedrake.PatchPC
+   -patch_
+      -pc_patch_construct_dim 1
+      -pc_patch_construct_type star
 \end{minted}
       \end{onlyenv}
     \end{column}
@@ -687,47 +786,38 @@ backend=biber]{biblatex}
     \begin{column}{0.6\textwidth}
       \begin{onlyenv}<1>
 \begin{minted}[fontsize=\scriptsize]{python}
-{"ksp_type": "cg",
- "pc_type": "mg",
- "mg_levels": {
-    "pc_type": "python",
-    "pc_python_type": "firedrake.PatchPC",
-    "patch": {
+-ksp_type cg
+-pc_type mg
+-mg_levels_
+   -pc_type python
+   -pc_python_type firedrake.PatchPC
+   -patch_
 
 
-    }
- }
-}
 \end{minted}
       \end{onlyenv}
       \begin{onlyenv}<2>
 \begin{minted}[fontsize=\scriptsize]{python}
-{"ksp_type": "cg",
- "pc_type": "mg",
- "mg_levels": {
-    "pc_type": "python",
-    "pc_python_type": "firedrake.PatchPC",
-    "patch": {
-       "pc_patch_construct_dim": 0,
+-ksp_type cg
+-pc_type mg
+-mg_levels_
+   -pc_type python
+   -pc_python_type firedrake.PatchPC
+   -patch_
+      -pc_patch_construct_dim 0
 
-    }
- }
-}
 \end{minted}
       \end{onlyenv}
       \begin{onlyenv}<3->
 \begin{minted}[fontsize=\scriptsize]{python}
-{"ksp_type": "cg",
- "pc_type": "mg",
- "mg_levels": {
-    "pc_type": "python",
-    "pc_python_type": "firedrake.PatchPC",
-    "patch": {
-       "pc_patch_construct_dim": 0,
-       "pc_patch_construct_type": "star",
-    }
- }
-}
+-ksp_type cg
+-pc_type mg
+-mg_levels_
+   -pc_type python
+   -pc_python_type firedrake.PatchPC
+   -patch_
+      -pc_patch_construct_dim 0
+      -pc_patch_construct_type star
 \end{minted}
       \end{onlyenv}
     \end{column}
@@ -816,14 +906,14 @@ backend=biber]{biblatex}
     Solve simultaneously for $(u, p)$ on each pressure dof, gathering
     those velocity dofs that couple to the pressure dof.
 
-    MAC: use patch around cells and gather closure
+    \only<1-3>{Marker-and-Cell: loop over cells, gather closure of star}
 
-    Taylor-Hood: use patch around vertices and gather closure of star
+    \only<4-6>{Taylor-Hood: loop over vertices, gather closure of star}
     \nocite{Vanka:1986}
   \end{block}
   \begin{columns}
     \begin{column}{0.4\textwidth}
-      \begin{onlyenv}<1>
+      \begin{onlyenv}<1-3>
         \begin{center}
           \begin{tikzpicture}[scale=4]
             \tikzstyle{v}=[circle, fill, minimum size=0pt, inner sep=0pt]
@@ -853,17 +943,20 @@ backend=biber]{biblatex}
                 \node (c\a\d-\b\d-\a\c) at (barycentric cs:v\a\d=1,v\b\d=1,v\a\c=1) {};
               }
             }
-            \node[c, select] at (c12-22-21) {};
-            \node[c, select] at (c02-12-11) {};
-            \node[c, select] at (c11-21-12) {};
-
-            \draw[thick] \convexpath{v02,v12,v11}{1pt};
-            \draw[thick] \convexpath{v12,v21,v11}{1pt};
-            \draw[thick] \convexpath{v12,v22,v21}{1pt};
+            \uncover<2-3>{
+              \node[c, select] at (c12-22-21) {};
+              \node[c, select] at (c02-12-11) {};
+              \node[c, select] at (c11-21-12) {};
+            }
+            \uncover<3>{
+              \draw[thick] \convexpath{v02,v12,v11}{1pt};
+              \draw[thick] \convexpath{v12,v21,v11}{1pt};
+              \draw[thick] \convexpath{v12,v22,v21}{1pt};
+            }
           \end{tikzpicture}
         \end{center}
       \end{onlyenv}
-      \begin{onlyenv}<2>
+      \begin{onlyenv}<4->
         \begin{center}
           \begin{tikzpicture}[scale=4]
             \tikzstyle{v}=[circle, fill, minimum size=0pt, inner sep=0pt]
@@ -893,11 +986,14 @@ backend=biber]{biblatex}
                 \node (c\a\d-\b\d-\a\c) at (barycentric cs:v\a\d=1,v\b\d=1,v\a\c=1) {};
               }
             }
-            \node[v, select] at (v12) {};
-            \node[v, select] at (v21) {};
-
-            \draw[thick] \convexpath{v03,v13,v22,v21,v11,v02}{1pt};
-            \draw[thick] \convexpath{v12,v22,v31,v30,v20,v11}{1pt};
+            \uncover<5-6>{
+              \node[v, select] at (v12) {};
+              \node[v, select] at (v21) {};
+            }
+            \uncover<6>{
+              \draw[thick] \convexpath{v03,v13,v22,v21,v11,v02}{1pt};
+              \draw[thick] \convexpath{v12,v22,v31,v30,v20,v11}{1pt};
+            }
           \end{tikzpicture}
         \end{center}
       \end{onlyenv}
@@ -905,34 +1001,80 @@ backend=biber]{biblatex}
     \begin{column}{0.6\textwidth}
       \begin{onlyenv}<1>
 \begin{minted}[fontsize=\scriptsize]{python}
-{"ksp_type": "cg",
- "pc_type": "mg",
- "mg_levels": {
-    "pc_type": "python",
-    "pc_python_type": "firedrake.PatchPC",
-    "patch": {
-       "pc_patch_construct_codim": 0,
-       "pc_patch_construct_type": "vanka",
-       "pc_patch_exclude_subspaces": 1,
-    }
- }
-}
+-ksp_type cg
+-pc_type mg
+-mg_levels_
+   -pc_type python
+   -pc_python_type firedrake.PatchPC
+   -patch_
+
+
+
 \end{minted}
       \end{onlyenv}
       \begin{onlyenv}<2>
 \begin{minted}[fontsize=\scriptsize]{python}
-{"ksp_type": "cg",
- "pc_type": "mg",
- "mg_levels": {
-    "pc_type": "python",
-    "pc_python_type": "firedrake.PatchPC",
-    "patch": {
-       "pc_patch_construct_dim": 0,
-       "pc_patch_construct_type": "vanka",
-       "pc_patch_exclude_subspaces": 1,
-    }
- }
-}
+-ksp_type cg
+-pc_type mg
+-mg_levels_
+   -pc_type python
+   -pc_python_type firedrake.PatchPC
+   -patch_
+      -pc_patch_construct_codim 0
+
+
+\end{minted}
+      \end{onlyenv}
+      \begin{onlyenv}<3>
+\begin{minted}[fontsize=\scriptsize]{python}
+-ksp_type cg
+-pc_type mg
+-mg_levels_
+   -pc_type python
+   -pc_python_type firedrake.PatchPC
+   -patch_
+      -pc_patch_construct_codim 0
+      -pc_patch_construct_type vanka
+      -pc_patch_exclude_subspaces 1
+\end{minted}
+      \end{onlyenv}
+      \begin{onlyenv}<4>
+\begin{minted}[fontsize=\scriptsize]{python}
+-ksp_type cg
+-pc_type mg
+-mg_levels_
+   -pc_type python
+   -pc_python_type firedrake.PatchPC
+   -patch_
+
+
+
+\end{minted}
+      \end{onlyenv}
+      \begin{onlyenv}<5>
+\begin{minted}[fontsize=\scriptsize]{python}
+-ksp_type cg
+-pc_type mg
+-mg_levels_
+   -pc_type python
+   -pc_python_type firedrake.PatchPC
+   -patch_
+      -pc_patch_construct_dim 0
+
+
+\end{minted}
+      \end{onlyenv}
+      \begin{onlyenv}<6>
+\begin{minted}[fontsize=\scriptsize]{python}
+-ksp_type cg
+-pc_type mg
+-mg_levels_
+   -pc_type python
+   -pc_python_type firedrake.PatchPC
+   -patch_
+      -pc_patch_construct_dim 0
+      -pc_patch_construct_type vanka
+      -pc_patch_exclude_subspaces 1
 \end{minted}
       \end{onlyenv}
     \end{column}

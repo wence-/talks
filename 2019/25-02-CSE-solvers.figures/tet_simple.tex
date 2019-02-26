@@ -1,0 +1,12 @@
+\node (0) [nodraw, label=below:{\tettextsize 2}] at (0,0) {};
+\node (1) [nodraw, label=below:{\tettextsize 3}] at (2.4,0) {};
+\node (2) [nodraw, label=above right:{\tettextsize 4}] at (2.3,0.84) {};
+\node (3) [nodraw, label=above:{\tettextsize 1}] at (1.2,2.0) {};
+
+\path[line] (0) edge node[label=below:{\tettextsize 9}]{} (1);
+%% \draw[line] (0) -- (1);
+\path[line, dashed] (0) edge node[label=above:{\tettextsize 14}]{} (2);
+\path[line] (1) edge node[label=right:{\tettextsize 12}]{} (2);
+\draw[line] (0) edge node[label=above left:{\tettextsize 11}]{} (3);
+\draw[line] (1) edge node[label=left:{\tettextsize 10}]{} (3);
+\draw[line] (2) edge node[label=above right:{\tettextsize 13}]{} (3);
