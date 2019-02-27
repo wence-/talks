@@ -9,7 +9,6 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{minted}
-
 \usepackage[url=false,
 doi=true,
 isbn=false,
@@ -287,6 +286,113 @@ backend=biber]{biblatex}
   \end{block}
 \end{frame}
 
+\begin{frame}[t]
+  \frametitle{DMPlex notation}
+  Description of patches uses DMPlex nomenclature
+  \begin{columns}[T]
+    \begin{column}{0.4\textwidth}
+      \begin{block}{Mesh}
+        \begin{center}
+          \begin{tikzpicture}
+            \input{\jobname.figures/tet_simple.tex}
+          \end{tikzpicture}
+        \end{center}
+      \end{block}
+    \end{column}
+    \begin{column}{0.6\textwidth}
+      \begin{block}{Graph representation}
+        \begin{onlyenv}<1>
+          \begin{center}
+            \begin{tikzpicture}
+              \input{\jobname.figures/tet_graph.tex}
+            \end{tikzpicture}
+          \end{center}
+        \end{onlyenv}
+        \begin{onlyenv}<2>
+          \begin{center}
+            \begin{tikzpicture}
+              \input{\jobname.figures/tet_graph.tex}
+              \begin{scope}[overlay, remember picture, rounded corners]
+                \filldraw[fill opacity=0.2]
+                ([xshift= 3pt, yshift=-3pt] 7.south east) --
+                ([xshift= 3pt, yshift= 3pt] 7.north east) --
+                ([xshift=-3pt, yshift= 3pt] 5.north west) --
+                ([xshift=-3pt, yshift=-3pt] 5.south west) --
+                cycle;
+                \node[cell, fill=black, opacity=0.6] at (1.center) {};
+              \end{scope}
+            \end{tikzpicture}
+          \end{center}
+          $\text{\texttt{cone}}(5) = \{9, 10, 11\}$
+        \end{onlyenv}
+        \begin{onlyenv}<3>
+          \begin{center}
+            \begin{tikzpicture}
+              \input{\jobname.figures/tet_graph.tex}
+              \begin{scope}[overlay, remember picture, rounded corners]
+                \filldraw[fill opacity=0.2]
+                ([xshift= 1pt, yshift=-3pt] 1.south east) --
+                ([xshift=-3pt, yshift= 1pt] 2.north west) --
+                ([xshift= 3pt, yshift=-1pt] 7.south east) --
+                ([xshift=-3pt, yshift= 1pt] 8.north west) --
+                ([xshift= 3pt, yshift=-1pt] 13.south east) --
+                ([xshift= 3pt, yshift= 3pt] 13.north east) --
+                ([xshift=-2pt, yshift= 3pt] 11.north west) --
+                ([xshift=-2pt, yshift= 0pt] 5.west) --
+                ([xshift=-1pt, yshift=-3pt] 1.south west) --
+                cycle;
+                \node[cell, fill=black, opacity=0.6] at (1.center) {};
+              \end{scope}
+            \end{tikzpicture}
+          \end{center}
+          $\text{\texttt{closure}}(5) = \{1, 2, 3, 9, 10, 11\}$
+        \end{onlyenv}
+        \begin{onlyenv}<4>
+          \begin{center}
+            \begin{tikzpicture}
+              \input{\jobname.figures/tet_graph.tex}
+              \begin{scope}[overlay, remember picture, rounded corners]
+                \filldraw[fill opacity=0.2]
+                ([xshift= 3pt, yshift=-3pt] 10.south east) --
+                ([xshift= 3pt, yshift= 3pt] 10.north east) --
+                ([xshift=-3pt, yshift= 3pt] 8.north west) --
+                ([xshift=-3pt, yshift=-3pt] 8.south west) --
+                cycle;
+                \node[cell, fill=black, opacity=0.6] at (14.center) {};
+              \end{scope}
+            \end{tikzpicture}
+          \end{center}
+          $\text{\texttt{support}}(4) = \{12, 13, 14\}$
+        \end{onlyenv}
+        \begin{onlyenv}<5>
+          \begin{center}
+            \begin{tikzpicture}
+              \input{\jobname.figures/tet_graph.tex} 
+              \begin{scope}[overlay, remember picture, rounded corners]
+                \filldraw[fill opacity=0.2]
+                ([xshift= 0pt, yshift= 3pt] 14.north west) --
+                ([xshift= 3pt, yshift=-3pt] 13.south east) --
+                ([xshift=-3pt, yshift= 1pt] 8.north west) --
+                ([xshift= 3pt, yshift=-1pt] 7.south east) --
+                ([xshift=-3pt, yshift= 1pt] 2.north west) --
+                ([xshift=-3pt, yshift= 1pt] 2.south west) --
+                ([xshift= 0pt, yshift=-3pt] 0.south west) --
+                ([xshift= 0pt, yshift=-3pt] 0.south east) --
+                ([xshift= 3pt, yshift=-1pt] 4.south east) --
+                ([xshift= 3pt, yshift= 0pt] 10.east) --
+                ([xshift= 2pt, yshift= 3pt] 14.north east) --
+                cycle;
+                \node[cell, fill=black, opacity=0.6] at (14.center) {};
+              \end{scope}
+            \end{tikzpicture}
+          \end{center}
+          $\text{\texttt{star}}(4) = \{0, 6, 7, 8, 12, 13, 14\}$
+        \end{onlyenv}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
 \begin{frame}[fragile]
  \frametitle{Topological subspace definition via \texttt{DMPlex}}
  \begin{itemize}
@@ -320,9 +426,6 @@ backend=biber]{biblatex}
   \item Inspect \texttt{PetscSection} defining the function space
     layout to obtain global dof numbers
   \item These are the dofs we will solve for
-    \begin{flushright}
-      {\small wrinkle: for Vanka we also need to specify a constraint space.}
-    \end{flushright}
   \item Create local renumbering on each patch (for local operator)
   \item Build scatters from global to patch vectors
   \item Finally, \emph{complete} patch using appropriate adjacency
@@ -337,7 +440,7 @@ backend=biber]{biblatex}
     select from assembled global operator
   \item Other transmission conditions this doesn't work
   \item Instead, callback interface
-  \item Naturally extends to \emph{nonlinear} smoothers
+  \item Extends to \emph{nonlinear} smoothers
   \end{itemize}
 
   \begin{onlyenv}<1>
@@ -404,109 +507,6 @@ backend=biber]{biblatex}
   \end{onlyenv}
 \end{frame}
 
-\begin{frame}[t]
-  \frametitle{DMPlex notation}
-  Description of patches uses DMPlex nomenclature
-  \begin{columns}
-    \begin{column}{0.4\textwidth}
-      \begin{block}{Mesh}
-        \begin{center}
-          \begin{tikzpicture}
-            \input{\jobname.figures/tet_simple.tex}
-          \end{tikzpicture}
-        \end{center}
-      \end{block}
-    \end{column}
-    \begin{column}{0.6\textwidth}
-      \begin{block}{Graph representation}
-        \begin{center}
-          \begin{onlyenv}<1>
-            \begin{tikzpicture}
-              \input{\jobname.figures/tet_graph.tex}
-            \end{tikzpicture}
-          \end{onlyenv}
-          \begin{onlyenv}<2>
-            \begin{tikzpicture}
-              \input{\jobname.figures/tet_graph.tex}
-              \begin{scope}[overlay, remember picture, rounded corners]
-                \filldraw[fill opacity=0.2]
-                ([xshift= 3pt, yshift=-3pt] 7.south east) --
-                ([xshift= 3pt, yshift= 3pt] 7.north east) --
-                ([xshift=-3pt, yshift= 3pt] 5.north west) --
-                ([xshift=-3pt, yshift=-3pt] 5.south west) --
-                cycle;
-                \node[cell, fill=black, opacity=0.6] at (1.center) {};
-              \end{scope}
-            \end{tikzpicture}
-
-            \texttt{cone(5) = \{9, 10, 11\}}
-          \end{onlyenv}
-          \begin{onlyenv}<3>
-            \begin{tikzpicture}
-              \input{\jobname.figures/tet_graph.tex}
-              \begin{scope}[overlay, remember picture, rounded corners]
-                \filldraw[fill opacity=0.2]
-                ([xshift= 1pt, yshift=-3pt] 1.south east) --
-                ([xshift=-3pt, yshift= 1pt] 2.north west) --
-                ([xshift= 3pt, yshift=-1pt] 7.south east) --
-                ([xshift=-3pt, yshift= 1pt] 8.north west) --
-                ([xshift= 3pt, yshift=-1pt] 13.south east) --
-                ([xshift= 3pt, yshift= 3pt] 13.north east) --
-                ([xshift=-2pt, yshift= 3pt] 11.north west) --
-                ([xshift=-2pt, yshift= 0pt] 5.west) --
-                ([xshift=-1pt, yshift=-3pt] 1.south west) --
-                cycle;
-                \node[cell, fill=black, opacity=0.6] at (1.center) {};
-              \end{scope}
-            \end{tikzpicture}
-
-            \texttt{closure(5) = \{1, 2, 3, 9, 10, 11}\}
-          \end{onlyenv}
-          \begin{onlyenv}<4>
-            \begin{tikzpicture}
-              \input{\jobname.figures/tet_graph.tex}
-              \begin{scope}[overlay, remember picture, rounded corners]
-                \filldraw[fill opacity=0.2]
-                ([xshift= 3pt, yshift=-3pt] 10.south east) --
-                ([xshift= 3pt, yshift= 3pt] 10.north east) --
-                ([xshift=-3pt, yshift= 3pt] 8.north west) --
-                ([xshift=-3pt, yshift=-3pt] 8.south west) --
-                cycle;
-                \node[cell, fill=black, opacity=0.6] at (14.center) {};
-              \end{scope}
-            \end{tikzpicture}
-
-            \texttt{support(4) = \{12, 13, 14\}}
-          \end{onlyenv}
-          \begin{onlyenv}<5>
-            \begin{tikzpicture}
-              \input{\jobname.figures/tet_graph.tex} 
-              \begin{scope}[overlay, remember picture, rounded corners]
-                \filldraw[fill opacity=0.2]
-                ([xshift= 0pt, yshift= 3pt] 14.north west) --
-                ([xshift= 3pt, yshift=-3pt] 13.south east) --
-                ([xshift=-3pt, yshift= 1pt] 8.north west) --
-                ([xshift= 3pt, yshift=-1pt] 7.south east) --
-                ([xshift=-3pt, yshift= 1pt] 2.north west) --
-                ([xshift=-3pt, yshift= 1pt] 2.south west) --
-                ([xshift= 0pt, yshift=-3pt] 0.south west) --
-                ([xshift= 0pt, yshift=-3pt] 0.south east) --
-                ([xshift= 3pt, yshift=-1pt] 4.south east) --
-                ([xshift= 3pt, yshift= 0pt] 10.east) --
-                ([xshift= 2pt, yshift= 3pt] 14.north east) --
-                cycle;
-                \node[cell, fill=black, opacity=0.6] at (14.center) {};
-              \end{scope}
-            \end{tikzpicture}
-
-            \texttt{star(4) = \{0, 6, 7, 8, 12, 13, 14\}}
-          \end{onlyenv}
-        \end{center}
-      \end{block}
-    \end{column}
-  \end{columns}
-\end{frame}
-
 \begin{frame}[fragile]
   \frametitle{Nearly incompressible elasticity}
   \vspace*{-1.5\baselineskip}
@@ -525,9 +525,10 @@ backend=biber]{biblatex}
     star patch around vertices (with piecewise continuous space for
     $H^1$ of sufficiently high degree).
   \end{block}
-  \begin{columns}
-    \begin{column}{0.6\textwidth}
-      \begin{onlyenv}<1>
+  \begin{onlyenv}<1-3>
+    \begin{columns}
+      \begin{column}{0.6\textwidth}
+        \begin{onlyenv}<1>
 \begin{minted}[fontsize=\scriptsize]{python}
 -ksp_type cg
 -pc_type mg
@@ -538,8 +539,8 @@ backend=biber]{biblatex}
 
 
 \end{minted}
-      \end{onlyenv}
-      \begin{onlyenv}<2>
+        \end{onlyenv}
+        \begin{onlyenv}<2>
 \begin{minted}[fontsize=\scriptsize]{python}
 -ksp_type cg
 -pc_type mg
@@ -550,8 +551,8 @@ backend=biber]{biblatex}
       -pc_patch_construct_dim 0
 
 \end{minted}
-      \end{onlyenv}
-      \begin{onlyenv}<3->
+        \end{onlyenv}
+        \begin{onlyenv}<3>
 \begin{minted}[fontsize=\scriptsize]{python}
 -ksp_type cg
 -pc_type mg
@@ -562,80 +563,99 @@ backend=biber]{biblatex}
       -pc_patch_construct_dim 0
       -pc_patch_construct_type star
 \end{minted}
-      \end{onlyenv}
-    \end{column}
-    \begin{column}{0.4\textwidth}
-      \begin{center}
-        \begin{tikzpicture}[scale=4]
-          \tikzstyle{v}=[circle, fill, minimum size=0pt, inner sep=0pt]
-          \tikzstyle{c}=[diamond, fill, minimum size=4pt, inner sep=0pt]
-          \tikzstyle{e}=[rectangle, fill, minimum size=3pt, inner sep=0pt]
-          \tikzstyle{select}=[draw, minimum size=3pt]
-          \foreach \i/\k in {0/0, 0.25/1, 0.5/2, 0.75/3} {
-            \foreach \j/\l in {0/0, 0.25/1, 0.5/2, 0.75/3} {
-              \node[v] (v\k\l) at (\i, \j) {};
+        \end{onlyenv}
+      \end{column}
+      \begin{column}{0.4\textwidth}
+        \begin{center}
+          \begin{tikzpicture}[scale=4]
+            \tikzstyle{v}=[circle, fill, minimum size=0pt, inner sep=0pt]
+            \tikzstyle{c}=[diamond, fill, minimum size=4pt, inner sep=0pt]
+            \tikzstyle{e}=[rectangle, fill, minimum size=3pt, inner sep=0pt]
+            \tikzstyle{select}=[draw, minimum size=3pt]
+            \foreach \i/\k in {0/0, 0.25/1, 0.5/2, 0.75/3} {
+              \foreach \j/\l in {0/0, 0.25/1, 0.5/2, 0.75/3} {
+                \node[v] (v\k\l) at (\i, \j) {};
+              }
             }
-          }
 
-          \foreach \i in {0, 0.25, 0.5, 0.75} {
-            \foreach \j/\k in {0/0.25, 0.25/0.5, 0.5/0.75} {
-              \draw[thin, gray] (\i, \j) -- (\i, \k);
-              \draw[thin, gray] (\j, \i) -- (\k, \i);
+            \foreach \i in {0, 0.25, 0.5, 0.75} {
+              \foreach \j/\k in {0/0.25, 0.25/0.5, 0.5/0.75} {
+                \draw[thin, gray] (\i, \j) -- (\i, \k);
+                \draw[thin, gray] (\j, \i) -- (\k, \i);
+              }
             }
-          }
-          \foreach \i/\j in {0/0.25, 0.25/0.5, 0.5/0.75} {
-            \foreach \k/\l in {0/0.25, 0.25/0.5, 0.5/0.75} {
-              \draw[thin, gray] (\i, \l) -- (\j, \k);
+            \foreach \i/\j in {0/0.25, 0.25/0.5, 0.5/0.75} {
+              \foreach \k/\l in {0/0.25, 0.25/0.5, 0.5/0.75} {
+                \draw[thin, gray] (\i, \l) -- (\j, \k);
+              }
             }
-          }
 
-          \uncover<2->{
-            \node[v, select] at (v11) {};
-            \node[v, select] at (v21) {};
-            \node[v, select] at (v12) {};
-            \node[v, select] at (v22) {};
-          }
-          \foreach \a/\b in {0/1, 1/2, 2/3} {
-            \foreach \c/\d in {1/0, 2/1, 3/2} {
-              \node (c\a\c-\b\c-\b\d) at (barycentric cs:v\a\c=1,v\b\c=1,v\b\d=1) {};
-              \node (c\a\d-\b\d-\a\c) at (barycentric cs:v\a\d=1,v\b\d=1,v\a\c=1) {};
+            \uncover<2-3>{
+              \node[v, select] at (v11) {};
+              \node[v, select] at (v21) {};
+              \node[v, select] at (v12) {};
+              \node[v, select] at (v22) {};
             }
-          }
+            \foreach \a/\b in {0/1, 1/2, 2/3} {
+              \foreach \c/\d in {1/0, 2/1, 3/2} {
+                \node (c\a\c-\b\c-\b\d) at (barycentric cs:v\a\c=1,v\b\c=1,v\b\d=1) {};
+                \node (c\a\d-\b\d-\a\c) at (barycentric cs:v\a\d=1,v\b\d=1,v\a\c=1) {};
+              }
+            }
 
-          \uncover<3->{
-            \draw[thick] \convexpath{
-              c02-12-11,
-              c11-21-12,
-              c11-21-20,
-              c10-20-11,
-              c01-11-10,
-              c01-11-02}{1pt};
-            \draw[thick] \convexpath{
-              c12-22-21,
-              c21-31-22,
-              c21-31-30,
-              c20-30-21,
-              c11-21-20,
-              c11-21-12}{1pt};
-            \draw[thick] \convexpath{
-              c03-13-12,
- c12-22-13,
-              c12-22-21,
-              c11-21-12,
-              c02-12-11,
-              c02-12-03}{1pt};
-            \draw[thick] \convexpath{
-              c13-23-22,
-              c22-32-23,
-              c22-32-31,
-              c21-31-22,
-              c12-22-21,
-              c12-22-13}{1pt};
-          }
-        \end{tikzpicture}
-      \end{center}
-    \end{column}
-  \end{columns}
+            \uncover<3>{
+              \draw[thick] \convexpath{
+                c02-12-11,
+                c11-21-12,
+                c11-21-20,
+                c10-20-11,
+                c01-11-10,
+                c01-11-02}{1pt};
+              \draw[thick] \convexpath{
+                c12-22-21,
+                c21-31-22,
+                c21-31-30,
+                c20-30-21,
+                c11-21-20,
+                c11-21-12}{1pt};
+              \draw[thick] \convexpath{
+                c03-13-12,
+                c12-22-13,
+                c12-22-21,
+                c11-21-12,
+                c02-12-11,
+                c02-12-03}{1pt};
+              \draw[thick] \convexpath{
+                c13-23-22,
+                c22-32-23,
+                c22-32-31,
+                c21-31-22,
+                c12-22-21,
+                c12-22-13}{1pt};
+            }
+          \end{tikzpicture}
+        \end{center}
+      \end{column}
+    \end{columns}
+  \end{onlyenv}
+  \begin{onlyenv}<4>
+    \begin{table}
+      \centering
+      {\footnotesize
+      \begin{tabular}{l|cccccc}
+        $k\backslash \gamma$ & $10^0$ & $10^1$ & $10^2$ & $10^3$ & $10^4$ & $10^5$ \\
+        \hline
+        3                    & 11     & 16     & 29     & 66     & 173    & 458    \\
+        4                    & 11     & 13     & 19     & 26     & 54     & 110    \\
+        5                    & 11     & 12     & 16     & 19     & 20     & 19     \\
+        6                    & 10     & 11     & 14     & 15     & 16     & 15     \\
+        7                    & 10     & 11     & 13     & 14     & 14     & 13     \\
+      \end{tabular}
+      \caption{Convergence with vertex star patch preconditioned Richardson
+        smoothers and $P_k$ Lagrange elements}
+      }
+    \end{table}
+  \end{onlyenv}
 \end{frame}
 
 \begin{frame}[fragile]
@@ -655,9 +675,10 @@ backend=biber]{biblatex}
     Choose $V$ to be a Raviart-Thomas space, the matching $H(\curl)$
     space has dofs on edges: use star patch around edges.
   \end{block}
-  \begin{columns}
-    \begin{column}{0.6\textwidth}
-      \begin{onlyenv}<1>
+  \begin{onlyenv}<1-3>
+    \begin{columns}
+      \begin{column}{0.6\textwidth}
+        \begin{onlyenv}<1>
 \begin{minted}[fontsize=\scriptsize]{python}
 -ksp_type cg
 -pc_type mg
@@ -668,8 +689,8 @@ backend=biber]{biblatex}
 
 
 \end{minted}
-      \end{onlyenv}
-      \begin{onlyenv}<2>
+        \end{onlyenv}
+        \begin{onlyenv}<2>
 \begin{minted}[fontsize=\scriptsize]{python}
 -ksp_type cg
 -pc_type mg
@@ -677,11 +698,11 @@ backend=biber]{biblatex}
    -pc_type python
    -pc_python_type firedrake.PatchPC
    -patch_
-      -pc_patch_construct_dim 0
+      -pc_patch_construct_dim 1
 
 \end{minted}
-      \end{onlyenv}
-      \begin{onlyenv}<3->
+        \end{onlyenv}
+        \begin{onlyenv}<3>
 \begin{minted}[fontsize=\scriptsize]{python}
 -ksp_type cg
 -pc_type mg
@@ -692,77 +713,94 @@ backend=biber]{biblatex}
       -pc_patch_construct_dim 1
       -pc_patch_construct_type star
 \end{minted}
-      \end{onlyenv}
-    \end{column}
-    \begin{column}{0.4\textwidth}
-      \begin{center}
-        \begin{tikzpicture}[scale=4]
-          \tikzstyle{v}=[circle, fill, minimum size=0pt, inner sep=0pt]
-          \tikzstyle{c}=[diamond, fill, minimum size=4pt, inner sep=0pt]
-          \tikzstyle{e}=[rectangle, fill, minimum size=3pt, inner sep=0pt]
-          \tikzstyle{select}=[draw, minimum size=3pt]
-          \foreach \i/\k in {0/0, 0.25/1, 0.5/2, 0.75/3} {
-            \foreach \j/\l in {0/0, 0.25/1, 0.5/2, 0.75/3} {
-              \node[v] (v\k\l) at (\i, \j) {};
+        \end{onlyenv}
+      \end{column}
+      \begin{column}{0.4\textwidth}
+        \begin{center}
+          \begin{tikzpicture}[scale=4]
+            \tikzstyle{v}=[circle, fill, minimum size=0pt, inner sep=0pt]
+            \tikzstyle{c}=[diamond, fill, minimum size=4pt, inner sep=0pt]
+            \tikzstyle{e}=[rectangle, fill, minimum size=3pt, inner sep=0pt]
+            \tikzstyle{select}=[draw, minimum size=3pt]
+            \foreach \i/\k in {0/0, 0.25/1, 0.5/2, 0.75/3} {
+              \foreach \j/\l in {0/0, 0.25/1, 0.5/2, 0.75/3} {
+                \node[v] (v\k\l) at (\i, \j) {};
+              }
             }
-          }
 
-          \foreach \i in {0, 0.25, 0.5, 0.75} {
-            \foreach \j/\k in {0/0.25, 0.25/0.5, 0.5/0.75} {
-              \draw[thin, gray] (\i, \j) -- (\i, \k);
-              \draw[thin, gray] (\j, \i) -- (\k, \i);
+            \foreach \i in {0, 0.25, 0.5, 0.75} {
+              \foreach \j/\k in {0/0.25, 0.25/0.5, 0.5/0.75} {
+                \draw[thin, gray] (\i, \j) -- (\i, \k);
+                \draw[thin, gray] (\j, \i) -- (\k, \i);
+              }
             }
-          }
-          \foreach \i/\j in {0/0.25, 0.25/0.5, 0.5/0.75} {
-            \foreach \k/\l in {0/0.25, 0.25/0.5, 0.5/0.75} {
-              \draw[thin, gray] (\i, \l) -- (\j, \k);
+            \foreach \i/\j in {0/0.25, 0.25/0.5, 0.5/0.75} {
+              \foreach \k/\l in {0/0.25, 0.25/0.5, 0.5/0.75} {
+                \draw[thin, gray] (\i, \l) -- (\j, \k);
+              }
             }
-          }
-          \foreach \a/\b in {0/1, 1/2, 2/3} {
-            \foreach \c/\d in {1/0, 2/1, 3/2} {
-              \node (c\a\c-\b\c-\b\d) at (barycentric cs:v\a\c=1,v\b\c=1,v\b\d=1) {};
-              \node (c\a\d-\b\d-\a\c) at (barycentric cs:v\a\d=1,v\b\d=1,v\a\c=1) {};
+            \foreach \a/\b in {0/1, 1/2, 2/3} {
+              \foreach \c/\d in {1/0, 2/1, 3/2} {
+                \node (c\a\c-\b\c-\b\d) at (barycentric cs:v\a\c=1,v\b\c=1,v\b\d=1) {};
+                \node (c\a\d-\b\d-\a\c) at (barycentric cs:v\a\d=1,v\b\d=1,v\a\c=1) {};
+              }
             }
-          }
-          \node (e1) at (barycentric cs:v12=1,v22=2) {};
-          \node (e2) at (barycentric cs:v12=2,v22=1) {};
+            \node (e1) at (barycentric cs:v12=1,v22=2) {};
+            \node (e2) at (barycentric cs:v12=2,v22=1) {};
 
-          \node (e3) at (barycentric cs:v11=1,v21=2) {};
-          \node (e4) at (barycentric cs:v11=2,v21=1) {};
+            \node (e3) at (barycentric cs:v11=1,v21=2) {};
+            \node (e4) at (barycentric cs:v11=2,v21=1) {};
 
-          \node (e5) at (barycentric cs:v21=1,v12=2) {};
-          \node (e6) at (barycentric cs:v21=2,v12=1) {};
+            \node (e5) at (barycentric cs:v21=1,v12=2) {};
+            \node (e6) at (barycentric cs:v21=2,v12=1) {};
 
-          \uncover<2->{
-            \node[e, select] at (barycentric cs:v12=1,v22=1) {};
-            \node[e, select] at (barycentric cs:v11=1,v21=1) {};
-            \node[e, select] at (barycentric cs:v21=1,v12=1) {};
-          }
+            \uncover<2-3>{
+              \node[e, select] at (barycentric cs:v12=1,v22=1) {};
+              \node[e, select] at (barycentric cs:v11=1,v21=1) {};
+              \node[e, select] at (barycentric cs:v21=1,v12=1) {};
+            }
 
-          \uncover<3->{
-            \draw[thick] \convexpath{
-              c12-22-13,
-              e1,
-              c12-22-21,
-              e2}{1pt};
+            \uncover<3>{
+              \draw[thick] \convexpath{
+                c12-22-13,
+                e1,
+                c12-22-21,
+                e2}{1pt};
 
-            \draw[thick] \convexpath{
-              c11-21-12,
-              e3,
-              c11-21-20,
-              e4}{1pt};
+              \draw[thick] \convexpath{
+                c11-21-12,
+                e3,
+                c11-21-20,
+                e4}{1pt};
 
-            \draw[thick] \convexpath{
-              c11-21-12,
-              e5,
-              c12-22-21,
-              e6}{1pt};
-          }
-        \end{tikzpicture}
-      \end{center}
-    \end{column}
-  \end{columns}
-
+              \draw[thick] \convexpath{
+                c11-21-12,
+                e5,
+                c12-22-21,
+                e6}{1pt};
+            }
+          \end{tikzpicture}
+        \end{center}
+      \end{column}
+    \end{columns}
+  \end{onlyenv}
+  \begin{onlyenv}<4>
+    \begin{table}
+      \centering
+      {\footnotesize
+      \begin{tabular}{l|cccccc}
+        $k\backslash \gamma$ & $10^0$ & $10^1$ & $10^2$ & $10^3$ & $10^4$ & $10^5$ \\
+        \hline
+        1 (vertex)           & 11     & 11     & 11     & 11     & 11     & 11     \\
+        2 (vertex)           & 7      & 7      & 7      & 7      & 7      & 7      \\
+        1 (edge)             & 32     & 32     & 32     & 32     & 32     & 32     \\
+        2 (edge)             & 15     & 15     & 15     & 15     & 15     & 15     \\
+      \end{tabular}
+      \caption{Convergence with vertex and edge star patch preconditioned Richardson
+        smoothers and $\text{RT}_k$ elements}
+      }
+    \end{table}
+  \end{onlyenv}
 \end{frame}
 
 \begin{frame}[fragile]
@@ -782,9 +820,10 @@ backend=biber]{biblatex}
     Choose $V$ to be a N\'ed\'elec space, the matching $H^1$
     space has dofs at vertices: use star patch around vertices.
   \end{block}
-  \begin{columns}
-    \begin{column}{0.6\textwidth}
-      \begin{onlyenv}<1>
+  \begin{onlyenv}<1-3>
+    \begin{columns}
+      \begin{column}{0.6\textwidth}
+        \begin{onlyenv}<1>
 \begin{minted}[fontsize=\scriptsize]{python}
 -ksp_type cg
 -pc_type mg
@@ -795,8 +834,8 @@ backend=biber]{biblatex}
 
 
 \end{minted}
-      \end{onlyenv}
-      \begin{onlyenv}<2>
+        \end{onlyenv}
+        \begin{onlyenv}<2>
 \begin{minted}[fontsize=\scriptsize]{python}
 -ksp_type cg
 -pc_type mg
@@ -807,8 +846,8 @@ backend=biber]{biblatex}
       -pc_patch_construct_dim 0
 
 \end{minted}
-      \end{onlyenv}
-      \begin{onlyenv}<3->
+        \end{onlyenv}
+        \begin{onlyenv}<3>
 \begin{minted}[fontsize=\scriptsize]{python}
 -ksp_type cg
 -pc_type mg
@@ -819,83 +858,99 @@ backend=biber]{biblatex}
       -pc_patch_construct_dim 0
       -pc_patch_construct_type star
 \end{minted}
-      \end{onlyenv}
-    \end{column}
-    \begin{column}{0.4\textwidth}
-      \begin{center}
-        \begin{tikzpicture}[scale=4]
-          \tikzstyle{v}=[circle, fill, minimum size=0pt, inner sep=0pt]
-          \tikzstyle{c}=[diamond, fill, minimum size=4pt, inner sep=0pt]
-          \tikzstyle{e}=[rectangle, fill, minimum size=3pt, inner sep=0pt]
-          \tikzstyle{select}=[draw, minimum size=3pt]
-          \foreach \i/\k in {0/0, 0.25/1, 0.5/2, 0.75/3} {
-            \foreach \j/\l in {0/0, 0.25/1, 0.5/2, 0.75/3} {
-              \node[v] (v\k\l) at (\i, \j) {};
+        \end{onlyenv}
+      \end{column}
+      \begin{column}{0.4\textwidth}
+        \begin{center}
+          \begin{tikzpicture}[scale=4]
+            \tikzstyle{v}=[circle, fill, minimum size=0pt, inner sep=0pt]
+            \tikzstyle{c}=[diamond, fill, minimum size=4pt, inner sep=0pt]
+            \tikzstyle{e}=[rectangle, fill, minimum size=3pt, inner sep=0pt]
+            \tikzstyle{select}=[draw, minimum size=3pt]
+            \foreach \i/\k in {0/0, 0.25/1, 0.5/2, 0.75/3} {
+              \foreach \j/\l in {0/0, 0.25/1, 0.5/2, 0.75/3} {
+                \node[v] (v\k\l) at (\i, \j) {};
+              }
             }
-          }
 
-          \foreach \i in {0, 0.25, 0.5, 0.75} {
-            \foreach \j/\k in {0/0.25, 0.25/0.5, 0.5/0.75} {
-              \draw[thin, gray] (\i, \j) -- (\i, \k);
-              \draw[thin, gray] (\j, \i) -- (\k, \i);
+            \foreach \i in {0, 0.25, 0.5, 0.75} {
+              \foreach \j/\k in {0/0.25, 0.25/0.5, 0.5/0.75} {
+                \draw[thin, gray] (\i, \j) -- (\i, \k);
+                \draw[thin, gray] (\j, \i) -- (\k, \i);
+              }
             }
-          }
-          \foreach \i/\j in {0/0.25, 0.25/0.5, 0.5/0.75} {
-            \foreach \k/\l in {0/0.25, 0.25/0.5, 0.5/0.75} {
-              \draw[thin, gray] (\i, \l) -- (\j, \k);
+            \foreach \i/\j in {0/0.25, 0.25/0.5, 0.5/0.75} {
+              \foreach \k/\l in {0/0.25, 0.25/0.5, 0.5/0.75} {
+                \draw[thin, gray] (\i, \l) -- (\j, \k);
+              }
             }
-          }
 
-          \uncover<2->{
-            \node[v, select] at (v11) {};
-            \node[v, select] at (v21) {};
-            \node[v, select] at (v12) {};
-            \node[v, select] at (v22) {};
-          }
-          \foreach \a/\b in {0/1, 1/2, 2/3} {
-            \foreach \c/\d in {1/0, 2/1, 3/2} {
-              \node (c\a\c-\b\c-\b\d) at (barycentric cs:v\a\c=1,v\b\c=1,v\b\d=1) {};
-              \node (c\a\d-\b\d-\a\c) at (barycentric cs:v\a\d=1,v\b\d=1,v\a\c=1) {};
+            \uncover<2-3>{
+              \node[v, select] at (v11) {};
+              \node[v, select] at (v21) {};
+              \node[v, select] at (v12) {};
+              \node[v, select] at (v22) {};
             }
-          }
+            \foreach \a/\b in {0/1, 1/2, 2/3} {
+              \foreach \c/\d in {1/0, 2/1, 3/2} {
+                \node (c\a\c-\b\c-\b\d) at (barycentric cs:v\a\c=1,v\b\c=1,v\b\d=1) {};
+                \node (c\a\d-\b\d-\a\c) at (barycentric cs:v\a\d=1,v\b\d=1,v\a\c=1) {};
+              }
+            }
 
-          \uncover<3->{
-            \draw[thick] \convexpath{
-              c02-12-11,
-              c11-21-12,
-              c11-21-20,
-              c10-20-11,
-              c01-11-10,
-              c01-11-02}{1pt};
-            \draw[thick] \convexpath{
-              c12-22-21,
-              c21-31-22,
-              c21-31-30,
-              c20-30-21,
-              c11-21-20,
-              c11-21-12}{1pt};
-            \draw[thick] \convexpath{
-              c03-13-12,
-              c12-22-13,
-              c12-22-21,
-              c11-21-12,
-              c02-12-11,
-              c02-12-03}{1pt};
-            \draw[thick] \convexpath{
-              c13-23-22,
-              c22-32-23,
-              c22-32-31,
-              c21-31-22,
-              c12-22-21,
-              c12-22-13}{1pt};
-          }
-        \end{tikzpicture}
-      \end{center}
-    \end{column}
-  \end{columns}
+            \uncover<3>{
+              \draw[thick] \convexpath{
+                c02-12-11,
+                c11-21-12,
+                c11-21-20,
+                c10-20-11,
+                c01-11-10,
+                c01-11-02}{1pt};
+              \draw[thick] \convexpath{
+                c12-22-21,
+                c21-31-22,
+                c21-31-30,
+                c20-30-21,
+                c11-21-20,
+                c11-21-12}{1pt};
+              \draw[thick] \convexpath{
+                c03-13-12,
+                c12-22-13,
+                c12-22-21,
+                c11-21-12,
+                c02-12-11,
+                c02-12-03}{1pt};
+              \draw[thick] \convexpath{
+                c13-23-22,
+                c22-32-23,
+                c22-32-31,
+                c21-31-22,
+                c12-22-21,
+                c12-22-13}{1pt};
+            }
+          \end{tikzpicture}
+        \end{center}
+      \end{column}
+    \end{columns}
+  \end{onlyenv}
+  \begin{onlyenv}<4>
+    \begin{table}
+      \centering
+      {\footnotesize
+      \begin{tabular}{l|cccccc}
+        $k\backslash \gamma$ & $10^0$ & $10^1$ & $10^2$ & $10^3$ & $10^4$ & $10^5$ \\
+        \hline
+        1                    & 13     & 13     & 13     & 13     & 13     & 13     \\
+        2                    & 10     & 10     & 10     & 10     & 10     & 10     \\
+      \end{tabular}
+      \caption{Convergence with vertex star patch preconditioned Richardson
+        smoothers and $\text{N1curl}_k$ elements}
+      }
+    \end{table}
+  \end{onlyenv}
 \end{frame}
 
-\begin{frame}[fragile]
+\begin{frame}[fragile, t]
   \frametitle{Vanka for Stokes}
   Find $(u, p) \in V\times Q \subset (H^1)^d \times L^2$ s.t.
   \begin{equation*}
@@ -908,98 +963,99 @@ backend=biber]{biblatex}
 
     \only<1-3>{Marker-and-Cell: loop over cells, gather closure of star}
 
-    \only<4-6>{Taylor-Hood: loop over vertices, gather closure of star}
+    \only<4-7>{Taylor-Hood: loop over vertices, gather closure of star}
     \nocite{Vanka:1986}
   \end{block}
-  \begin{columns}
-    \begin{column}{0.4\textwidth}
-      \begin{onlyenv}<1-3>
-        \begin{center}
-          \begin{tikzpicture}[scale=4]
-            \tikzstyle{v}=[circle, fill, minimum size=0pt, inner sep=0pt]
-            \tikzstyle{c}=[diamond, fill, minimum size=4pt, inner sep=0pt]
-            \tikzstyle{e}=[rectangle, fill, minimum size=3pt, inner sep=0pt]
-            \tikzstyle{select}=[draw, minimum size=3pt]
-            \foreach \i/\k in {0/0, 0.25/1, 0.5/2, 0.75/3} {
-              \foreach \j/\l in {0/0, 0.25/1, 0.5/2, 0.75/3} {
-                \node[v] (v\k\l) at (\i, \j) {};
+  \begin{onlyenv}<1-6>
+    \begin{columns}
+      \begin{column}{0.4\textwidth}
+        \begin{onlyenv}<1-3>
+          \begin{center}
+            \begin{tikzpicture}[scale=4]
+              \tikzstyle{v}=[circle, fill, minimum size=0pt, inner sep=0pt]
+              \tikzstyle{c}=[diamond, fill, minimum size=4pt, inner sep=0pt]
+              \tikzstyle{e}=[rectangle, fill, minimum size=3pt, inner sep=0pt]
+              \tikzstyle{select}=[draw, minimum size=3pt]
+              \foreach \i/\k in {0/0, 0.25/1, 0.5/2, 0.75/3} {
+                \foreach \j/\l in {0/0, 0.25/1, 0.5/2, 0.75/3} {
+                  \node[v] (v\k\l) at (\i, \j) {};
+                }
               }
-            }
 
-            \foreach \i in {0, 0.25, 0.5, 0.75} {
-              \foreach \j/\k in {0/0.25, 0.25/0.5, 0.5/0.75} {
-                \draw[thin, gray] (\i, \j) -- (\i, \k);
-                \draw[thin, gray] (\j, \i) -- (\k, \i);
+              \foreach \i in {0, 0.25, 0.5, 0.75} {
+                \foreach \j/\k in {0/0.25, 0.25/0.5, 0.5/0.75} {
+                  \draw[thin, gray] (\i, \j) -- (\i, \k);
+                  \draw[thin, gray] (\j, \i) -- (\k, \i);
+                }
               }
-            }
-            \foreach \i/\j in {0/0.25, 0.25/0.5, 0.5/0.75} {
-              \foreach \k/\l in {0/0.25, 0.25/0.5, 0.5/0.75} {
-                \draw[thin, gray] (\i, \l) -- (\j, \k);
+              \foreach \i/\j in {0/0.25, 0.25/0.5, 0.5/0.75} {
+                \foreach \k/\l in {0/0.25, 0.25/0.5, 0.5/0.75} {
+                  \draw[thin, gray] (\i, \l) -- (\j, \k);
+                }
               }
-            }
-            \foreach \a/\b in {0/1, 1/2, 2/3} {
-              \foreach \c/\d in {1/0, 2/1, 3/2} {
-                \node (c\a\c-\b\c-\b\d) at (barycentric cs:v\a\c=1,v\b\c=1,v\b\d=1) {};
-                \node (c\a\d-\b\d-\a\c) at (barycentric cs:v\a\d=1,v\b\d=1,v\a\c=1) {};
+              \foreach \a/\b in {0/1, 1/2, 2/3} {
+                \foreach \c/\d in {1/0, 2/1, 3/2} {
+                  \node (c\a\c-\b\c-\b\d) at (barycentric cs:v\a\c=1,v\b\c=1,v\b\d=1) {};
+                  \node (c\a\d-\b\d-\a\c) at (barycentric cs:v\a\d=1,v\b\d=1,v\a\c=1) {};
+                }
               }
-            }
-            \uncover<2-3>{
-              \node[c, select] at (c12-22-21) {};
-              \node[c, select] at (c02-12-11) {};
-              \node[c, select] at (c11-21-12) {};
-            }
-            \uncover<3>{
-              \draw[thick] \convexpath{v02,v12,v11}{1pt};
-              \draw[thick] \convexpath{v12,v21,v11}{1pt};
-              \draw[thick] \convexpath{v12,v22,v21}{1pt};
-            }
-          \end{tikzpicture}
-        \end{center}
-      \end{onlyenv}
-      \begin{onlyenv}<4->
-        \begin{center}
-          \begin{tikzpicture}[scale=4]
-            \tikzstyle{v}=[circle, fill, minimum size=0pt, inner sep=0pt]
-            \tikzstyle{c}=[diamond, fill, minimum size=4pt, inner sep=0pt]
-            \tikzstyle{e}=[rectangle, fill, minimum size=3pt, inner sep=0pt]
-            \tikzstyle{select}=[draw, minimum size=3pt]
-            \foreach \i/\k in {0/0, 0.25/1, 0.5/2, 0.75/3} {
-              \foreach \j/\l in {0/0, 0.25/1, 0.5/2, 0.75/3} {
-                \node[v] (v\k\l) at (\i, \j) {};
+              \uncover<2-3>{
+                \node[c, select] at (c12-22-21) {};
+                \node[c, select] at (c02-12-11) {};
+                \node[c, select] at (c11-21-12) {};
               }
-            }
+              \uncover<3>{
+                \draw[thick] \convexpath{v02,v12,v11}{1pt};
+                \draw[thick] \convexpath{v12,v21,v11}{1pt};
+                \draw[thick] \convexpath{v12,v22,v21}{1pt};
+              }
+            \end{tikzpicture}
+          \end{center}
+        \end{onlyenv}
+        \begin{onlyenv}<4-6>
+          \begin{center}
+            \begin{tikzpicture}[scale=4]
+              \tikzstyle{v}=[circle, fill, minimum size=0pt, inner sep=0pt]
+              \tikzstyle{c}=[diamond, fill, minimum size=4pt, inner sep=0pt]
+              \tikzstyle{e}=[rectangle, fill, minimum size=3pt, inner sep=0pt]
+              \tikzstyle{select}=[draw, minimum size=3pt]
+              \foreach \i/\k in {0/0, 0.25/1, 0.5/2, 0.75/3} {
+                \foreach \j/\l in {0/0, 0.25/1, 0.5/2, 0.75/3} {
+                  \node[v] (v\k\l) at (\i, \j) {};
+                }
+              }
 
-            \foreach \i in {0, 0.25, 0.5, 0.75} {
-              \foreach \j/\k in {0/0.25, 0.25/0.5, 0.5/0.75} {
-                \draw[thin, gray] (\i, \j) -- (\i, \k);
-                \draw[thin, gray] (\j, \i) -- (\k, \i);
+              \foreach \i in {0, 0.25, 0.5, 0.75} {
+                \foreach \j/\k in {0/0.25, 0.25/0.5, 0.5/0.75} {
+                  \draw[thin, gray] (\i, \j) -- (\i, \k);
+                  \draw[thin, gray] (\j, \i) -- (\k, \i);
+                }
               }
-            }
-            \foreach \i/\j in {0/0.25, 0.25/0.5, 0.5/0.75} {
-              \foreach \k/\l in {0/0.25, 0.25/0.5, 0.5/0.75} {
-                \draw[thin, gray] (\i, \l) -- (\j, \k);
+              \foreach \i/\j in {0/0.25, 0.25/0.5, 0.5/0.75} {
+                \foreach \k/\l in {0/0.25, 0.25/0.5, 0.5/0.75} {
+                  \draw[thin, gray] (\i, \l) -- (\j, \k);
+                }
               }
-            }
-            \foreach \a/\b in {0/1, 1/2, 2/3} {
-              \foreach \c/\d in {1/0, 2/1, 3/2} {
-                \node (c\a\c-\b\c-\b\d) at (barycentric cs:v\a\c=1,v\b\c=1,v\b\d=1) {};
-                \node (c\a\d-\b\d-\a\c) at (barycentric cs:v\a\d=1,v\b\d=1,v\a\c=1) {};
+              \foreach \a/\b in {0/1, 1/2, 2/3} {
+                \foreach \c/\d in {1/0, 2/1, 3/2} {
+                  \node (c\a\c-\b\c-\b\d) at (barycentric cs:v\a\c=1,v\b\c=1,v\b\d=1) {};
+                  \node (c\a\d-\b\d-\a\c) at (barycentric cs:v\a\d=1,v\b\d=1,v\a\c=1) {};
+                }
               }
-            }
-            \uncover<5-6>{
-              \node[v, select] at (v12) {};
-              \node[v, select] at (v21) {};
-            }
-            \uncover<6>{
-              \draw[thick] \convexpath{v03,v13,v22,v21,v11,v02}{1pt};
-              \draw[thick] \convexpath{v12,v22,v31,v30,v20,v11}{1pt};
-            }
-          \end{tikzpicture}
-        \end{center}
-      \end{onlyenv}
-    \end{column}
-    \begin{column}{0.6\textwidth}
-      \begin{onlyenv}<1>
+              \uncover<5-6>{
+                \node[v, select] at (v12) {};
+                \node[v, select] at (v21) {};
+              }
+              \uncover<6>{
+                \draw[thick] \convexpath{v03,v13,v22,v21,v11,v02}{1pt};
+                \draw[thick] \convexpath{v12,v22,v31,v30,v20,v11}{1pt};
+              }
+            \end{tikzpicture}
+          \end{center}
+        \end{onlyenv}
+      \end{column}
+      \begin{column}{0.6\textwidth}
+        \begin{onlyenv}<1>
 \begin{minted}[fontsize=\scriptsize]{python}
 -ksp_type cg
 -pc_type mg
@@ -1011,8 +1067,8 @@ backend=biber]{biblatex}
 
 
 \end{minted}
-      \end{onlyenv}
-      \begin{onlyenv}<2>
+        \end{onlyenv}
+        \begin{onlyenv}<2>
 \begin{minted}[fontsize=\scriptsize]{python}
 -ksp_type cg
 -pc_type mg
@@ -1024,8 +1080,8 @@ backend=biber]{biblatex}
 
 
 \end{minted}
-      \end{onlyenv}
-      \begin{onlyenv}<3>
+        \end{onlyenv}
+        \begin{onlyenv}<3>
 \begin{minted}[fontsize=\scriptsize]{python}
 -ksp_type cg
 -pc_type mg
@@ -1037,8 +1093,8 @@ backend=biber]{biblatex}
       -pc_patch_construct_type vanka
       -pc_patch_exclude_subspaces 1
 \end{minted}
-      \end{onlyenv}
-      \begin{onlyenv}<4>
+        \end{onlyenv}
+        \begin{onlyenv}<4>
 \begin{minted}[fontsize=\scriptsize]{python}
 -ksp_type cg
 -pc_type mg
@@ -1050,8 +1106,8 @@ backend=biber]{biblatex}
 
 
 \end{minted}
-      \end{onlyenv}
-      \begin{onlyenv}<5>
+        \end{onlyenv}
+        \begin{onlyenv}<5>
 \begin{minted}[fontsize=\scriptsize]{python}
 -ksp_type cg
 -pc_type mg
@@ -1063,8 +1119,8 @@ backend=biber]{biblatex}
 
 
 \end{minted}
-      \end{onlyenv}
-      \begin{onlyenv}<6>
+        \end{onlyenv}
+        \begin{onlyenv}<6>
 \begin{minted}[fontsize=\scriptsize]{python}
 -ksp_type cg
 -pc_type mg
@@ -1076,9 +1132,27 @@ backend=biber]{biblatex}
       -pc_patch_construct_type vanka
       -pc_patch_exclude_subspaces 1
 \end{minted}
-      \end{onlyenv}
-    \end{column}
-  \end{columns}
+        \end{onlyenv}
+      \end{column}
+    \end{columns}
+  \end{onlyenv}
+  \begin{onlyenv}<7>
+    \begin{columns}
+      \begin{column}{0.333\pagewidth}
+        \includegraphics[width=\textwidth]{stokes-velocity}
+      \end{column}
+      \begin{column}{0.333\pagewidth}
+        \includegraphics[width=\textwidth]{stokes-viscosity}
+      \end{column}
+      \begin{column}{0.333\pagewidth}
+        \begin{itemize}
+        \item Converges in around 16 iterations, even with large
+          viscosity contrasts (Gaussian bumps)
+        \item Falls over when jumps appear
+        \end{itemize}
+      \end{column}
+    \end{columns}
+  \end{onlyenv}
 \end{frame}
 
 \begin{frame}
@@ -1099,70 +1173,16 @@ backend=biber]{biblatex}
   \end{itemize}
 \end{frame}
 
-\begin{frame}[fragile]
-  \frametitle{Example: Allen-Cahn}
-  Find $\u \in V \subset H^1$ s.t.
-  \begin{equation*}
-    (\grad u, \grad v) - (f, v) + (u^3 - u, v) = 0 \quad \forall v
-    \in V
-  \end{equation*}
-  \begin{columns}[T]
-    \hspace{0.5em}
-    \begin{column}{0.48\pagewidth}
-      NJacobi
-\begin{minted}[fontsize=\tiny]{python}
-params = {
-  "snes_type": "python",
-  "snes_python_type": "firedrake.PatchSNES",
-  "patch": {
-    "snes_patch_partition_of_unity": False,
-    "snes_patch_symmetrise_sweep": False,
-    "snes_patch_local_type": "additive",
-    "snes_patch_sub_mat_type": "seqdense",
-    "snes_patch_construct_type": "star",
-    "snes_patch_construct_dim": 0,
-    "sub_snes_type": "newtonls",
-    "sub_snes_linesearch_type": "basic",
-    "sub_ksp_type": "preonly",
-    "sub_pc_type": "lu",
-  },
-}
-\end{minted}
-    \end{column}
-    \hspace{-0.5em}
-    \begin{column}{0.48\pagewidth}
-      NASM
-\begin{minted}[fontsize=\tiny]{python}
-params = {
-  "snes_type": "python",
-  "snes_python_type": "firedrake.PatchSNES",
-  "patch": {
-    "snes_patch_partition_of_unity": True,
-    "snes_patch_symmetrise_sweep": False,
-    "snes_patch_local_type": "additive",
-    "snes_patch_sub_mat_type": "seqaij",
-    "snes_patch_construct_type": "pardecomp",
-    "snes_patch_pardecomp_overlap": 1,
-    "sub_snes_type": "newtonls",
-    "sub_snes_linesearch_type": "basic",
-    "sub_ksp_type": "preonly",
-    "sub_pc_type": "lu",
-  },
-}
-\end{minted}
-    \end{column}
-  \end{columns}
-\end{frame}
 \begin{frame}
   \frametitle{Conclusions}
   \begin{itemize}
   \item Bidirectional solver/discretisation interface useful
-  \item With topological decompositions in hand, can generically
-    providing things that were previously by hand/from scratch
+  \item With topological decompositions in hand, can provide a
+    \emph{generic} interface, encompassing many useful smoothing schemes
   \end{itemize}
 
   \begin{columns}[T]
-    \begin{column}{0.47\pagewidth}
+    \begin{column}{0.48\textwidth}
       \begin{block}{Future directions}
         \begin{itemize}
         \item Operators with face terms
@@ -1172,12 +1192,12 @@ params = {
         \end{itemize}
       \end{block}
     \end{column}
-    \pause
-    \begin{column}{0.47\pagewidth}
+    \begin{column}{0.52\textwidth}
       \begin{block}{Warts}
         \begin{itemize}
-        \item Interface to callbacks is a bit finite elementy
-        \item Ideally, each patch should be a \texttt{DM}
+        \item Ideally, each patch would create a \texttt{DM}
+        \item Interface could then match \texttt{SNES} or
+          \texttt{KSP} callbacks
         \item Would enable ``big'' patches and fieldsplit/whatever,
           inside
         \item \dots is this too heavyweight to work for small patches?
