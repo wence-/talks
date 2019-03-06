@@ -190,58 +190,31 @@ backend=biber]{biblatex}
 \begin{frame}[t]
   \frametitle{Setting}
 
-  \begin{overlayarea}{\textwidth}{\textheight}
-    \begin{onlyenv}<1>
-      \begin{columns}
-        \begin{column}{0.8\textwidth}
-          \begin{quote}
-            Firedrake \url{www.firedrakeproject.org} {\normalfont
-              [\ldots]} is an automated system for the solution of
-            partial differential equations using the finite element
-            method.
-          \end{quote}
-        \end{column}
-        \begin{column}{0.2\textwidth}
-          \includegraphics[width=0.8\textwidth]{firedrake-small}
-        \end{column}
-      \end{columns}
-      \begin{itemize}
-      \item Written in Python.
-      \item Finite element problems specified with \emph{embedded}
-        domain specific language, UFL \parencite{Alnaes:2014} from the
-        FEniCS project.
-      \item \emph{Runtime} compilation to optimised, low-level (C)
-        code.
-      \item PETSc for meshes and (algebraic) solvers.
-      \end{itemize}
+  \begin{columns}
+    \begin{column}{0.8\textwidth}
+      \begin{quote}
+        Firedrake \url{www.firedrakeproject.org} {\normalfont
+          [\ldots]} is an automated system for the solution of
+        partial differential equations using the finite element
+        method.
+      \end{quote}
+    \end{column}
+    \begin{column}{0.2\textwidth}
+      \includegraphics[width=0.8\textwidth]{firedrake-small}
+    \end{column}
+  \end{columns}
+  \begin{itemize}
+  \item Finite element problems specified with \emph{embedded}
+    domain specific language, UFL \parencite{Alnaes:2014} from the
+    FEniCS project.
+  \item \emph{Runtime} compilation to optimised, low-level (C)
+    code.
+  \item PETSc for meshes and (algebraic) solvers.
+  \end{itemize}
 
-      \begin{flushright}
-        {\scriptsize \textcite{Rathgeber:2016} \arxivlink{1501.01809}{cs.MS}}
-      \end{flushright}
-    \end{onlyenv}
-    \begin{onlyenv}<2>
-      \begin{block}{Particular strengths}
-        \begin{itemize}
-        \item Geophysical fluid dynamics (one structured dimension)
-
-        \item Transparently parallel
-        \item All\textsuperscript{(*)} the finite elements
-        \end{itemize}
-
-        \textsuperscript{(*)} Not actually all of them
-      \end{block}
-      \begin{block}{User groups}
-        \begin{itemize}
-        \item Imperial, Oxford, Bath, Leeds, Durham, Kiel, Rice,
-          Houston, Exeter, Buffalo, Waterloo, Minnesota, Baylor, Texas
-          A\&M, \dots
-        \item Annual user \& developer meeting this year had 45
-          attendees.
-        \item Next meeting (2019) probably in Durham in September.
-        \end{itemize}
-      \end{block}
-    \end{onlyenv}
-  \end{overlayarea}
+  \begin{flushright}
+    {\scriptsize \textcite{Rathgeber:2016} \arxivlink{1501.01809}{cs.MS}}
+  \end{flushright}
 \end{frame}
 
 \begin{frame}[fragile,t]
@@ -280,31 +253,28 @@ backend=biber]{biblatex}
         \end{block}
       \end{column}
       \begin{column}{0.52\framewidth}
-\begin{minted}[fontsize=\tiny]{python}
+\begin{minted}[fontsize=\scriptsize]{python}
 from firedrake import *
-mesh = Mesh(...)
+...
 V = VectorFunctionSpace(mesh, "CG", 2)
 W = FunctionSpace(mesh, "CG", 1)
-Q = FunctionSpace(mesh, "CG", 1)
-Z = V * W * Q
+Z = V * W * W
 Ra = Constant(200)
 Pr = Constant(6.18)
 upT = Function(Z)
 u, p, T = split(upT)
 v, q, S = TestFunctions(Z)
 bcs = [...] # no-flow + temp gradient
-nullspace = MixedVectorSpaceBasis(
-   Z, [Z.sub(0), VectorSpaceBasis(constant=True),
-       Z.sub(2)])
-F = (inner(grad(u), grad(v))
-     + inner(dot(grad(u), u), v)
-     - inner(p, div(v))
-     + (Ra/Pr)*inner(T*g, v)
-     + inner(div(u), q)
-     + inner(dot(grad(T), u), S)
-     + (1/Pr) * inner(grad(T), grad(S)))*dx
 
-solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
+F = (inner(grad(u), grad(v))
+   + inner(dot(grad(u), u), v)
+   - inner(p, div(v))
+   + (Ra/Pr)*inner(T*g, v)
+   + inner(div(u), q)
+   + inner(dot(grad(T), u), S)
+   + (1/Pr) * inner(grad(T), grad(S)))*dx
+
+solve(F == 0, upT, bcs=bcs)
 \end{minted}
       \end{column}
     \end{columns}
@@ -336,15 +306,13 @@ solve(F == 0, upT, bcs=bcs, nullspace=nullspace)
         \end{block}
       \end{column}
       \begin{column}{0.52\textwidth}
-\begin{minted}[fontsize=\tiny,escapeinside=||]{python}
+\begin{minted}[fontsize=\scriptsize,escapeinside=||]{python}
 from firedrake import *
-mesh = Mesh(...)
+...
 V = FunctionSpace(mesh, "CG", 1)
 Z = V*V
-|$\epsilon$| = Constant(0.02)
-|$\sigma$| = Constant(100)
-dt = Constant(eps**2)
-|$\theta$| = Constant(0.5)
+|$\epsilon$| = Constant(0.02);    |$\sigma$| = Constant(100)
+dt = Constant(eps**2); |$\theta$| = Constant(0.5)
 v, q = TestFunctions(Z)
 z = Function(Z)
 z0 = Function(Z)
@@ -353,11 +321,10 @@ u0, w0 = split(z0)
 u|$_\theta$| = (1 - |$\theta$|)*u0 + |$\theta$|*u
 w|$_\theta$| = (1 - |$\theta$|)*w0 + |$\theta$|*w
 dfdu = u**3 - u
-F = ((u - u0)*v
-     + dt*dot(grad(w|$_\theta$|), grad(v))
-     + dt*|$\sigma$|*(u|$_\theta$| - m)*v
-     + w*q - dfdu*q
-     - |$\epsilon$|**2*dot(grad(u), grad(q)))*dx
+F = ((u-u0)*v + dt*dot(grad(w|$_\theta$|), grad(v))
+   + dt*|$\sigma$|*(u|$_\theta$| - m)*v
+   + w*q - dfdu*q
+   - |$\epsilon$|**2*dot(grad(u), grad(q)))*dx
 while t < ...:
     z0.assign(z)
     solve(F == 0, z)
@@ -447,7 +414,7 @@ while t < ...:
   \begin{onlyenv}<4>
     \begin{block}{\dots and a preconditioner}
       {\small For each Newton step, invert the $3\times 3$ block
-        system using the preconditioner of \textcite{Howle:2012}:
+        system using a preconditioner from \textcite{Howle:2012}:
         \begin{equation*}
           \begin{bmatrix}
             \widetilde{\begin{bmatrix}
@@ -737,7 +704,7 @@ class OKPC(PCBase):
   \end{center}
 \end{frame}
 
-\begin{frame}
+\begin{frame}[t]
   \frametitle{Some motivating problems: multigrid smoothers}
   \begin{onlyenv}<1>
     \begin{block}{Coupled multigrid for Stokes/Navier--Stokes}
@@ -835,7 +802,13 @@ class OKPC(PCBase):
 \end{frame}
 
 \begin{frame}
-  \frametitle{\texttt{PCPATCH}}
+  \frametitle{Idea: ``\texttt{PCPATCH}''}
+  \begin{itemize}
+  \item Separate topological decomposition from algebraic operators
+  \item Ask discretisation library to make the operators once
+    decomposition is obtained
+  \end{itemize}
+  \pause
   \begin{block}{Topological decomposition}
     Use \texttt{DMPlex} to provide decomposition of mesh into patches.
   \end{block}
@@ -845,7 +818,7 @@ class OKPC(PCBase):
     determine degrees of freedom in each patch.
   \end{block}
 
-  \begin{block}{Building patch problems}
+  \begin{block}{Operators}
     Callback interface to discretisation/PDE library.
   \end{block}
 \end{frame}
@@ -1002,9 +975,9 @@ class OKPC(PCBase):
   \begin{itemize}
   \item If we only want homogeneous Dirichlet, can use list of dofs to
     select from assembled global operator
-  \item Other transmission conditions this doesn't work
+  \item Doesn't work for other transmission conditions
   \item Instead, callback interface
-  \item Extends to \emph{nonlinear} smoothers
+  \item Extends to nonlinear smoothers
   \end{itemize}
 
   \begin{onlyenv}<1>
@@ -1071,7 +1044,7 @@ class OKPC(PCBase):
   \end{onlyenv}
 \end{frame}
 
-\begin{frame}[fragile]
+\begin{frame}[fragile,t]
   \frametitle{Nearly incompressible elasticity}
   \vspace*{-1.5\baselineskip}
   \begin{equation*}
@@ -1222,7 +1195,7 @@ class OKPC(PCBase):
   \end{onlyenv}
 \end{frame}
 
-\begin{frame}[fragile]
+\begin{frame}[fragile, t]
   \frametitle{H(div) Riesz map}
   \vspace{-1.5\baselineskip}
   \begin{equation*}
@@ -1367,7 +1340,7 @@ class OKPC(PCBase):
   \end{onlyenv}
 \end{frame}
 
-\begin{frame}[fragile]
+\begin{frame}[fragile,t]
   \frametitle{H(curl) Riesz map}
   \vspace{-1.5\baselineskip}
   \begin{equation*}
@@ -1719,10 +1692,42 @@ class OKPC(PCBase):
   \end{onlyenv}
 \end{frame}
 
-\begin{frame}
-  \frametitle{Hot off the press}
+\begin{frame}[fragile,t]
+  \frametitle{Divergence free Navier--Stokes with augmented Lagrangian}
+  \vspace{-1.5\baselineskip}
+  {\small\begin{equation*}
+    \text{Find $u \in (H^1)^d$ s.t.}\quad \nu(\grad u, \grad v) + (u\cdot \grad u, v) + \gamma(\div u, \div v) = (f, v) \quad \forall v \in V.
+  \end{equation*}}
+  \vspace*{-\baselineskip}
+  \begin{block}{Stokes complex on Alfeld splits}
+    \begin{equation*}
+      \mathbb{R} \xrightarrow{\operatorname{id}} H^2 \xrightarrow{\grad} H^1(\curl)
+      \xrightarrow{\curl} H^1 \xrightarrow{\div} L^2 \xrightarrow{\operatorname{null}} 0,
+    \end{equation*}
+    Decomposition must span $\ker \div = \range \curl$.
 
-  TODO: Some N-S with S-V results here?
+    Appropriate discrete spaces are constructed in \textcite{Fu:2018}: use
+    barycentrically refined meshes, piecewise continuous space with $k
+    \ge d$, ``macro star'' patch around vertices.
+  \end{block}
+  \begin{columns}
+    \begin{column}{0.6\textwidth}
+\begin{minted}[fontsize=\scriptsize]{python}
+-ksp_type fgmres
+-pc_type mg
+-mg_levels_
+   -ksp_type gmres
+   -pc_type python
+   -pc_python_type firedrake.PatchPC
+   -patch_
+      -pc_patch_construct_type python
+      -pc_patch_construct_python_type MacroStar
+\end{minted}
+    \end{column}
+    \begin{column}{0.4\textwidth}
+      Florian figure here
+    \end{column}
+  \end{columns}
 \end{frame}
 
 \begin{frame}
