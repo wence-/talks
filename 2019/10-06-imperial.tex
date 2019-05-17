@@ -1,0 +1,191 @@
+\documentclass[presentation,aspectratio=43, 10pt]{beamer}
+\usepackage{pifont}
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
+
+\usepackage{booktabs}
+\titlegraphic{\hfill\includegraphics[height=1.25cm]{durham-logo}}
+\usepackage{appendixnumberbeamer}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{hyperref}
+\usepackage{xspace}
+\newcommand{\arxivlink}[2]{{\texttt{arXiv:\,\href{https://arxiv.org/abs/#1}{#1\,[#2]}}}}
+
+\newcommand{\honev}{\ensuremath{{H}^1(\Omega; \mathbb{R}^d)}\xspace}
+\newcommand{\ltwov}{\ensuremath{{L}^2(\Omega; \mathbb{R}^d)}\xspace}
+\newcommand{\ltwo}{\ensuremath{{L}^2(\Omega)}\xspace}
+\newcommand{\inner}[1]{\left\langle #1 \right \rangle}
+
+
+\usepackage{minted}
+\usepackage[url=false,
+doi=true,
+isbn=false,
+style=authoryear,
+maxnames=5,
+giveninits=true,
+uniquename=init,
+backend=biber]{biblatex}
+\renewcommand{\bibfont}{\fontsize{7}{7}\selectfont}
+\addbibresource{references.bib}
+
+\setlength{\bibitemsep}{1ex}
+\setlength{\fboxsep}{1pt}
+
+\renewbibmacro{in:}{}
+\DeclareFieldFormat[article]{volume}{\textbf{#1}}
+\DeclareFieldFormat{doi}{%
+  doi\addcolon%
+  {\scriptsize\ifhyperref{\href{http://dx.doi.org/#1}{\nolinkurl{#1}}}
+    {\nolinkurl{#1}}}}
+\AtEveryBibitem{%
+\clearfield{pages}%
+\clearfield{issue}%
+\clearfield{number}%
+}
+
+\DeclareMathOperator{\grad}{grad}
+\let\div\relax
+\DeclareMathOperator{\div}{div}
+\DeclareMathOperator{\curl}{curl}
+\DeclareMathOperator{\range}{range}
+\DeclareMathOperator{\sym}{sym}
+\usetheme{metropolis}
+\setbeamertemplate{title graphic}{
+  \vbox to 0pt {
+    \vspace*{1em}
+    \inserttitlegraphic%
+  }%
+  \nointerlineskip%
+}
+\metroset{background=light,progressbar=frametitle,numbering=counter,block=fill}
+
+% https://www.dur.ac.uk/marketingandcommunications/marketing/branding/colourpalette/
+% Most of these are indistinguishable to those suffering colour blindness
+\definecolor{purple}{HTML}{68246D}
+\definecolor{blue}{HTML}{002A41}
+\definecolor{red}{HTML}{BE1E2D}
+\definecolor{cyan}{HTML}{00AEEF}
+\definecolor{yellow}{HTML}{FFD53A}
+
+\setbeamercolor{normal text}{
+  fg=black,
+  bg=white
+}
+\setbeamercolor{alerted text}{
+  fg=red
+}
+\setbeamercolor{example text}{
+  fg=blue
+}
+
+\setbeamercolor{palette primary}{%
+  use=normal text,
+  fg=normal text.bg,
+  bg=purple,
+}
+
+\usetheme{metropolis}
+
+\author{Lawrence Mitchell\inst{1,*} \\
+  \and {\scriptsize
+    P.~E.~Farrell (Oxford)
+    \and
+    L.~R.~Scott (Chicago)
+    \and
+    F.~Wechsung (Oxford)}}
+\institute{
+  \inst{1}Department of Computer Science, Durham University\\
+  \inst{*}\texttt{lawrence.mitchell@durham.ac.uk}}
+
+\title{A robust preconditioner for the stationary incompressible
+  Navier--Stokes equations}
+
+\usepackage{tikz}
+\usetikzlibrary{trees,calc,positioning}
+\usetikzlibrary{shapes, shapes.geometric}
+\usetikzlibrary{arrows,chains,positioning,fit,backgrounds,calc,shapes,
+  shadows,scopes,decorations.markings,plotmarks}
+
+\newcommand*{\tettextsize}{\footnotesize}
+\tikzstyle{line} = [draw, -, thick]
+\tikzstyle{nodraw} = [draw, fill, circle, minimum width=0pt, inner sep=0pt]
+\tikzstyle{sieve} = [line, circle, font=\tettextsize, inner sep=0pt,
+  minimum size=12pt]
+
+\tikzstyle{cell} = [sieve, fill=blue!60]
+\tikzstyle{facet} = [sieve, fill=green!35]
+\tikzstyle{edge} = [sieve, fill=red!35]
+\tikzstyle{vertex} = [sieve, fill=blue!35]
+
+% https://tex.stackexchange.com/questions/27171/padded-boundary-of-convex-hull
+\newcommand{\convexpath}[2]{
+  [
+  create hullcoords/.code={
+    \global\edef\namelist{#1}
+    \foreach [count=\counter] \nodename in \namelist {
+      \global\edef\numberofnodes{\counter}
+      \coordinate (hullcoord\counter) at (\nodename);
+    }
+    \coordinate (hullcoord0) at (hullcoord\numberofnodes);
+    \pgfmathtruncatemacro\lastnumber{\numberofnodes+1}
+    \coordinate (hullcoord\lastnumber) at (hullcoord1);
+  },
+  create hullcoords
+  ]
+  ($(hullcoord1)!#2!-90:(hullcoord0)$)
+  \foreach [
+  evaluate=\currentnode as \previousnode using \currentnode-1,
+  evaluate=\currentnode as \nextnode using \currentnode+1
+  ] \currentnode in {1,...,\numberofnodes} {
+    let \p1 = ($(hullcoord\currentnode) - (hullcoord\previousnode)$),
+    \n1 = {atan2(\y1,\x1) + 90},
+    \p2 = ($(hullcoord\nextnode) - (hullcoord\currentnode)$),
+    \n2 = {atan2(\y2,\x2) + 90},
+    \n{delta} = {Mod(\n2-\n1,360) - 360}
+    in
+    {arc [start angle=\n1, delta angle=\n{delta}, radius=#2]}
+    -- ($(hullcoord\nextnode)!#2!-90:(hullcoord\currentnode)$)
+  }
+}
+
+\graphicspath{{./\jobname.figures/}{../pictures/}}
+\date{10 June 2019}
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+  The Navier--Stokes equations are of enormal practical importance in
+  science and industry, but are notoriously difficult to solve,
+  especially for large Reynolds number.
+
+  In this talk, I will present a scalable multilevel preconditioner
+  for the stationary incompressible form of these equations which
+  exhibits iteration counts almost independent of the Reynolds number
+  and mesh resolution.
+
+  The implementation relies on a multigrid small patch additive
+  overlapping Schwarz smoother, and I will describe the computational,
+  and numerical analysis challenges in designing a robust choice.
+
+  I will present results using the Firedrake finite element library
+  solving problems with up to a billion degrees of freedom, and
+  describe some of the general preconditioning features that are now
+  available in Firedrake as a result of this work.
+
+  This is joint work with Patrick Farrell and Florian Wechsung
+  (Oxford), and Ridg Scott (Chicago).
+\end{abstract}
+
+\appendix
+\begin{frame}[allowframebreaks]
+  \frametitle{References}
+  \printbibliography[heading=none]
+\end{frame}
+
+
+\end{document}
+
