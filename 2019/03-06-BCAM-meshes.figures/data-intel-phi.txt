@@ -1,0 +1,4 @@
+Year, GFLOPs, Bandwidth, Name
+2013-12-31, 1208, 220, "Xeon Phi 7120 (KNC)"
+2016-12-31, 3456, 600, "Xeon Phi 7290 (KNL)"
+
