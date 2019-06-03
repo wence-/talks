@@ -237,6 +237,201 @@ backend=biber]{biblatex}
   \item Can I avoid moving data for this?
   \end{itemize}
 \end{frame}
+
+\begin{frame}
+  \frametitle{How to represent meshes}
+  \begin{itemize}
+  \item Often, conceptually, a graph with restrictions on the
+    structure
+  \item Idea: every geometric entity in mesh $\rightarrow$ vertex in
+    graph;
+  \item Relationship between entities (e.g. edges of a face)
+    $\rightarrow$ edge in graph.
+  \item For conforming meshes, this is graph is bipartite.
+  \item Can also use ideas from algebraic topology, e.g.~\textcite{Knepley:2009}
+    \arxivlink{0908.4427}{cs.CE}, to formalise lots of the
+    operations.
+  \item See also \textcite{Logg:2009} \arxivlink{1205.3081}{math.NA}
+    for translation into English.
+  \end{itemize}
+\end{frame}
+\begin{frame}[t]
+  \frametitle{DMPlex/Sieve notation, data structures}
+  \begin{columns}[T]
+    \begin{column}{0.4\textwidth}
+      \begin{block}{Mesh}
+        \begin{center}
+          \begin{tikzpicture}
+            \input{../pictures/tet_simple.tex}
+          \end{tikzpicture}
+        \end{center}
+        Vertices, edges, and cell labelled.
+      \end{block}
+    \end{column}
+    \begin{column}{0.6\textwidth}
+      \begin{block}{Graph representation}
+        \begin{onlyenv}<1>
+          \begin{center}
+            \begin{tikzpicture}
+              \input{../pictures/tet_graph.tex}
+            \end{tikzpicture}
+          \end{center}
+        \end{onlyenv}
+        \begin{onlyenv}<2>
+          \begin{center}
+            \begin{tikzpicture}
+              \input{../pictures/tet_graph.tex}
+              \begin{scope}[overlay, remember picture, rounded corners]
+                \filldraw[fill opacity=0.2]
+                ([xshift= 3pt, yshift=-3pt] 7.south east) --
+                ([xshift= 3pt, yshift= 3pt] 7.north east) --
+                ([xshift=-3pt, yshift= 3pt] 5.north west) --
+                ([xshift=-3pt, yshift=-3pt] 5.south west) --
+                cycle;
+                \node[cell, fill=black, opacity=0.6] at (1.center) {};
+              \end{scope}
+            \end{tikzpicture}
+          \end{center}
+          $\text{\texttt{cone}}(5) = \{9, 10, 11\}$
+        \end{onlyenv}
+        \begin{onlyenv}<3>
+          \begin{center}
+            \begin{tikzpicture}
+              \input{../pictures/tet_graph.tex}
+              \begin{scope}[overlay, remember picture, rounded corners]
+                \filldraw[fill opacity=0.2]
+                ([xshift= 1pt, yshift=-3pt] 1.south east) --
+                ([xshift=-3pt, yshift= 1pt] 2.north west) --
+                ([xshift= 3pt, yshift=-1pt] 7.south east) --
+                ([xshift=-3pt, yshift= 1pt] 8.north west) --
+                ([xshift= 3pt, yshift=-1pt] 13.south east) --
+                ([xshift= 3pt, yshift= 3pt] 13.north east) --
+                ([xshift=-2pt, yshift= 3pt] 11.north west) --
+                ([xshift=-2pt, yshift= 0pt] 5.west) --
+                ([xshift=-1pt, yshift=-3pt] 1.south west) --
+                cycle;
+                \node[cell, fill=black, opacity=0.6] at (1.center) {};
+              \end{scope}
+            \end{tikzpicture}
+          \end{center}
+          $\text{\texttt{closure}}(5) = \{1, 2, 3, 9, 10, 11\}$
+        \end{onlyenv}
+        \begin{onlyenv}<4>
+          \begin{center}
+            \begin{tikzpicture}
+              \input{../pictures/tet_graph.tex}
+              \begin{scope}[overlay, remember picture, rounded corners]
+                \filldraw[fill opacity=0.2]
+                ([xshift= 3pt, yshift=-3pt] 10.south east) --
+                ([xshift= 3pt, yshift= 3pt] 10.north east) --
+                ([xshift=-3pt, yshift= 3pt] 8.north west) --
+                ([xshift=-3pt, yshift=-3pt] 8.south west) --
+                cycle;
+                \node[cell, fill=black, opacity=0.6] at (14.center) {};
+              \end{scope}
+            \end{tikzpicture}
+          \end{center}
+          $\text{\texttt{support}}(4) = \{12, 13, 14\}$
+        \end{onlyenv}
+        \begin{onlyenv}<5>
+          \begin{center}
+            \begin{tikzpicture}
+              \input{../pictures/tet_graph.tex} 
+              \begin{scope}[overlay, remember picture, rounded corners]
+                \filldraw[fill opacity=0.2]
+                ([xshift= 0pt, yshift= 3pt] 14.north west) --
+                ([xshift= 3pt, yshift=-3pt] 13.south east) --
+                ([xshift=-3pt, yshift= 1pt] 8.north west) --
+                ([xshift= 3pt, yshift=-1pt] 7.south east) --
+                ([xshift=-3pt, yshift= 1pt] 2.north west) --
+                ([xshift=-3pt, yshift= 1pt] 2.south west) --
+                ([xshift= 0pt, yshift=-3pt] 0.south west) --
+                ([xshift= 0pt, yshift=-3pt] 0.south east) --
+                ([xshift= 3pt, yshift=-1pt] 4.south east) --
+                ([xshift= 3pt, yshift= 0pt] 10.east) --
+                ([xshift= 2pt, yshift= 3pt] 14.north east) --
+                cycle;
+                \node[cell, fill=black, opacity=0.6] at (14.center) {};
+              \end{scope}
+            \end{tikzpicture}
+          \end{center}
+          $\text{\texttt{star}}(4) = \{0, 6, 7, 8, 12, 13, 14\}$
+        \end{onlyenv}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+
+\begin{frame}[fragile]
+  \frametitle{Attaching data to topology}
+  \begin{block}{\texttt{PetscSection}}
+    Associates to each mesh \emph{point} some amount (possibly zero)
+    of data (0 or more dofs). Doesn't say anything yet about what the
+    data mean.
+
+    Section for P3 on a single triangle.
+    \begin{columns}
+      \hspace{1em}
+      \begin{column}{0.5\textwidth}
+\begin{minted}[fontsize=\scriptsize]{python}
+  (   0) dim  1 offset   0
+  (   1) dim  1 offset   7
+  (   2) dim  1 offset   8
+  (   3) dim  1 offset   9
+  (   4) dim  2 offset   1
+  (   5) dim  2 offset   3
+  (   6) dim  2 offset   5
+\end{minted}
+      \end{column}
+      \hspace{-1em}
+      \begin{column}{0.5\textwidth}
+        \begin{center}
+        \begin{tikzpicture}
+          \node (0) [circle, draw, fill, minimum size=0.2cm, inner sep=0] at (0, 0) {};
+          \node (1) [circle, draw, fill, minimum size=0.2cm, inner sep=0] at (2, 0) {};
+          \node (2) [circle, draw, fill, minimum size=0.2cm, inner sep=0] at ($(0, 0) + (60:2)$) {};
+
+          \draw (0) -- (1) -- (2) -- (0);e
+
+          \node (3) [circle, draw, fill, minimum size=0.2cm, inner sep=0] at (barycentric cs:0=1,1=1,2=1) {};
+
+         \node (4) [circle, draw, fill, minimum size=0.2cm, inner sep=0] at (barycentric cs:0=0.33,1=0.67) {}; 
+         \node (5) [circle, draw, fill, minimum size=0.2cm, inner sep=0] at (barycentric cs:0=0.67,1=0.33) {};  
+
+         \node (6) [circle, draw, fill, minimum size=0.2cm, inner sep=0] at (barycentric cs:1=0.33,2=0.67) {}; 
+         \node (7) [circle, draw, fill, minimum size=0.2cm, inner sep=0] at (barycentric cs:1=0.67,2=0.33) {};  
+         
+         \node (8) [circle, draw, fill, minimum size=0.2cm, inner sep=0] at (barycentric cs:0=0.33,2=0.67) {}; 
+         \node (9) [circle, draw, fill, minimum size=0.2cm, inner sep=0] at (barycentric cs:0=0.67,2=0.33) {};  
+       \end{tikzpicture}
+        \end{center}
+      \end{column}
+    \end{columns}
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Topological queries}
+  \begin{itemize}
+  \item This setup permits dimension-independent code for querying
+    topological relationships in the mesh
+  \item Can do all the normal things for finite element assembly: grab
+    all data associated with a single cell.
+  \item Also crucial for flexible Schwarz preconditioners (see
+    Florian's talk and \textcite{Farrell:2018} \arxivlink{1810.03315}{math.NA}).
+  \end{itemize}
+
+  \begin{block}{Challenge: structure}
+    \begin{itemize}
+    \item Implementation assumes fully unstructured.
+    \item Can this same idea be extended to meshes that offer some
+      structure
+    \item \dots while exploiting that structure for a fast implementation?
+    \end{itemize}
+  \end{block}
+\end{frame}
+
 \begin{frame}
   \frametitle{Idea: exploit structure}
   \begin{definition}[Unstructured mesh $\mathbb{U}$]
@@ -275,6 +470,14 @@ backend=biber]{biblatex}
         macro-element construction for $C^1$ elements.
         \begin{center}
           \includegraphics[height=0.6\textheight]{baryhierarchy}
+        \end{center}
+      \end{block}
+    \end{onlyenv}
+    \begin{onlyenv}<3>
+      \begin{block}{Regular refinement}
+        Geometric multigrid. One example of structure-exploitation: Hybrid Hierarchical Grids \parencite{Bergen:2004}.
+        \begin{center}
+          \includegraphics[height=0.6\textheight]{hhg}
         \end{center}
       \end{block}
     \end{onlyenv}
@@ -333,7 +536,11 @@ backend=biber]{biblatex}
   \end{itemize}
 \end{frame}
 
-
+\appendix
+\begin{frame}
+  \frametitle{References}
+  \printbibliography[heading=none]
+\end{frame}
 
 \end{document}
 
