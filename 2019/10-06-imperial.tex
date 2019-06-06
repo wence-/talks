@@ -2,10 +2,14 @@
 \usepackage{pifont}
 \newcommand{\cmark}{\ding{51}}
 \newcommand{\xmark}{\ding{55}}
-
+\usepackage{changepage}
 \usepackage{booktabs}
 \titlegraphic{\hfill\includegraphics[height=1.25cm]{durham-logo}}
 \usepackage{appendixnumberbeamer}
+\def\xunderbrace#1_#2{{\underbrace{#1}_{\mathclap{#2}}}}
+\def\xoverbrace#1^#2{{\overbrace{#1}^{\mathclap{#2}}}}
+\def\xunderarrow#1_#2{{\underset{\overset{\uparrow}{\mathclap{#2}}}{#1}}}
+\def\xoverarrow#1^#2{{\overset{\underset{\downarrow}{\mathclap{#2}}}{#1}}}
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{mathtools}
@@ -17,8 +21,8 @@
 \newcommand{\ltwov}{\ensuremath{{L}^2(\Omega; \mathbb{R}^d)}\xspace}
 \newcommand{\ltwo}{\ensuremath{{L}^2(\Omega)}\xspace}
 \newcommand{\inner}[1]{\left\langle #1 \right \rangle}
-
-
+\newcommand{\dx}{\ \text{d}x}
+\setbeamersize{text margin left=0.5cm, text margin right=0.5cm}
 \usepackage{minted}
 \usepackage[url=false,
 doi=true,
@@ -26,11 +30,22 @@ isbn=false,
 style=authoryear,
 maxnames=5,
 giveninits=true,
-uniquename=init,
+uniquename=false,
 backend=biber]{biblatex}
 \renewcommand{\bibfont}{\fontsize{7}{7}\selectfont}
 \addbibresource{references.bib}
-
+\setbeamertemplate{bibliography item}[triangle]
+\defbibenvironment{bibliography}
+  {\list{}
+     {\settowidth{\labelwidth}{\usebeamertemplate{bibliography item}}%
+      \setlength{\leftmargin}{\labelwidth}%
+      \setlength{\rightmargin}{\labelwidth}%
+      \setlength{\labelsep}{\biblabelsep}%
+      \addtolength{\leftmargin}{\labelsep}%
+      \setlength{\itemsep}{\bibitemsep}%
+      \setlength{\parsep}{\bibparsep}}}
+  {\endlist}
+  {\item}
 \setlength{\bibitemsep}{1ex}
 \setlength{\fboxsep}{1pt}
 
@@ -69,6 +84,31 @@ backend=biber]{biblatex}
 \definecolor{red}{HTML}{BE1E2D}
 \definecolor{cyan}{HTML}{00AEEF}
 \definecolor{yellow}{HTML}{FFD53A}
+\definecolor{green}{HTML}{00D53A}
+
+\newenvironment{variableblock}[3]
+{\setbeamercolor{block body}{#2}
+\setbeamercolor{block title}{#3}
+\begin{block}{#1}}%
+{\end{block}}
+  
+\newenvironment{challenge}[1]%
+{\begin{variableblock}{#1}{bg=red!20,fg=black}{bg=red,fg=white}}%
+{\end{variableblock}}
+
+\newenvironment{answer}[1]%
+{\begin{variableblock}{#1}{bg=cyan!20,fg=black}{bg=cyan,fg=white}}%
+{\end{variableblock}}
+
+\renewenvironment{exampleblock}[1]%
+{\begin{variableblock}{#1}{bg=yellow!20,fg=black}{bg=yellow,fg=white}}%
+{\end{variableblock}}
+
+\newcommand{\advect}[2]{\ensuremath{(#2 \cdot \nabla) #1}}
+\newcommand{\kerdiv}{\ker\div}
+\newcommand{\kercurl}{\ker\curl}
+\let\Re\relax
+\DeclareMathOperator{\Re}{Re}
 
 \setbeamercolor{normal text}{
   fg=black,
@@ -153,12 +193,13 @@ backend=biber]{biblatex}
 
 \graphicspath{{./\jobname.figures/}{../pictures/}}
 \date{10 June 2019}
+
 \begin{document}
 
 \maketitle
 
 \begin{abstract}
-  The Navier--Stokes equations are of enormal practical importance in
+  The Navier--Stokes equations are of enormous practical importance in
   science and industry, but are notoriously difficult to solve,
   especially for large Reynolds number.
 
@@ -180,12 +221,433 @@ backend=biber]{biblatex}
   (Oxford), and Ridg Scott (Chicago).
 \end{abstract}
 
+
+
+\begin{frame}[t]
+  \frametitle{Setting}
+
+  \begin{columns}
+    \begin{column}{0.8\textwidth}
+      \begin{quote}
+        Firedrake \url{www.firedrakeproject.org} {\normalfont
+          [\ldots]} is an automated system for the solution of
+        partial differential equations using the finite element
+        method.
+      \end{quote}
+    \end{column}
+    \begin{column}{0.2\textwidth}
+      \includegraphics[width=0.8\textwidth]{firedrake-small}
+    \end{column}
+  \end{columns}
+  \begin{itemize}
+  \item Finite element problems specified with \emph{embedded}
+    domain specific language, UFL \parencite{Alnaes:2014} from the
+    FEniCS project.
+  \item \emph{Runtime} compilation to optimised, low-level (C)
+    code.
+  \item PETSc for meshes and (algebraic) solvers.\par
+    {\hfill \raggedleft \scriptsize \textcite{Rathgeber:2016} \arxivlink{1501.01809}{cs.MS}}
+  \end{itemize}
+
+  \begin{challenge}{Advert}
+    3rd Firedrake user meeting is in Durham 26 \& 27 September 2019.
+
+    {\centering \url{www.firedrakeproject.org/firedrake_19.html}\par}
+    
+  \end{challenge}
+\end{frame}
+
+
+
+\begin{frame}
+  \frametitle{The problem}
+  \begin{block}{Stationary, Newtonian, incompressible Navier--Stokes}
+    Find $(u, p) \in \honev \times \ltwo$ such that
+    \begin{alignat*}{2}
+      -  \nu \nabla^2 u + \advect{u}{u} + \nabla p &= f \quad && \text{ in } \Omega, \\
+      \nabla \cdot u &= 0 \quad && \text{ in } \Omega,
+    \end{alignat*}
+    with suitable boundary conditions, and $\nu$ the kinematic viscosity.
+  \end{block}
+  \begin{exampleblock}{Multiple solutions}<2->
+    For $\nu \to 0$, these equations admit multiple solutions
+  \end{exampleblock}
+  \begin{challenge}{Motivating question}<3->
+    What are the solution(s) as $\nu$ varies?
+  \end{challenge}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Solving for the Newton step}
+  \begin{block}{Newton linearisation}
+    \begin{alignat*}{2}
+      - \nu \nabla^2 u + \advect{w}{u} + \advect{u}{w} +
+      \nabla p &= f \quad && \text{ in } \Omega, \\
+      \nabla \cdot u &= 0 \quad && \text { in } \Omega.
+    \end{alignat*}
+  \end{block}
+  \begin{columns}[t]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{LU factorisation}
+        \begin{itemize}
+        \item[\cmark] Scales well with $\nu \to 0$
+        \item[\xmark] Scales poorly with dof count
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Existing preconditioners}
+        \begin{itemize}
+        \item[\xmark] Convergence degrades with $\nu \to 0$
+        \item[\cmark] Scales well with dof count
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+  \begin{answer}{This talk}
+    First preconditioner to scale well with $\nu$ and dof count in 3D.
+  \end{answer}
+\end{frame}
+
+\section{Block preconditioners}
+\begin{frame}
+  \frametitle{Stokes}
+  \begin{block}{Stokes' equations}
+    Find $(u, p) \in H^1(\Omega)^d \times L^2(\Omega)$ such that
+    \begin{alignat*}{2}
+      -  \nu \nabla^2 u + \nabla p &= f \quad && \text{ in } \Omega, \\
+      \nabla \cdot u &= 0 \quad && \text{ in } \Omega, \\
+    \end{alignat*}
+  \end{block}
+  \begin{exampleblock}{Discretisation}
+    Choosing an inf-sup stable element pair yields
+    \begin{equation*}
+      \mathcal{J}x := \begin{pmatrix}
+        A & B^T \\
+        B & 0
+      \end{pmatrix}
+      \begin{pmatrix}
+        u \\ p
+      \end{pmatrix}
+      =
+      \begin{pmatrix}
+        f \\ 0
+      \end{pmatrix}.
+    \end{equation*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Preconditioners for block matrices}
+  \begin{block}{Block factorisation \parencite{Murphy:2000}}
+    Build preconditioners based on
+    \begin{equation*}
+      \mathcal{J}^{-1} = \begin{pmatrix}
+        I & -A^{-1}B^T \\
+        0 & I
+      \end{pmatrix}
+      \begin{pmatrix}
+        A^{-1} & 0 \\
+        0 & S^{-1}
+      \end{pmatrix}
+      \begin{pmatrix}
+        I & 0 \\
+        - BA^{-1} & I 
+      \end{pmatrix}
+    \end{equation*}
+    where $S$ is the (usually dense!) Schur complement
+    \begin{equation*}
+      S = -BA^{-1} B^T.
+    \end{equation*}
+  \end{block}
+  \pause
+  \begin{challenge}{PDE-specific challenges}
+    Find cheap, fast, approximations $\tilde{A}^{-1}$ and
+    $\tilde{S}^{-1}$ to $A^{-1}$ and $S^{-1}$.
+  \end{challenge}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Choosing $\tilde{A}^{-1}$ and $\tilde{S}^{-1}$}
+  \begin{exampleblock}{Stokes \parencite{Silvester:1994}}
+    Multigrid for $\tilde{A}^{-1}$, and choose $\tilde{S}^{-1} \sim
+    M_p^{-1}$ ($M_p$ the pressure mass matrix).
+  \end{exampleblock}
+  \pause
+  \begin{challenge}{Bad news}
+    Mesh independent, but for \emph{Navier--Stokes}, choosing $\tilde{S}^{-1} \sim M_p^{-1}$
+    degrades like $\mathcal{O}(\nu^{-2})$.
+  \end{challenge}
+  \pause
+  \begin{answer}{PCD for Navier--Stokes \parencite{Kay:2002}}
+    Approximate $S^{-1}$ with convection-diffusion solves on pressure
+    space. Mesh independent, but degrades like
+    $\mathcal{O}(\nu^{-1/2})$.
+  \end{answer}
+\end{frame}
+\begin{frame}
+  \frametitle{Performance of pressure convection-diffusion (PCD)}
+\begin{table}[htbp]
+\centering
+\begin{tabular}{cc|c@{\hspace{9pt}}c@{\hspace{9pt}}c}
+\toprule
+$1/h$ & \# degrees of freedom & \multicolumn{3}{c}{Reynolds number} \\
+  && 10 & 100 & 1000 \\
+\midrule
+$2^4$ & $8.34 \times 10^2$ & 22.0 & 40.4 & 103.3 \\
+$2^5$ & $3.20 \times 10^3$ & 23.0 & 41.3 & 137.7 \\
+$2^6$ & $1.25 \times 10^4$ & 24.5 & 42.0 & 157.0 \\
+$2^7$ & $4.97 \times 10^4$ & 25.5 & 42.7 & 149.0 \\
+$2^8$ & $1.98 \times 10^5$ & 26.0 & 44.0 & 137.0 \\
+\bottomrule
+\end{tabular}
+\caption{Average number of outer Krylov iterations per Newton step for the
+2D regularized lid-driven cavity problem with PCD preconditioner.
+Obtained with IFISS v3.5, $Q_1-P_0$ element pair.}
+\label{tab:pcdlscldc}
+\end{table}
+\end{frame}
+
+\section{Augmented Lagrangian preconditioners}
+
+\begin{frame}
+  \begin{center}
+    \includegraphics[height=0.66\textheight]{benzi06}
+  \end{center}
+  \pause
+    \begin{block}{Observation}
+    \begin{itemize}
+    \item[\cmark] Reynolds-robust preconditioning
+    \item[\xmark] No-one else appears to have implemented the full scheme
+      (2006--2018)
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{Objectives}
+  \begin{itemize}
+  \item Can we make the first general implementation of the method? \cmark
+  \item Can we extend the solver and discretisation to three
+    dimensions? \cmark
+  \end{itemize}
+  \pause
+  \begin{block}{Three ideas}
+    \begin{enumerate}
+    \item Control Schur complement with an augmented Lagrangian term
+    \item Kernel-capturing multigrid relaxation
+    \item Robust multigrid prolongation
+    \end{enumerate}
+  \end{block}
+  {\hfill\raggedleft\scriptsize \textcite{Farrell:2018} \arxivlink{1810.03315}{math.NA}}
+\end{frame}
+
+\begin{frame}{Augmented Lagrangian approach}
+  \begin{block}{Stokes again\uncover<2->{, with augmented Lagrangian term}}
+    \begin{equation*}
+      \begin{aligned}
+        & \underset{u\in V}{\text{minimise}} & & \int \nabla : \nabla \dx
+        - \int f \cdot v \dx \uncover<2->{+ \gamma \int (\nabla \cdot
+          v)^2 \dx}\\
+        &\text{ subject to } & & \nabla \cdot v = 0
+      \end{aligned}
+    \end{equation*}
+  \end{block}
+
+  \pause
+  \pause Doesn't change solution, since $\nabla \cdot v = 0$.
+
+  \begin{theorem}[Hestenes, Fortin, Glowinski, Olshanksii, \dots]
+    As $\gamma \to \infty$, the Schur complement is well
+    approximated by $S^{-1} \sim -(1 + \gamma)M_p^{-1}$.
+  \end{theorem}
+\end{frame}
+
+\begin{frame}
+  \frametitle{\dots or discretely}
+  \begin{block}{Discrete augmented Lagrangian}
+    \begin{equation*}
+      \begin{pmatrix}
+        A + \gamma B^T M_p^{-1} B & B^T \\
+        B & 0
+      \end{pmatrix}
+      \begin{pmatrix}
+        u \\ p
+      \end{pmatrix}
+      =
+      \begin{pmatrix}
+        b \\ 0
+      \end{pmatrix}
+    \end{equation*}
+  \end{block}
+
+  \pause  Doesn't change solution, since $B u = 0$
+
+  \begin{block}{New Schur complement}
+    \begin{equation*}
+      \hat{S}^{-1} = S^{-1} - \gamma M_p^{-1}
+    \end{equation*}
+
+    Again, as $\gamma \to \infty$, the Schur complement is well
+    approximated by $\hat{S}^{-1} \sim -(1 + \gamma)M_p^{-1}$.
+  \end{block}
+
+  \pause
+  \begin{center}
+    These results still hold for Navier--Stokes!
+  \end{center}
+\end{frame}
+\begin{frame}
+  \frametitle{Conservation of misery}
+  We now must solve either: find $u \in V \subseteq \honev$ such that
+  \begin{block}{Continuous stabilisation}
+    \begin{equation*}
+      \nu (\nabla u, \nabla v) + (\advect{u}{w}, v) + (\advect{w}{u}, v) 
+      + \gamma(\nabla \cdot u, \nabla \cdot v) = (f, v)
+    \end{equation*}
+  \end{block}
+  \vspace{-0.5\baselineskip}
+  or 
+  \begin{block}{Discrete stabilisation}
+    \begin{equation*}
+      \nu (\nabla u, \nabla v) + (\advect{u}{w}, v) + (\advect{w}{u}, v) 
+      + \gamma(\overline{\nabla \cdot u}, \overline{\nabla \cdot v}) = (f, v)
+  \end{equation*}
+  \end{block}
+  \vspace{-0.5\baselineskip}
+  for all $v \in V$, where $\overline{x}$ is the $L^2$ projection onto
+  the discrete pressure space.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Conservation of misery II}
+  \begin{exampleblock}{Good news}
+    The Schur complement becomes easy to approximate as $\gamma \to \infty$.
+  \end{exampleblock}
+  \pause
+  \begin{challenge}{Bad news}
+    Our usual multigrid approaches for $\tilde{A}^{-1}$ no longer
+    work for $A_\gamma := A + \gamma B^TM_p^{-1}B$, and get \emph{worse} as $\gamma \to \infty$
+  \end{challenge}
+  \pause
+  \begin{center}
+    \begin{tabular}{l| c |c}
+      \toprule
+      &  LU for $A_\gamma^{-1}$ & AMG for $A_\gamma^{-1}$\\
+      \midrule
+      $\gamma=10^{-1}$ & 15 &18\\
+      $\gamma=1$ & 6 &40\\
+      $\gamma=10^{1}$ & 3 &107\\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+  \pause
+  \begin{answer}{Goal}
+    Find a $\gamma$-robust multigrid method for $A_\gamma^{-1}$.
+  \end{answer}
+\end{frame}
+
+\section{Robust multigrid}
+
+\begin{frame}
+  \frametitle{Stokes case}
+  \begin{itemize}
+  \item Ignorning advection, then the top-left block corresponds to
+    discretisation of
+    \begin{equation*}
+      a_{\gamma}(u, v) = \xunderbrace{\int_\Omega \nu \nabla u  : \nabla v \dx}_{\text{sym.~pos.~def.}} \quad +  \quad \textcolor{red}{\xunderbrace{\int_\Omega \gamma\div(u)\div(v) \dx}_{\text{sym.~pos.~semi-def.}}}
+    \end{equation*}
+    \pause
+  \item The semi-definite term is singular on all solenoidal fields
+    $\Rightarrow$ the system becomes \emph{nearly singular} as $\gamma
+    \to \infty$
+    \pause
+  \item To build a $\gamma$-robust scheme we need
+    \parencite{Schoeberl:1999}
+    \begin{itemize}
+    \item a $\gamma$-robust smoother;
+    \item a prolongation operator with $\gamma$-independent continuity constant.
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{Idea: kernel-capturing relaxation}
+  Consider the problem: for $\alpha, \beta \in \mathbb{R}$, find $u \in V$ such that
+  \begin{equation*}
+    \alpha a(u, v) + \beta b(u, v) = (f, v) \quad \forall v \in V,
+  \end{equation*}
+  where $a$ is SPD, and $b$ is symmetric positive semidefinite.
+
+  \begin{block}{Relaxation method}
+    Choose a subspace decomposition
+    \begin{equation*}
+      V = \sum_i V_i,
+    \end{equation*}
+    solve the problem on each subspace and combine the updates.
+  \end{block}
+  \begin{exampleblock}{Example}
+    If each $V_i$ is the span of a single basis function, this defines a
+    Jacobi (Gauss-Seidel) iteration.
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{Idea: kernel-capturing relaxation}
+  Define the kernel as
+  \begin{equation*}
+      \mathcal{N} := \{ u \in V : b(u, v) = 0 \,\, \forall v \in V \}.
+  \end{equation*}
+  \begin{theorem}[Sch\"oberl (1999); Lee, Wu, Xu,
+    Zikatanov (2007)]
+    An additive subspace correction method using subspaces $\{V_i\}$
+    is parameter robust if every $u \in \mathcal{N}$ can be written as
+    a sum $u = \sum_i u_i$ with $u_i \in V_i \cap \mathcal{N}$, i.e.
+    \begin{equation*}
+      \mathcal{N} = \sum_i \mathcal{N} \cap V_i.
+    \end{equation*}
+    ``The subspace decomposition \emph{captures the kernel}.''
+    \nocite{Ewing:1992,Schoeberl:1999,Lee:2007}
+  \end{theorem}
+\end{frame}
+
+\begin{frame}{Relaxation}
+  In 2D we consider $P_2-P_0$ elements. For these one can show that \emph{star} patches 
+  \begin{figure}
+    \begin{center}
+      \includegraphics[width=8cm]{star}
+    \end{center}
+  \end{figure}
+  satisfy the kernel decomposition property.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Idea: robust prolongation}
+  \begin{theorem}[Sch\"oberl (1999)]
+    Let the prolongation $P : V_H \to V_h$. A robust multigrid cycle
+    requires
+    \begin{equation*}
+      \nu\|\nabla P u_H\|_{L^2}^2 + \gamma\|\overline{\nabla\cdot P
+        u_H}\|_{L^2}^{2} \le C(\nu\|\nabla u_H\|_{L^2}^2 + \gamma\|\overline{\nabla\cdot u_H}\|_{L^2}^2)
+    \end{equation*}
+    with $C$ independent of both $\nu$ and $\gamma$.
+  \end{theorem}
+  \pause
+  \begin{exampleblock}{Observation}
+    Notice that if $\nabla \cdot u_H = 0$ then we have
+    \begin{equation*}
+      \nu\|\nabla P u_H\|_{L^2}^2 + \textcolor{red}{\gamma\|\overline{\nabla\cdot P u_H}\|_{L^2}^{2}} \le C(\nu\|\nabla u_H\|_{L^2}^2
+    \end{equation*}
+    
+    $\Rightarrow$ we need $P$ to map coarse-grid div-free fields to
+    (nearly) div-free fields on the fine grid.
+  \end{exampleblock}
+\end{frame}
+
 \appendix
-\begin{frame}[allowframebreaks]
+\begin{frame}[t,allowframebreaks]
   \frametitle{References}
   \printbibliography[heading=none]
 \end{frame}
 
-
 \end{document}
-
