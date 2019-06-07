@@ -144,10 +144,109 @@ backend=biber]{biblatex}
   Navier--Stokes equations}
 
 \usepackage{tikz}
-\usetikzlibrary{trees,calc,positioning}
+\usetikzlibrary{trees,calc,positioning, trees}
 \usetikzlibrary{shapes, shapes.geometric}
 \usetikzlibrary{arrows,chains,positioning,fit,backgrounds,calc,shapes,
   shadows,scopes,decorations.markings,plotmarks}
+
+\usepackage{expl3}
+
+\ExplSyntaxOn
+\newcommand{\fpeval}[1]{\fp_eval:n{#1}}
+\ExplSyntaxOff
+
+\newcommand{\DrawIterated}[7]% number of iterations
+{ \ifnum#1=1%
+  \draw[line join=round] (#2,#3) -- (#4,#5) -- (#6,#7) -- cycle;
+  \else
+  \draw[line join=round] (#2,#3) -- (#4,#5) -- (#6,#7) -- cycle;
+  % Middle
+  \DrawIterated{\numexpr#1-1\relax}%
+  {\fpeval{(#2 + #4)/2}}%
+  {\fpeval{(#3 + #5)/2}}%
+  {\fpeval{(#4 + #6)/2}}%
+  {\fpeval{(#5 + #7)/2}}%
+  {\fpeval{(#2 + #6)/2}}%
+  {\fpeval{(#3 + #7)/2}}
+
+  % Bottom left
+  \DrawIterated{\numexpr#1-1\relax}%
+  {#2}%
+  {#3}%
+  {\fpeval{(#2 + #4)/2}}%
+  {\fpeval{(#3 + #5)/2}}%
+  {\fpeval{(#2 + #6)/2}}%
+  {\fpeval{(#3 + #7)/2}}
+
+  % Bottom right
+  \DrawIterated{\numexpr#1-1\relax}%
+  {\fpeval{(#2 + #4)/2}}%
+  {\fpeval{(#3 + #5)/2}}%
+  {#4}%
+  {#5}%
+  {\fpeval{(#4 + #6)/2}}%
+  {\fpeval{(#5 + #7)/2}}%
+
+  % Top
+  \DrawIterated{\numexpr#1-1\relax}%
+  {\fpeval{(#2 + #6)/2}}%
+  {\fpeval{(#3 + #7)/2}}
+  {\fpeval{(#4 + #6)/2}}%
+  {\fpeval{(#5 + #7)/2}}%
+  {#6}%
+  {#7}
+  
+  \fi
+}
+
+\newcommand{\DrawIteratedBary}[7]% number of iterations
+{ \ifnum#1=1%
+  \draw[line join=round] (#2,#3) -- (#4,#5) -- (#6,#7) -- cycle;
+  \coordinate (0) at (#2,#3);
+  \coordinate (1) at (#4,#5);
+  \coordinate (2) at (#6,#7);
+  \coordinate (bc) at (barycentric cs:0=1,1=1,2=1);
+  \draw[line join=round] (0) -- (bc) -- (1) (bc) -- (2);
+  \else
+  \draw[line join=round] (#2,#3) -- (#4,#5) -- (#6,#7) -- cycle;
+  % Middle
+  \DrawIteratedBary{\numexpr#1-1\relax}%
+  {\fpeval{(#2 + #4)/2}}%
+  {\fpeval{(#3 + #5)/2}}%
+  {\fpeval{(#4 + #6)/2}}%
+  {\fpeval{(#5 + #7)/2}}%
+  {\fpeval{(#2 + #6)/2}}%
+  {\fpeval{(#3 + #7)/2}}
+
+  % Bottom left
+  \DrawIteratedBary{\numexpr#1-1\relax}%
+  {#2}%
+  {#3}%
+  {\fpeval{(#2 + #4)/2}}%
+  {\fpeval{(#3 + #5)/2}}%
+  {\fpeval{(#2 + #6)/2}}%
+  {\fpeval{(#3 + #7)/2}}
+
+  % Bottom right
+  \DrawIteratedBary{\numexpr#1-1\relax}%
+  {\fpeval{(#2 + #4)/2}}%
+  {\fpeval{(#3 + #5)/2}}%
+  {#4}%
+  {#5}%
+  {\fpeval{(#4 + #6)/2}}%
+  {\fpeval{(#5 + #7)/2}}%
+
+  % Top
+  \DrawIteratedBary{\numexpr#1-1\relax}%
+  {\fpeval{(#2 + #6)/2}}%
+  {\fpeval{(#3 + #7)/2}}
+  {\fpeval{(#4 + #6)/2}}%
+  {\fpeval{(#5 + #7)/2}}%
+  {#6}%
+  {#7}
+  
+  \fi
+}
 
 \newcommand*{\tettextsize}{\footnotesize}
 \tikzstyle{line} = [draw, -, thick]
@@ -190,6 +289,11 @@ backend=biber]{biblatex}
     -- ($(hullcoord\nextnode)!#2!-90:(hullcoord\currentnode)$)
   }
 }
+
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.16}
+\usetikzlibrary{plotmarks}
+\usepackage{pgfplotstable}
 
 \graphicspath{{./\jobname.figures/}{../pictures/}}
 \date{10 June 2019}
@@ -636,7 +740,7 @@ Obtained with IFISS v3.5, $Q_1-P_0$ element pair.}
   \begin{exampleblock}{Observation}
     Notice that if $\nabla \cdot u_H = 0$ then we have
     \begin{equation*}
-      \nu\|\nabla P u_H\|_{L^2}^2 + \textcolor{red}{\gamma\|\overline{\nabla\cdot P u_H}\|_{L^2}^{2}} \le C(\nu\|\nabla u_H\|_{L^2}^2
+      \nu\|\nabla P u_H\|_{L^2}^2 + \textcolor{red}{\gamma\|\overline{\nabla\cdot P u_H}\|_{L^2}^{2}} \le C\nu\|\nabla u_H\|_{L^2}^2
     \end{equation*}
     
     $\Rightarrow$ we need $P$ to map coarse-grid div-free fields to
@@ -644,7 +748,324 @@ Obtained with IFISS v3.5, $Q_1-P_0$ element pair.}
   \end{exampleblock}
 \end{frame}
 
+\begin{frame}
+  \frametitle{Robust prolongation: 2D}
+  \begin{itemize}
+  \item<1-> Discrete divergence $\Leftrightarrow$ flux across facets
+  \item<1-> $V_h \subset V_h \implies$ flux across coarse-grid faces is
+    preserved.
+  \item<2-> $P_2-P_0$ not a \emph{divergence-free} discretisation
+    $\Rightarrow$ solve a local Stokes problem to \emph{fix} the flux
+    on new facets.
+  \end{itemize}
+  \begin{center}
+    \only<1>{\includegraphics[height=0.4\textheight]{prolongation_nopatch}}
+    \only<2->{\includegraphics[height=0.4\textheight]{prolongation}}
+  \end{center}
+\end{frame}
+
+\begin{frame}
+  \frametitle{What about 3D}
+  \begin{overlayarea}{\textwidth}{0.7\textheight}
+    Which element should we choose?
+
+    \begin{tabular}{lccc}
+      & \only<1->{\includegraphics[width=0.3\textwidth]{P2}} & \only<3->{\includegraphics[width=0.3\textwidth]{P3}} & \only<4->{\includegraphics[width=0.3\textwidth]{P1FB}} \\
+      \hspace{-0.5cm}
+      & \uncover<1->{ $P_2$}\quad\ ~ & \uncover<3->{ $P_3$}\ \ ~ & \uncover<4->{ $P_1 \oplus \text{FB}$}\ ~\\
+      \hspace{-0.5cm}
+      stable & \uncover<2->{\xmark}\quad\ ~ & \uncover<3->{\cmark}\ \ ~ & \uncover<4->{\cmark}\ \ ~
+    \end{tabular}
+  \end{overlayarea}
+\end{frame}
+
+\begin{frame}{Prolongation --- 3D}
+  Problem: $V_H\not\subset V_h$
+  \begin{center}
+    \includegraphics[width=0.3\textwidth]{bubble}
+    \qquad
+    \includegraphics[width=0.3\textwidth]{bubble_prolong}
+  \end{center}
+  Solution:
+  \begin{enumerate}
+  \item Split into $P_1$ and facet bubble part, prolong the two parts separately.
+  \item Scale the facet bubble components to preserve flux across coarse grid facets.
+  \item Solve local Stokes problem to fix divergence inside coarse cell.
+  \end{enumerate}
+\end{frame}
+
+\section{Numerical results}
+
+\begin{frame}{Full solver}
+   \begin{center}
+       \resizebox{\textwidth}{!}{
+   \begin{tikzpicture}[%
+  every node/.style={draw=black, thick, anchor=west},
+  grow via three points={one child at (0.0,-0.7) and
+  two children at (0.0,-0.7) and (0.0,-1.4)},
+  edge from parent path={(\tikzparentnode.210) |- (\tikzchildnode.west)}]
+  \node {Continuation}
+    child { node {Newton solver with line search}
+      child { node {Krylov solver (FGMRES)}
+        child { node {Block preconditioner}
+          child { node {Approximate Schur complement inverse}}
+          child { node {F-cycle on augmented momentum block}
+              child { node {Coarse grid solver}
+                child { node {LU factorization on assembled matrix}}
+              }
+              child [missing] {}
+              child { node {Prolongation operator}
+                child { node {Local solves over coarse cells}}
+              }
+              child [missing] {}
+              child { node {Relaxation}
+                child { node {GMRES}
+                  child { node {Overlapping additive Schwarz iteration}}
+                }
+              }
+          }
+        }
+      }
+    };
+\end{tikzpicture}}
+   \end{center} 
+\end{frame}
+
+\begin{frame}
+  \frametitle{Numerical results --- 2D}
+  \begin{table}[htbp]
+    \centering
+    \begin{tabular}{cc|ccccc}
+      \toprule
+      \# ref. & \# dofs & \multicolumn{5}{c}{Reynolds number} \\
+              && 10 & 100 & 1000 &  5000 & 10000\\
+      \midrule
+      \multicolumn{7}{c}{Lid Driven Cavity}\\
+      \midrule
+      1 & $1.0 \times 10^4$ & 3.00 &  4.00 &  5.33 & 8.50 & 11.0 \\
+      2 & $4.1 \times 10^4$ & 2.50 &  3.67 &  6.00 & 8.00 & 9.50 \\
+      3 & $1.6 \times 10^5$ & 2.50 &  3.00 &  5.67 & 7.50 & 9.00 \\
+      4 & $6.6 \times 10^5$ & 2.50 &  3.00 &  5.00 & 7.00 & 8.00 \\
+      \midrule
+      \multicolumn{7}{c}{Backwards Facing Step}\\
+      \midrule
+      1 & $1.1 \times 10^6$ & 2.33 & 3.75 & 4.50 & 4.50 & 8.00\\
+      2 & $4.5 \times 10^6$ & 3.00 & 3.25 & 4.50 & 4.50 & 5.50\\
+      3 & $1.8 \times 10^7$ & 3.00 & 5.75 & 4.00 & 4.00 & 6.00\\
+      \bottomrule
+    \end{tabular}
+    \caption{Average number of outer Krylov iterations per Newton step for two 2D benchmark problems.}
+  \end{table}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Numerical results --- 3D}
+  \begin{table}[htbp]
+    \centering
+    \begin{tabular}{cc|ccccc}
+      \toprule
+      \# ref. & \# dofs & \multicolumn{5}{c}{Reynolds number} \\
+              && 10 & 100 & 1000 & 2500 & 5000 \\
+      \midrule
+      \multicolumn{7}{c}{Lid Driven Cavity}\\
+      \midrule
+      1 & $2.1 \times 10^6$ & 4.50 & 4.00 & 5.00 & 4.50 & 4.00 \\
+      2 & $1.7 \times 10^7$ & 4.50 & 4.33 & 4.50 & 4.00 & 4.00 \\
+      3 & $1.3 \times 10^8$ & 4.50 & 4.33 & 4.00 & 3.50 & 7.00 \\
+      4 & $1.1 \times 10^9$ & 4.50 & 3.66 & 3.00 & 5.00 & 5.00 \\
+      \midrule
+      \multicolumn{7}{c}{Backwards facing step}\\
+      \midrule
+      1 & $2.1 \times 10^6$ & 4.50 & 4.00 & 4.00 & 4.50 & 7.50  \\
+      2 & $1.7 \times 10^7$ & 5.00 & 4.00 & 3.33 & 4.00 & 10.00 \\
+      3 & $1.3 \times 10^8$ & 6.50 & 4.50 & 3.50 & 3.00 & 8.00  \\
+      4 & $1.0 \times 10^9$ & 7.50 & 3.50 & 2.50 & 3.00 & 6.00  \\
+    \end{tabular}
+    \caption{Average number of outer Krylov iterations per Newton step for two 3D benchmark problems.}
+    \label{tab:ourldc3d}
+  \end{table}
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{Computational performance --- 3D}
+  \pgfplotstableread[col sep=comma, row sep=\\]{%
+    Cores,Time,Dofs\\
+    48,5.3e1,2134839\\
+    384,6.9e1,16936779\\
+    3072,6.1e1,134930451\\
+    24576,6.6e1,1077196323\\
+  }\ldctable
+  % [55.02509561666667, 68.57286605, 57.029964033333336, 69.39903468333333]
+  \pgfplotstableread[col sep=comma, row sep=\\]{%
+    Cores,Time,Dofs\\
+    48,5.5e1,2107839\\
+    384,6.9e1,16534263\\
+    3072,5.7e1,130973115\\
+    24576,6.9e1,1042606515\\
+  }\bfstable
+  % [53.140734383333324, 68.56801668333334, 61.468243016666655, 65.64923281666665]
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      \begin{center}
+      \begin{tikzpicture}
+        \begin{semilogxaxis}[
+          width=0.955\linewidth,
+          height=0.9\linewidth,
+          log basis x=2,
+          ymin=0,
+          ymax=80,
+          xtick=data,
+          xticklabels from table={\ldctable}{Cores},
+          extra x ticks={48, 384, 3072, 24576},
+          extra x tick labels={$[2.13]$, $[16.9]$,$[135]$,$[1077]$},
+          extra x tick style={tick label style={yshift=-2.5ex}},
+          xlabel={Cores\\{}[DoFs $\times 10^6$]},
+          xlabel style={align=center, style={yshift=-0.5ex}},
+          ylabel near ticks,
+          ylabel style={align=center, text width=4cm},
+          title={3D lid-driven cavity.},
+          ylabel={Time [min]},
+          ]
+          \addplot+ table[x=Cores,y=Time] {\ldctable};
+        \end{semilogxaxis}
+      \end{tikzpicture}
+    \end{center}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \begin{center}
+      \begin{tikzpicture}
+        \begin{semilogxaxis}[
+          width=0.95\linewidth,
+          height=0.9\linewidth,
+          log basis x=2,
+          ymin=0,
+          ymax=80,
+          xtick=data,
+          xticklabels from table={\bfstable}{Cores},
+          extra x ticks={48, 384, 3072, 24576},
+          extra x tick labels={$[2.11]$, $[16.5]$,$[131]$,$[1043]$},
+          extra x tick style={tick label style={yshift=-2.5ex}},
+          xlabel={Cores\\{}[DoFs $\times 10^6$]},
+          xlabel style={align=center, style={yshift=-0.5ex}},
+          ylabel near ticks,
+          ylabel style={align=center, text width=4cm},
+          title={3D backwards-facing step.},
+          ]
+          \addplot+ table[x=Cores,y=Time] {\bfstable};
+        \end{semilogxaxis}
+      \end{tikzpicture}
+    \end{center}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\section{Pressure robust discretisations}
+
+\begin{frame}
+  \frametitle{Why pressure robust?}
+  Standard error estimate for Stokes \parencite{John:2017}
+  \begin{equation*}
+    \|\nabla(u - u_h)\|_{L^2} \le 2 \inf_{\tilde{u}}\|\nabla(u - \tilde{u})\|_{L^2} + \nu^{-1} \inf_{\tilde{p}} \|p - \tilde{p}\|_{L^2}
+  \end{equation*}
+
+  If the element pair is \emph{divergence-free} ($\nabla \cdot V_h \subset Q_h$), then this estimate can be improved to
+  \begin{equation*}
+    \|\nabla(u - u_h)\|_{L^2} \le 2 \inf_{\tilde{u}}\|\nabla(u - \tilde{u})\|_{L^2}    
+  \end{equation*}
+
+  Similar optimal estimates can be shown for the time-dependent problem \parencite{Linke:2019}.
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{Element choices}
+  \begin{overlayarea}{\textwidth}{\textheight}
+    \begin{onlyenv}<1-2>
+      \vspace{-\baselineskip}
+      \begin{block}{$H(\div)$-conforming}
+        Choose discrete element pair from the de Rham complex:
+        \begin{equation*}
+          \mathbb{R} \xrightarrow{\operatorname{id}} H^1 \xrightarrow{\grad} H(\curl) \xrightarrow{\curl} H(\div) \xrightarrow{\div} L^2 \xrightarrow{\operatorname{null}} 0.
+        \end{equation*}
+      \end{block}
+      \vspace{-0.5\baselineskip}
+      \begin{exampleblock}{Example}
+        \textcite{Raviart:1977}
+        \begin{equation*}
+          V_h \times Q_h = \operatorname{RT}_k \times P_k^{\text{disc}}
+        \end{equation*}
+      \end{exampleblock}
+      \vspace{-0.5\baselineskip}
+      \uncover<2>{
+        \small
+        \begin{itemize}
+        \item[\cmark] Nested spaces $V_H \subset V_h$: regular prolongation suffices
+        \item[\cmark] Arbitrary order
+        \item[\cmark] Existance of commuting diagram $\Rightarrow$ kernel decomposition ``just works''
+        \item[\xmark] Not $H^1$-conforming: need penalty or hybridised scheme for $\nabla^2$ term
+        \item[\xmark] Requires more code development in PETSc
+        \end{itemize}
+      }
+    \end{onlyenv}
+    \begin{onlyenv}<3->
+      \vspace{-\baselineskip}
+      \begin{block}{$H^1$-conforming}
+        Choose discrete element pair from the Stokes complex:
+        \begin{equation*}
+          \mathbb{R} \xrightarrow{\operatorname{id}} H^2 \xrightarrow{\grad} H^1(\curl) \xrightarrow{\curl} H^1 \xrightarrow{\div} L^2 \xrightarrow{\operatorname{null}} 0.
+        \end{equation*}
+      \end{block}
+      \vspace{-0.5\baselineskip}
+      \begin{exampleblock}{Example}
+        \textcite{Scott:1985}
+        \begin{equation*}
+          V_h \times Q_h = P_{k} \times P_{k-1}^{\text{disc}}
+        \end{equation*}
+      \end{exampleblock}
+      \vspace{-0.5\baselineskip}
+      \uncover<4->{
+        \small
+        \begin{itemize}
+        \item[\xmark] Low degree $k = d$ versions not inf-sup on all meshes
+        \item[\cmark] Arbitrary order for $k$ sufficiently large
+        \item[\xmark] No commuting diagram (yet)
+        \item[\cmark] $H^1$-conforming
+        \item[\cmark] All code already exists
+        \end{itemize}
+      }
+    \end{onlyenv}
+  \end{overlayarea}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Scott--Vogelius pair}
+  For $k \ge d$, pair is stable on \emph{barycentrically} refined meshes.
+
+  Build a non-nested multigrid hierarchy.
+
+  \pause
+  \begin{center}
+    \begin{tikzpicture}[scale=2]
+      \foreach \i in {1, 2, 3} {
+        \begin{scope}[shift={($(\i*1.5-1.5, 0)$)}]
+          \DrawIterated{\i}{0}{0}{1}{0}{0.5}{\fpeval{sqrt(3)/2}}
+        \end{scope}
+        \begin{scope}[shift={($(\i*1.5-1.5, -1.5)$)}]
+          \DrawIteratedBary{\i}{0}{0}{1}{0}{0.5}{\fpeval{sqrt(3)/2}};
+        \end{scope}
+
+        \draw[-stealth, very thick] ($(-1 + 1.5*\i, -0.1)$) -- +(0, -0.4);
+        \ifnum\i=3
+        \relax
+        \else
+        \draw[-stealth, very thick] ($(-0.5 + 1.5*\i, 0.5)$) -- +(0.5, 0);
+        \fi
+      }
+    \end{tikzpicture}
+  \end{center}
+\end{frame}
 \appendix
+
+
 \begin{frame}[t,allowframebreaks]
   \frametitle{References}
   \printbibliography[heading=none]
