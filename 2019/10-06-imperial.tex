@@ -16,6 +16,7 @@
 \usepackage{hyperref}
 \usepackage{xspace}
 \newcommand{\arxivlink}[2]{{\texttt{arXiv:\,\href{https://arxiv.org/abs/#1}{#1\,[#2]}}}}
+\usepackage{standalone}
 
 \newcommand{\honev}{\ensuremath{{H}^1(\Omega; \mathbb{R}^d)}\xspace}
 \newcommand{\ltwov}{\ensuremath{{L}^2(\Omega; \mathbb{R}^d)}\xspace}
@@ -516,7 +517,7 @@ Obtained with IFISS v3.5, $Q_1-P_0$ element pair.}
 
 \begin{frame}
   \begin{center}
-    \includegraphics[height=0.66\textheight]{benzi06}
+    \includegraphics[width=\textwidth]{benzi06}
   \end{center}
   \pause
     \begin{block}{Observation}
@@ -957,6 +958,9 @@ Obtained with IFISS v3.5, $Q_1-P_0$ element pair.}
     \end{center}
     \end{column}
   \end{columns}
+  \begin{center}
+    50 continuation steps
+  \end{center}
 \end{frame}
 
 \section{Pressure robust discretisations}
@@ -965,7 +969,7 @@ Obtained with IFISS v3.5, $Q_1-P_0$ element pair.}
   \frametitle{Why pressure robust?}
   Standard error estimate for Stokes \parencite{John:2017}
   \begin{equation*}
-    \|\nabla(u - u_h)\|_{L^2} \le 2 \inf_{\tilde{u}}\|\nabla(u - \tilde{u})\|_{L^2} + \nu^{-1} \inf_{\tilde{p}} \|p - \tilde{p}\|_{L^2}
+    \|\nabla(u - u_h)\|_{L^2} \le 2 \inf_{\tilde{u}}\|\nabla(u - \tilde{u})\|_{L^2} + \textcolor{red}{\nu^{-1} \inf_{\tilde{p}} \|p - \tilde{p}\|_{L^2}}
   \end{equation*}
 
   If the element pair is \emph{divergence-free} ($\nabla \cdot V_h \subset Q_h$), then this estimate can be improved to
@@ -1000,7 +1004,7 @@ Obtained with IFISS v3.5, $Q_1-P_0$ element pair.}
         \begin{itemize}
         \item[\cmark] Nested spaces $V_H \subset V_h$: regular prolongation suffices
         \item[\cmark] Arbitrary order
-        \item[\cmark] Existance of commuting diagram $\Rightarrow$ kernel decomposition ``just works''
+        \item[\cmark] Commuting diagram $\Rightarrow$ kernel decomposition ``just works''
         \item[\xmark] Not $H^1$-conforming: need penalty or hybridised scheme for $\nabla^2$ term
         \item[\xmark] Requires more code development in PETSc
         \end{itemize}
@@ -1063,8 +1067,59 @@ Obtained with IFISS v3.5, $Q_1-P_0$ element pair.}
     \end{tikzpicture}
   \end{center}
 \end{frame}
-\appendix
 
+\begin{frame}
+  \frametitle{Discrete complex --- 2D}
+  \begin{center}
+    \includestandalone[width=0.75\textwidth]{./\jobname.figures/HCT-complex}
+  \end{center}
+  \pause
+  Requires bigger patch in smoother
+  \begin{center}
+    \includestandalone[height=0.5\textheight]{./\jobname.figures/macrostar}
+  \end{center}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Discrete complex --- 3D}
+  \begin{itemize}
+  \item Discrete exact sequence developed in \textcite{Fu:2018}, $k \ge 3$
+  \item No commuting projections (yet)
+  \item[$\Rightarrow$] need to work a bit harder in the theory to prove convergence of scheme
+  \item In practice, same idea: ``macro patches'' work fine.
+  \item[$\Rightarrow$] some new conjectures on basis for $C^1$ functions
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Conclusions \& outlook}
+  \begin{exampleblock}{Main result}
+    It is possible to solve the Navier--Stokes equations in a Reynolds-robust way!
+
+    Even for exactly divergence-free discretisations
+  \end{exampleblock}
+
+  \pause
+  \begin{answer}{Ongoing work}
+    Large-scale runs for Scott-Vogelius element pair.
+
+    Tidying up proof of convergence.
+  \end{answer}
+
+  \pause
+  \begin{challenge}{Other discretisations}
+    \begin{itemize}
+    \item Scott-Vogelius rather expensive. A lot of interest in
+      $H(\div)$-conforming, and hybridised $H(\div)$-conforming
+      methods.
+    
+    \item Can we do this on general non-nested meshes?
+      
+    \item[$\Rightarrow$] needs divergence-preserving prolongation: Fortin operators?
+  \end{itemize}
+  \end{challenge}
+\end{frame}
+\appendix
 
 \begin{frame}[t,allowframebreaks]
   \frametitle{References}
