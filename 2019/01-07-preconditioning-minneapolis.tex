@@ -157,33 +157,1280 @@ backend=biber]{biblatex}
 
 \maketitle
 
-\begin{abstract}
-  Small block overlapping, and non-overlapping, Schwarz methods are
-  theoretically highly attractive as multilevel smoothers for a wide
-  variety of problems that are not amenable to point relaxation
-  methods.  Examples include monolithic Vanka smoothers for Stokes,
-  overlapping vertex-patch decompositions for $H(\text{div})$ and
-  $H(\text{curl})$ problems, along with nearly incompressible
-  elasticity, and augmented Lagrangian schemes.
+% \begin{abstract}
+%   Small block overlapping, and non-overlapping, Schwarz methods are
+%   theoretically highly attractive as multilevel smoothers for a wide
+%   variety of problems that are not amenable to point relaxation
+%   methods.  Examples include monolithic Vanka smoothers for Stokes,
+%   overlapping vertex-patch decompositions for $H(\text{div})$ and
+%   $H(\text{curl})$ problems, along with nearly incompressible
+%   elasticity, and augmented Lagrangian schemes.
 
-  While it is possible to manually program these different schemes,
-  their use in general purpose libraries has been held back by a lack
-  of generic, composable interfaces. We present a new approach to the
-  specification and development such additive Schwarz methods in PETSc
-  that cleanly separates the topological space decomposition from the
-  discretisation and assembly of the equations. Our preconditioner is
-  flexible enough to support overlapping and non-overlapping additive
-  Schwarz methods, and can be used to formulate line, and plane
-  smoothers, Vanka iterations, amongst others. I will illustrate these
-  new features with some examples utilising the Firedrake finite
-  element library, in particular how the design of an approriate
-  computational interface enables these schemes to be used as building
-  blocks inside block preconditioners.
+%   While it is possible to manually program these different schemes,
+%   their use in general purpose libraries has been held back by a lack
+%   of generic, composable interfaces. We present a new approach to the
+%   specification and development such additive Schwarz methods in PETSc
+%   that cleanly separates the topological space decomposition from the
+%   discretisation and assembly of the equations. Our preconditioner is
+%   flexible enough to support overlapping and non-overlapping additive
+%   Schwarz methods, and can be used to formulate line, and plane
+%   smoothers, Vanka iterations, amongst others. I will illustrate these
+%   new features with some examples utilising the Firedrake finite
+%   element library, in particular how the design of an approriate
+%   computational interface enables these schemes to be used as building
+%   blocks inside block preconditioners.
 
-  This is joint work with Patrick Farrell and Florian Wechsung
-  (Oxford), Rob Kirby (Baylor), and Matt Knepley (Buffalo).
-\end{abstract}
+%   This is joint work with Patrick Farrell and Florian Wechsung
+%   (Oxford), Rob Kirby (Baylor), and Matt Knepley (Buffalo).
+% \end{abstract}
 
+
+\begin{frame}[t]
+  \frametitle{Setting}
+
+  \begin{columns}
+    \begin{column}{0.8\textwidth}
+      \begin{quote}
+        Firedrake \url{www.firedrakeproject.org} {\normalfont
+          [\ldots]} is an automated system for the solution of
+        partial differential equations using the finite element
+        method.
+      \end{quote}
+    \end{column}
+    \begin{column}{0.2\textwidth}
+      \includegraphics[width=0.8\textwidth]{firedrake-small}
+    \end{column}
+  \end{columns}
+  \begin{itemize}
+  \item Finite element problems specified with \emph{embedded}
+    domain specific language, UFL \parencite{Alnaes:2014} from the
+    FEniCS project.
+  \item \emph{Runtime} compilation to optimised, low-level (C)
+    code.
+  \item PETSc for meshes and (algebraic) solvers.
+  \end{itemize}
+
+  \begin{flushright}
+    {\scriptsize \textcite{Rathgeber:2016} \arxivlink{1501.01809}{cs.MS}}
+  \end{flushright}
+\end{frame}
+
+% \begin{frame}[fragile,t]
+%   \frametitle{UFL makes it easy to write complex PDEs}
+%   \begin{onlyenv}<1>
+%     \begin{columns}[T]
+%       \begin{column}{0.47\framewidth}
+%         \small
+%         \begin{block}{Rayleigh-B\'enard convection}
+%           \begin{equation*}
+%             \begin{split}
+%               -\Delta u + u\cdot\nabla u + \nabla p +
+%               \frac{\text{Ra}}{\text{Pr}} \hat{g}T &= 0 \\
+%               \nabla \cdot u &= 0 \\
+%               - \frac{1}{\text{Pr}} \Delta T + u\cdot \nabla T &= 0
+%             \end{split}
+%           \end{equation*}
+%           Newton
+%           \begin{equation*}
+%             \begin{bmatrix}
+%               F   & B^T & M_1 \\
+%               C   & 0   & 0   \\
+%               M_2 & 0 & K
+%             \end{bmatrix}
+%             \begin{bmatrix}
+%               \delta u \\
+%               \delta p \\
+%               \delta T
+%             \end{bmatrix} =
+%             \begin{bmatrix}
+%               f_1 \\
+%               f_2 \\
+%               f_3
+%             \end{bmatrix}
+%           \end{equation*}
+%         \end{block}
+%       \end{column}
+%       \begin{column}{0.52\framewidth}
+% \begin{minted}[fontsize=\scriptsize]{python}
+% from firedrake import *
+% ...
+% V = VectorFunctionSpace(mesh, "CG", 2)
+% W = FunctionSpace(mesh, "CG", 1)
+% Z = V * W * W
+% Ra = Constant(200)
+% Pr = Constant(6.18)
+% upT = Function(Z)
+% u, p, T = split(upT)
+% v, q, S = TestFunctions(Z)
+% bcs = [...] # no-flow + temp gradient
+
+% F = (inner(grad(u), grad(v))
+%    + inner(dot(grad(u), u), v)
+%    - inner(p, div(v))
+%    + (Ra/Pr)*inner(T*g, v)
+%    + inner(div(u), q)
+%    + inner(dot(grad(T), u), S)
+%    + (1/Pr) * inner(grad(T), grad(S)))*dx
+
+% solve(F == 0, upT, bcs=bcs)
+% \end{minted}
+%       \end{column}
+%     \end{columns}
+%   \end{onlyenv}
+%   \begin{onlyenv}<2>
+%     \begin{columns}[T]
+%       \begin{column}{0.47\textwidth}
+%         \begin{block}{Ohta--Kawasaki}
+%           \small
+%           \begin{align*}
+%             u_t - \Delta w + \sigma(u - m) &= 0\\
+%             w + \epsilon^2 \Delta u - u(u^2 - 1) &= 0
+%           \end{align*}
+%           Implicit timestepping + Newton
+%           \begin{equation*}
+%             \begin{bmatrix}
+%               (1 + \Delta t \theta \sigma)M  & \Delta t\theta K \\
+%               -\epsilon^2 K - M_E & M
+%             \end{bmatrix}
+%             \begin{bmatrix}
+%               \delta u \\
+%               \delta w
+%             \end{bmatrix} =
+%             \begin{bmatrix}
+%               f_1 \\
+%               f_2
+%             \end{bmatrix}
+%           \end{equation*}
+%         \end{block}
+%       \end{column}
+%       \begin{column}{0.52\textwidth}
+% \begin{minted}[fontsize=\scriptsize,escapeinside=||]{python}
+% from firedrake import *
+% ...
+% V = FunctionSpace(mesh, "CG", 1)
+% Z = V*V
+% |$\epsilon$| = Constant(0.02);    |$\sigma$| = Constant(100)
+% dt = Constant(eps**2); |$\theta$| = Constant(0.5)
+% v, q = TestFunctions(Z)
+% z = Function(Z)
+% z0 = Function(Z)
+% u, w = split(z)
+% u0, w0 = split(z0)
+% u|$_\theta$| = (1 - |$\theta$|)*u0 + |$\theta$|*u
+% w|$_\theta$| = (1 - |$\theta$|)*w0 + |$\theta$|*w
+% dfdu = u**3 - u
+% F = ((u-u0)*v + dt*dot(grad(w|$_\theta$|), grad(v))
+%    + dt*|$\sigma$|*(u|$_\theta$| - m)*v
+%    + w*q - dfdu*q
+%    - |$\epsilon$|**2*dot(grad(u), grad(q)))*dx
+% while t < ...:
+%     z0.assign(z)
+%     solve(F == 0, z)
+% \end{minted}
+%       \end{column}
+%     \end{columns}
+%   \end{onlyenv}
+% \end{frame}
+
+
+\begin{frame}[standout]
+  What about solvers?
+\end{frame}
+
+\begin{frame}
+  \frametitle{Now that I have a hammer\ldots}
+  \ldots can I find some nails?
+
+  \begin{itemize}
+  \item This approach gets me auxiliary operators
+  \item and \emph{algebraic} solvers for the blocks
+  \item Many hard problems require multigrid 
+  \item \dots with something other than point smoothers
+  \end{itemize}
+  \pause
+
+  \begin{center}
+    $\Rightarrow$ Overlapping Schwarz methods
+  \end{center}
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{Some motivating problems: multigrid smoothers}
+  \begin{onlyenv}<1>
+    \begin{block}{Coupled multigrid for Stokes/Navier--Stokes}
+      \emph{In the SCGS scheme four velocites and one pressure
+      corresponding to one finite difference node are simultaneously
+      updated by inverting a (small) matrix of equations.}
+
+      \begin{center}
+        \includegraphics[height=3cm]{vanka}
+      \end{center}
+      \begin{flushright}
+        \textcite{Vanka:1986} \hspace{4em}
+      \end{flushright}
+    \end{block}
+  \end{onlyenv}
+  \begin{onlyenv}<2>
+    \begin{block}{$p$-independent preconditioners for elliptic problems}
+      \emph{[Each subspace is generated from]
+      $V_i^p = V^p \cap H^1_0(\Omega_i^{'})$ where $\Omega_i^{'}$ is the open square
+      centered at the ith vertex}
+      \begin{center}
+        \includegraphics[width=3cm]{pavarino}
+      \end{center}
+      \begin{flushright}
+        \textcite{Pavarino:1993} \hspace{4em}
+      \end{flushright}
+    \end{block}
+  \end{onlyenv}
+
+  \begin{onlyenv}<3>
+    \begin{block}{Multigrid for nearly incompressible elasticity}
+      \emph{The suggested smoother is block Jacobi smoother, which takes
+      care of the kernel [...]. These kernel basis functions are
+      captured by subspaces $V_{l,i}$ as shown}
+      \begin{center}
+        \includegraphics[height=3cm]{schoeberl}
+      \end{center}
+      \begin{flushright}
+        \textcite{Schoeberl:1999} \hspace{4em}
+      \end{flushright}
+    \end{block}
+  \end{onlyenv}
+
+  \begin{onlyenv}<4>
+    \begin{block}{Multigrid in $H(\div)$ and $H(\curl)$}
+      \emph{To define the Schwarz smoothers, we can use a decomposition of
+      $V_h$ into local patches consisting of all elements surrounding
+      either an edge or a vertex.}
+
+      \begin{center}
+        \includegraphics[height=2.5cm]{arnold}
+      \end{center}
+      \begin{flushright}
+        \textcite{Arnold:2000} \hspace{4em}
+      \end{flushright}
+    \end{block}
+  \end{onlyenv}
+
+  \begin{onlyenv}<5>
+    \begin{block}{An augmented Lagrangian approach to the Oseen problem}
+      \emph{We use a block Gauss-Seidel method [...] based on the
+      decomposition $V_h = \sum_{i=0}^l V_i$ [...For] P2-P0 finite
+      elements the natural choice is to gather nodel DOFs for velocity
+      inside ovals [around a vertex]}
+
+      \begin{center}
+        \includegraphics[height=2.5cm]{benzi}
+      \end{center}
+      \begin{flushright}
+        \textcite{Benzi:2006} \hspace{4em}
+      \end{flushright}
+    \end{block}
+  \end{onlyenv}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Unifying observation}
+  \begin{block}{Abstract relaxation method}
+    Choose a subspace decomposition
+    \begin{equation*}
+      V = \sum_i V_i
+    \end{equation*}
+    solve the problem on each subspace and combine the updates.
+  \end{block}
+  \begin{example}
+    If $V_i$ is the span of a single basis function, then we have
+    Jacobi or Gau\ss-Seidel relaxation (parallel or sequential
+    subspace solves)
+  \end{example}
+  \begin{itemize}
+  \item Decompose space (usually) based on some mesh decomposition
+  \item Build and solve little problems on the resulting patches
+  \item Combine additively or multiplicatively
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Idea: ``\texttt{PCPATCH}''}
+  \begin{itemize}
+  \item Separate topological decomposition from algebraic operators
+  \item Ask discretisation library to make the operators once
+    decomposition is obtained
+  \end{itemize}
+  \pause
+  \begin{block}{Topological decomposition}
+    Use \texttt{DMPlex} to provide decomposition of mesh into patches.
+  \end{block}
+
+  \begin{block}{Space decomposition}
+    Use topological decomposition plus \texttt{PetscSection} to
+    determine degrees of freedom in each patch.
+  \end{block}
+
+  \begin{block}{Operators}
+    Callback interface to discretisation/PDE library.
+  \end{block}
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{DMPlex notation}
+  Description of patches uses DMPlex nomenclature
+  \begin{columns}[T]
+    \begin{column}{0.4\textwidth}
+      \begin{block}{Mesh}
+        \begin{center}
+          \begin{tikzpicture}
+            \input{../pictures/tet_simple.tex}
+          \end{tikzpicture}
+        \end{center}
+        Vertices and edges labelled.
+      \end{block}
+    \end{column}
+    \begin{column}{0.6\textwidth}
+      \begin{block}{Graph representation}
+        \begin{onlyenv}<1>
+          \begin{center}
+            \begin{tikzpicture}
+              \input{../pictures/tet_graph.tex}
+            \end{tikzpicture}
+          \end{center}
+        \end{onlyenv}
+        \begin{onlyenv}<2>
+          \begin{center}
+            \begin{tikzpicture}
+              \input{../pictures/tet_graph.tex}
+              \begin{scope}[overlay, remember picture, rounded corners]
+                \filldraw[fill opacity=0.2]
+                ([xshift= 3pt, yshift=-3pt] 7.south east) --
+                ([xshift= 3pt, yshift= 3pt] 7.north east) --
+                ([xshift=-3pt, yshift= 3pt] 5.north west) --
+                ([xshift=-3pt, yshift=-3pt] 5.south west) --
+                cycle;
+                \node[cell, fill=black, opacity=0.6] at (1.center) {};
+              \end{scope}
+            \end{tikzpicture}
+          \end{center}
+          $\text{\texttt{cone}}(5) = \{9, 10, 11\}$
+        \end{onlyenv}
+        \begin{onlyenv}<3>
+          \begin{center}
+            \begin{tikzpicture}
+              \input{../pictures/tet_graph.tex}
+              \begin{scope}[overlay, remember picture, rounded corners]
+                \filldraw[fill opacity=0.2]
+                ([xshift= 1pt, yshift=-3pt] 1.south east) --
+                ([xshift=-3pt, yshift= 1pt] 2.north west) --
+                ([xshift= 3pt, yshift=-1pt] 7.south east) --
+                ([xshift=-3pt, yshift= 1pt] 8.north west) --
+                ([xshift= 3pt, yshift=-1pt] 13.south east) --
+                ([xshift= 3pt, yshift= 3pt] 13.north east) --
+                ([xshift=-2pt, yshift= 3pt] 11.north west) --
+                ([xshift=-2pt, yshift= 0pt] 5.west) --
+                ([xshift=-1pt, yshift=-3pt] 1.south west) --
+                cycle;
+                \node[cell, fill=black, opacity=0.6] at (1.center) {};
+              \end{scope}
+            \end{tikzpicture}
+          \end{center}
+          $\text{\texttt{closure}}(5) = \{1, 2, 3, 9, 10, 11\}$
+        \end{onlyenv}
+        \begin{onlyenv}<4>
+          \begin{center}
+            \begin{tikzpicture}
+              \input{../pictures/tet_graph.tex}
+              \begin{scope}[overlay, remember picture, rounded corners]
+                \filldraw[fill opacity=0.2]
+                ([xshift= 3pt, yshift=-3pt] 10.south east) --
+                ([xshift= 3pt, yshift= 3pt] 10.north east) --
+                ([xshift=-3pt, yshift= 3pt] 8.north west) --
+                ([xshift=-3pt, yshift=-3pt] 8.south west) --
+                cycle;
+                \node[cell, fill=black, opacity=0.6] at (14.center) {};
+              \end{scope}
+            \end{tikzpicture}
+          \end{center}
+          $\text{\texttt{support}}(4) = \{12, 13, 14\}$
+        \end{onlyenv}
+        \begin{onlyenv}<5>
+          \begin{center}
+            \begin{tikzpicture}
+              \input{../pictures/tet_graph.tex}
+              \begin{scope}[overlay, remember picture, rounded corners]
+                \filldraw[fill opacity=0.2]
+                ([xshift= 0pt, yshift= 3pt] 14.north west) --
+                ([xshift= 3pt, yshift=-3pt] 13.south east) --
+                ([xshift=-3pt, yshift= 1pt] 8.north west) --
+                ([xshift= 3pt, yshift=-1pt] 7.south east) --
+                ([xshift=-3pt, yshift= 1pt] 2.north west) --
+                ([xshift=-3pt, yshift= 1pt] 2.south west) --
+                ([xshift= 0pt, yshift=-3pt] 0.south west) --
+                ([xshift= 0pt, yshift=-3pt] 0.south east) --
+                ([xshift= 3pt, yshift=-1pt] 4.south east) --
+                ([xshift= 3pt, yshift= 0pt] 10.east) --
+                ([xshift= 2pt, yshift= 3pt] 14.north east) --
+                cycle;
+                \node[cell, fill=black, opacity=0.6] at (14.center) {};
+              \end{scope}
+            \end{tikzpicture}
+          \end{center}
+          $\text{\texttt{star}}(4) = \{0, 6, 7, 8, 12, 13, 14\}$
+        \end{onlyenv}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}[fragile]
+ \frametitle{Topological subspace definition via \texttt{DMPlex}}
+ \begin{itemize}
+ \item Each patch defined by set of mesh points (entities) on which the dofs
+   we're going to solve for in the patch live
+ \end{itemize}
+ \begin{block}{Builtin}
+   Specify patches by selecting:
+   \begin{enumerate}
+   \item Mesh points $\{p_i\}$ to iterate over (e.g.~vertices, cells)
+   \item Adjacency relation that gathers points in patch
+     \begin{itemize}
+     \item[\texttt{star}] points in $\text{star}(p_i)$
+     \item[\texttt{vanka}] points in $\text{closure}(\text{star}(p_i))$
+     \end{itemize}
+   \end{enumerate}
+ \end{block}
+ \begin{block}{User-defined}
+   Callback provides list of entities in each patch, plus iteration order.
+ \end{block}
+\end{frame}
+
+\begin{frame}[fragile,t]
+  \frametitle{Patch assembly}
+  \begin{itemize}
+  \item If we only want homogeneous Dirichlet, can use list of dofs to
+    select from assembled global operator
+  \item Doesn't work for other transmission conditions
+  \item Instead, callback interface
+  \item Extends to nonlinear smoothers
+  \end{itemize}
+
+  \begin{block}{PDE library support}
+    \begin{itemize}
+    \item Works if you use \texttt{DMPlex} + \texttt{PetscDS}
+\begin{minted}[fontsize=\scriptsize]{sh}
+-pc_type patch
+\end{minted}
+    \item Works in Firedrake
+\begin{minted}[fontsize=\scriptsize]{sh}
+-pc_type python -pc_python_type firedrake.PatchPC
+# Also
+-snes_type python -snes_python_type firedrake.PatchSNES
+\end{minted}
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\section{Examples}
+
+\begin{frame}
+  \frametitle{What subspace to choose?}
+  \begin{onlyenv}<1> Consider the problem: for
+    $\alpha, \beta \in \mathbb{R}$, find $u \in V$ such that
+    \begin{equation*}
+      \alpha a(u, v) + \beta b(u, v) = (f, v) \quad \forall v \in V,
+    \end{equation*}
+    where $a$ is SPD, and $b$ is symmetric positive semidefinite.
+  \end{onlyenv}
+  \begin{theorem}[Sch\"oberl (1999); Lee, Wu, Xu, Zikatanov (2007)]
+    Let the kernel be
+    \begin{equation*}
+      \mathcal{N} := \{ u \in V : b(u, v) = 0 \,\, \forall v \in V \}.
+    \end{equation*}
+    If the subspace decomposition \emph{captures the kernel}
+    \begin{equation*}
+      \mathcal{N} = \sum_i \mathcal{N} \cap V_i,
+    \end{equation*}
+    then convergence of the relaxation defined by this decomposition
+    will be \emph{independent} of $\alpha$ and $\beta$.
+    \nocite{Schoeberl:1999,Lee:2007}
+  \end{theorem}
+  \begin{onlyenv}<2>
+    \begin{corollary}
+      ``All'' we need to do is characterise the kernel: in particular
+      the support of the basis.
+
+      Appropriate discrete de Rham complexes can help.
+    \end{corollary}
+  \end{onlyenv}
+\end{frame}
+
+\begin{frame}[fragile,t]
+  \frametitle{Nearly incompressible elasticity}
+  \vspace*{-1.5\baselineskip}
+  \begin{equation*}
+    \text{Find $u \in V \subset H^1$ s.t.} \quad (\grad u, \grad v) + \gamma (\div u, \div v) = (f, v) \quad \forall v \in V.
+  \end{equation*}
+  \vspace*{-\baselineskip}
+
+  \begin{onlyenv}<1-4>
+    \begin{block}{Stokes complex (2D)}
+      \begin{equation*}
+        \mathbb{R} \xrightarrow{\operatorname{id}} H^2
+        \xrightarrow{\grad^\perp} H^1 \xrightarrow{\div} L^2 \xrightarrow{\operatorname{null}} 0,
+      \end{equation*}
+      Decomposition must capture $\ker \div = \range \grad^\perp$.
+
+      Appropriate discrete spaces are developed in \textcite{Morgan:1975}: use
+      star patch around vertices (degree $k \ge  4$).
+    \end{block}
+    \begin{onlyenv}<1-3>
+      \begin{columns}[T]
+        \begin{column}{0.6\textwidth}
+          \begin{onlyenv}<1>
+\begin{minted}[fontsize=\scriptsize]{python}
+-ksp_type cg
+-pc_type mg
+-mg_levels_
+   -pc_type python
+   -pc_python_type firedrake.PatchPC
+   -patch_
+
+
+\end{minted}
+          \end{onlyenv}
+          \begin{onlyenv}<2>
+\begin{minted}[fontsize=\scriptsize]{python}
+-ksp_type cg
+-pc_type mg
+-mg_levels_
+   -pc_type python
+   -pc_python_type firedrake.PatchPC
+   -patch_
+      -pc_patch_construct_dim 0
+
+\end{minted}
+          \end{onlyenv}
+          \begin{onlyenv}<3>
+\begin{minted}[fontsize=\scriptsize]{python}
+-ksp_type cg
+-pc_type mg
+-mg_levels_
+   -pc_type python
+   -pc_python_type firedrake.PatchPC
+   -patch_
+      -pc_patch_construct_dim 0
+      -pc_patch_construct_type star
+\end{minted}
+          \end{onlyenv}
+        \end{column}
+        \begin{column}{0.4\textwidth}
+          \begin{center}
+            \begin{tikzpicture}[scale=4]
+              \tikzstyle{v}=[circle, fill, minimum size=0pt, inner sep=0pt]
+              \tikzstyle{c}=[diamond, fill, minimum size=4pt, inner sep=0pt]
+              \tikzstyle{e}=[rectangle, fill, minimum size=3pt, inner sep=0pt]
+              \tikzstyle{select}=[draw, minimum size=3pt]
+              \foreach \i/\k in {0/0, 0.25/1, 0.5/2, 0.75/3} {
+                \foreach \j/\l in {0/0, 0.25/1, 0.5/2, 0.75/3} {
+                  \node[v] (v\k\l) at (\i, \j) {};
+                }
+              }
+
+              \foreach \i in {0, 0.25, 0.5, 0.75} {
+                \foreach \j/\k in {0/0.25, 0.25/0.5, 0.5/0.75} {
+                  \draw[thin, gray] (\i, \j) -- (\i, \k);
+                  \draw[thin, gray] (\j, \i) -- (\k, \i);
+                }
+              }
+              \foreach \i/\j in {0/0.25, 0.25/0.5, 0.5/0.75} {
+                \foreach \k/\l in {0/0.25, 0.25/0.5, 0.5/0.75} {
+                  \draw[thin, gray] (\i, \l) -- (\j, \k);
+                }
+              }
+
+              \uncover<2-3>{
+                \node[v, select] at (v11) {};
+                \node[v, select] at (v21) {};
+                \node[v, select] at (v12) {};
+                \node[v, select] at (v22) {};
+              }
+              \foreach \a/\b in {0/1, 1/2, 2/3} {
+                \foreach \c/\d in {1/0, 2/1, 3/2} {
+                  \node (c\a\c-\b\c-\b\d) at (barycentric cs:v\a\c=1,v\b\c=1,v\b\d=1) {};
+                  \node (c\a\d-\b\d-\a\c) at (barycentric cs:v\a\d=1,v\b\d=1,v\a\c=1) {};
+                }
+              }
+
+              \uncover<3>{
+                \draw[thick] \convexpath{
+                  c02-12-11,
+                  c11-21-12,
+                  c11-21-20,
+                  c10-20-11,
+                  c01-11-10,
+                  c01-11-02}{1pt};
+                \draw[thick] \convexpath{
+                  c12-22-21,
+                  c21-31-22,
+                  c21-31-30,
+                  c20-30-21,
+                  c11-21-20,
+                  c11-21-12}{1pt};
+                \draw[thick] \convexpath{
+                  c03-13-12,
+                  c12-22-13,
+                  c12-22-21,
+                  c11-21-12,
+                  c02-12-11,
+                  c02-12-03}{1pt};
+                \draw[thick] \convexpath{
+                  c13-23-22,
+                  c22-32-23,
+                  c22-32-31,
+                  c21-31-22,
+                  c12-22-21,
+                  c12-22-13}{1pt};
+              }
+            \end{tikzpicture}
+          \end{center}
+        \end{column}
+      \end{columns}
+    \end{onlyenv}
+    \begin{onlyenv}<4>
+      \begin{table}
+        \centering
+        {\footnotesize
+          \begin{table}[htbp]
+            \centering
+            \begin{tabular}{l|cccccc}
+              $k\backslash \gamma$ & $10^0$ & $10^1$ & $10^2$ & $10^3$ & $10^4$ & $10^5$ \\
+              \toprule
+              2                    & 11     & 17     & 35     & 54     & 89     & 100    \\
+              3                    & 10     & 13     & 23     & 49
+                                                                       & 62     & 82     \\
+              \midrule
+              4                    & 9      & 10     & 13     & 13     & 13     & 12     \\
+              5                    & 9      & 10     & 11     & 12     & 11     & 10     \\
+            \end{tabular}
+            \caption{Convergence in 2D with vertex star patch smoother
+            for $P_k$ elements}
+          \end{table}
+        }
+      \end{table}
+    \end{onlyenv}
+  \end{onlyenv}
+  \begin{onlyenv}<5>
+      \begin{block}{Stokes complex (3D)}
+        \begin{equation*}
+          \mathbb{R} \xrightarrow{\operatorname{id}} H^2
+          \xrightarrow{\grad} H^1(\curl) \xrightarrow{\curl} H^1 \xrightarrow{\div} L^2 \xrightarrow{\operatorname{null}} 0,
+        \end{equation*}
+        Decomposition must capture $\ker \div = \range \curl$.
+
+        Appropriate discrete spaces are developed in \textcite{Neilan:2015}: use
+        star patch around vertices (degree $k \ge 7$).
+      \end{block}
+    \begin{table}
+      \centering
+      {\footnotesize
+      \begin{tabular}{l|cccccc}
+        $k\backslash \gamma$ & $10^0$ & $10^1$ & $10^2$ & $10^3$ & $10^4$ & $10^5$ \\
+        \toprule
+        3                    & 11     & 16     & 29     & 66     & 173    & 458    \\
+        4                    & 11     & 13     & 19     & 26     & 54
+                                                                          & 110    \\
+        \midrule
+        5                    & 11     & 12     & 16     & 19     & 20     & 19     \\
+        6                    & 10     & 11     & 14     & 15     & 16
+                                                                          & 15     \\
+        \midrule
+        7                    & 10     & 11     & 13     & 14     & 14     & 13     \\
+      \end{tabular}
+      \caption{Convergence in 3D with vertex star patch smoother for
+        $P_k$ elements}
+      }
+    \end{table}
+  \end{onlyenv}
+\end{frame}
+
+\begin{frame}[fragile, t]
+  \frametitle{H(div) Riesz map}
+  \vspace{-1.5\baselineskip}
+  \begin{equation*}
+    \text{Find $u \in V \subset H(\div)$ s.t.}\quad (u, v) + \gamma (\div u, \div v) = (f, v) \quad \forall v \in V.
+  \end{equation*}
+  \vspace*{-\baselineskip}
+  \begin{block}{Whitney-N\'ed\'elec complex}
+    \begin{equation*}
+      \mathbb{R} \xrightarrow{\operatorname{id}} H^1 \xrightarrow{\grad} H(\curl)
+      \xrightarrow{\curl} H(\div) \xrightarrow{\div} L^2 \xrightarrow{\operatorname{null}} 0,
+    \end{equation*}
+    Decomposition must capture $\ker \div = \range \curl$.
+
+    Choose $V$ to be a Raviart-Thomas space, the matching $H(\curl)$
+    space has dofs on edges: use star patch around edges (or vertices).
+  \end{block}
+  \begin{onlyenv}<1-3>
+    \begin{columns}[T]
+      \begin{column}{0.6\textwidth}
+        \begin{onlyenv}<1>
+\begin{minted}[fontsize=\scriptsize]{python}
+-ksp_type cg
+-pc_type mg
+-mg_levels_
+   -pc_type python
+   -pc_python_type firedrake.PatchPC
+   -patch_
+
+
+\end{minted}
+        \end{onlyenv}
+        \begin{onlyenv}<2>
+\begin{minted}[fontsize=\scriptsize]{python}
+-ksp_type cg
+-pc_type mg
+-mg_levels_
+   -pc_type python
+   -pc_python_type firedrake.PatchPC
+   -patch_
+      -pc_patch_construct_dim 1
+
+\end{minted}
+        \end{onlyenv}
+        \begin{onlyenv}<3>
+\begin{minted}[fontsize=\scriptsize]{python}
+-ksp_type cg
+-pc_type mg
+-mg_levels_
+   -pc_type python
+   -pc_python_type firedrake.PatchPC
+   -patch_
+      -pc_patch_construct_dim 1
+      -pc_patch_construct_type star
+\end{minted}
+        \end{onlyenv}
+      \end{column}
+      \begin{column}{0.4\textwidth}
+        \begin{center}
+          \begin{tikzpicture}[scale=4]
+            \tikzstyle{v}=[circle, fill, minimum size=0pt, inner sep=0pt]
+            \tikzstyle{c}=[diamond, fill, minimum size=4pt, inner sep=0pt]
+            \tikzstyle{e}=[rectangle, fill, minimum size=3pt, inner sep=0pt]
+            \tikzstyle{select}=[draw, minimum size=3pt]
+            \foreach \i/\k in {0/0, 0.25/1, 0.5/2, 0.75/3} {
+              \foreach \j/\l in {0/0, 0.25/1, 0.5/2, 0.75/3} {
+                \node[v] (v\k\l) at (\i, \j) {};
+              }
+            }
+
+            \foreach \i in {0, 0.25, 0.5, 0.75} {
+              \foreach \j/\k in {0/0.25, 0.25/0.5, 0.5/0.75} {
+                \draw[thin, gray] (\i, \j) -- (\i, \k);
+                \draw[thin, gray] (\j, \i) -- (\k, \i);
+              }
+            }
+            \foreach \i/\j in {0/0.25, 0.25/0.5, 0.5/0.75} {
+              \foreach \k/\l in {0/0.25, 0.25/0.5, 0.5/0.75} {
+                \draw[thin, gray] (\i, \l) -- (\j, \k);
+              }
+            }
+            \foreach \a/\b in {0/1, 1/2, 2/3} {
+              \foreach \c/\d in {1/0, 2/1, 3/2} {
+                \node (c\a\c-\b\c-\b\d) at (barycentric cs:v\a\c=1,v\b\c=1,v\b\d=1) {};
+                \node (c\a\d-\b\d-\a\c) at (barycentric cs:v\a\d=1,v\b\d=1,v\a\c=1) {};
+              }
+            }
+            \node (e1) at (barycentric cs:v12=1,v22=2) {};
+            \node (e2) at (barycentric cs:v12=2,v22=1) {};
+
+            \node (e3) at (barycentric cs:v11=1,v21=2) {};
+            \node (e4) at (barycentric cs:v11=2,v21=1) {};
+
+            \node (e5) at (barycentric cs:v21=1,v12=2) {};
+            \node (e6) at (barycentric cs:v21=2,v12=1) {};
+
+            \uncover<2-3>{
+              \node[e, select] at (barycentric cs:v12=1,v22=1) {};
+              \node[e, select] at (barycentric cs:v11=1,v21=1) {};
+              \node[e, select] at (barycentric cs:v21=1,v12=1) {};
+            }
+
+            \uncover<3>{
+              \draw[thick] \convexpath{
+                c12-22-13,
+                e1,
+                c12-22-21,
+                e2}{1pt};
+
+              \draw[thick] \convexpath{
+                c11-21-12,
+                e3,
+                c11-21-20,
+                e4}{1pt};
+
+              \draw[thick] \convexpath{
+                c11-21-12,
+                e5,
+                c12-22-21,
+                e6}{1pt};
+            }
+          \end{tikzpicture}
+        \end{center}
+      \end{column}
+    \end{columns}
+  \end{onlyenv}
+  \begin{onlyenv}<4>
+    \begin{table}
+      \centering
+      {\footnotesize
+      \begin{tabular}{l|cccccc}
+        $k\backslash \gamma$ & $10^0$ & $10^1$ & $10^2$ & $10^3$ & $10^4$ & $10^5$ \\
+        \toprule
+        1 (edge)             & 32     & 32     & 32     & 32     & 32     & 32     \\
+        2 (edge)             & 15     & 15     & 15     & 15     & 15     & 15     \\
+        \midrule
+        1 (vertex)           & 11     & 11     & 11     & 11     & 11     & 11     \\
+        2 (vertex)           & 7      & 7      & 7      & 7      & 7      & 7
+      \end{tabular}
+      \caption{Convergence in 3D with vertex and edge star patch
+        smoothers for $\text{RT}_k$ elements}
+      }
+    \end{table}
+  \end{onlyenv}
+\end{frame}
+
+\begin{frame}[fragile,t]
+  \frametitle{H(curl) Riesz map}
+  \vspace{-1.5\baselineskip}
+  \begin{equation*}
+    \text{  Find $u \in V \subset H(\curl)$ s.t.} \quad (u, v) + \gamma (\curl u, \curl v) = (f, v) \quad \forall v \in V.
+  \end{equation*}
+  \vspace{-\baselineskip}
+  \begin{block}{Whitney-N\'ed\'elec complex}
+    \begin{equation*}
+      \mathbb{R} \xrightarrow{\operatorname{id}} H^1 \xrightarrow{\grad} H(\curl)
+      \xrightarrow{\curl} H(\div) \xrightarrow{\div} L^2 \xrightarrow{\operatorname{null}} 0,
+    \end{equation*}
+    Decomposition must capture $\ker \curl = \range \grad$.
+
+    Choose $V$ to be a N\'ed\'elec space, the matching $H^1$
+    space has dofs at vertices: use star patch around vertices.
+  \end{block}
+  \begin{overlayarea}{\textwidth}{0.5\textheight}
+  \begin{onlyenv}<1-3>
+    \begin{columns}[T]
+      \begin{column}{0.6\textwidth}
+        \begin{onlyenv}<1>
+\begin{minted}[fontsize=\scriptsize]{python}
+-ksp_type cg
+-pc_type mg
+-mg_levels_
+   -pc_type python
+   -pc_python_type firedrake.PatchPC
+   -patch_
+
+
+\end{minted}
+        \end{onlyenv}
+        \begin{onlyenv}<2>
+\begin{minted}[fontsize=\scriptsize]{python}
+-ksp_type cg
+-pc_type mg
+-mg_levels_
+   -pc_type python
+   -pc_python_type firedrake.PatchPC
+   -patch_
+      -pc_patch_construct_dim 0
+
+\end{minted}
+        \end{onlyenv}
+        \begin{onlyenv}<3>
+\begin{minted}[fontsize=\scriptsize]{python}
+-ksp_type cg
+-pc_type mg
+-mg_levels_
+   -pc_type python
+   -pc_python_type firedrake.PatchPC
+   -patch_
+      -pc_patch_construct_dim 0
+      -pc_patch_construct_type star
+\end{minted}
+        \end{onlyenv}
+      \end{column}
+      \begin{column}{0.4\textwidth}
+        \begin{center}
+          \begin{tikzpicture}[scale=4]
+            \tikzstyle{v}=[circle, fill, minimum size=0pt, inner sep=0pt]
+            \tikzstyle{c}=[diamond, fill, minimum size=4pt, inner sep=0pt]
+            \tikzstyle{e}=[rectangle, fill, minimum size=3pt, inner sep=0pt]
+            \tikzstyle{select}=[draw, minimum size=3pt]
+            \foreach \i/\k in {0/0, 0.25/1, 0.5/2, 0.75/3} {
+              \foreach \j/\l in {0/0, 0.25/1, 0.5/2, 0.75/3} {
+                \node[v] (v\k\l) at (\i, \j) {};
+              }
+            }
+
+            \foreach \i in {0, 0.25, 0.5, 0.75} {
+              \foreach \j/\k in {0/0.25, 0.25/0.5, 0.5/0.75} {
+                \draw[thin, gray] (\i, \j) -- (\i, \k);
+                \draw[thin, gray] (\j, \i) -- (\k, \i);
+              }
+            }
+            \foreach \i/\j in {0/0.25, 0.25/0.5, 0.5/0.75} {
+              \foreach \k/\l in {0/0.25, 0.25/0.5, 0.5/0.75} {
+                \draw[thin, gray] (\i, \l) -- (\j, \k);
+              }
+            }
+
+            \uncover<2-3>{
+              \node[v, select] at (v11) {};
+              \node[v, select] at (v21) {};
+              \node[v, select] at (v12) {};
+              \node[v, select] at (v22) {};
+            }
+            \foreach \a/\b in {0/1, 1/2, 2/3} {
+              \foreach \c/\d in {1/0, 2/1, 3/2} {
+                \node (c\a\c-\b\c-\b\d) at (barycentric cs:v\a\c=1,v\b\c=1,v\b\d=1) {};
+                \node (c\a\d-\b\d-\a\c) at (barycentric cs:v\a\d=1,v\b\d=1,v\a\c=1) {};
+              }
+            }
+
+            \uncover<3>{
+              \draw[thick] \convexpath{
+                c02-12-11,
+                c11-21-12,
+                c11-21-20,
+                c10-20-11,
+                c01-11-10,
+                c01-11-02}{1pt};
+              \draw[thick] \convexpath{
+                c12-22-21,
+                c21-31-22,
+                c21-31-30,
+                c20-30-21,
+                c11-21-20,
+                c11-21-12}{1pt};
+              \draw[thick] \convexpath{
+                c03-13-12,
+                c12-22-13,
+                c12-22-21,
+                c11-21-12,
+                c02-12-11,
+                c02-12-03}{1pt};
+              \draw[thick] \convexpath{
+                c13-23-22,
+                c22-32-23,
+                c22-32-31,
+                c21-31-22,
+                c12-22-21,
+                c12-22-13}{1pt};
+            }
+          \end{tikzpicture}
+        \end{center}
+      \end{column}
+    \end{columns}
+  \end{onlyenv}
+  \begin{onlyenv}<4>
+    \begin{table}
+      \centering
+      {\footnotesize
+      \begin{tabular}{l|cccccc}
+        $k\backslash \gamma$ & $10^0$ & $10^1$ & $10^2$ & $10^3$ & $10^4$ & $10^5$ \\
+        \hline
+        1                    & 13     & 13     & 13     & 13     & 13     & 13     \\
+        2                    & 10     & 10     & 10     & 10     & 10     & 10     \\
+      \end{tabular}
+      \caption{Convergence with vertex star patch preconditioned Richardson
+        smoothers and $\text{N1curl}_k$ elements}
+      }
+    \end{table}
+  \end{onlyenv}
+  \end{overlayarea}
+\end{frame}
+
+\begin{frame}[fragile, t]
+  \frametitle{Vanka for Stokes}
+  Find $(u, p) \in V\times Q \subset (H^1)^d \times L^2$ s.t.
+  \begin{equation*}
+    (\grad u, \grad v) - (p, \div v) - (\div u, q) = (f, v) \quad \forall (v, q) \in V \times Q.
+  \end{equation*}
+
+  \begin{block}{Vanka patch}
+    Solve simultaneously for $(u, p)$ on each pressure dof, gathering
+    those velocity dofs that couple to the pressure dof.
+
+    \only<1-3>{Marker-and-Cell: loop over cells, gather closure of star}
+
+    \only<4-7>{Taylor-Hood: loop over vertices, gather closure of star}
+    \nocite{Vanka:1986}
+  \end{block}
+  \begin{overlayarea}{\textwidth}{0.52\textheight}
+  \begin{onlyenv}<1-6>
+    \begin{columns}[T]
+      \begin{column}{0.4\textwidth}
+        \begin{onlyenv}<1-3>
+          \vspace{-0.5em}
+          \begin{center}
+            \begin{tikzpicture}[scale=4]
+              \tikzstyle{v}=[circle, fill, minimum size=0pt, inner sep=0pt]
+              \tikzstyle{c}=[diamond, fill, minimum size=4pt, inner sep=0pt]
+              \tikzstyle{e}=[rectangle, fill, minimum size=3pt, inner sep=0pt]
+              \tikzstyle{select}=[draw, minimum size=3pt]
+              \foreach \i/\k in {0/0, 0.25/1, 0.5/2, 0.75/3} {
+                \foreach \j/\l in {0/0, 0.25/1, 0.5/2, 0.75/3} {
+                  \node[v] (v\k\l) at (\i, \j) {};
+                }
+              }
+
+              \foreach \i in {0, 0.25, 0.5, 0.75} {
+                \foreach \j/\k in {0/0.25, 0.25/0.5, 0.5/0.75} {
+                  \draw[thin, gray] (\i, \j) -- (\i, \k);
+                  \draw[thin, gray] (\j, \i) -- (\k, \i);
+                }
+              }
+              \foreach \i/\j in {0/0.25, 0.25/0.5, 0.5/0.75} {
+                \foreach \k/\l in {0/0.25, 0.25/0.5, 0.5/0.75} {
+                  \draw[thin, gray] (\i, \l) -- (\j, \k);
+                }
+              }
+              \foreach \a/\b in {0/1, 1/2, 2/3} {
+                \foreach \c/\d in {1/0, 2/1, 3/2} {
+                  \node (c\a\c-\b\c-\b\d) at (barycentric cs:v\a\c=1,v\b\c=1,v\b\d=1) {};
+                  \node (c\a\d-\b\d-\a\c) at (barycentric cs:v\a\d=1,v\b\d=1,v\a\c=1) {};
+                }
+              }
+              \uncover<2-3>{
+                \node[c, select] at (c12-22-21) {};
+                \node[c, select] at (c02-12-11) {};
+                \node[c, select] at (c11-21-12) {};
+              }
+              \uncover<3>{
+                \draw[thick] \convexpath{v02,v12,v11}{1pt};
+                \draw[thick] \convexpath{v12,v21,v11}{1pt};
+                \draw[thick] \convexpath{v12,v22,v21}{1pt};
+              }
+              \phantom{
+                \draw[thick] \convexpath{v03,v13,v22,v21,v11,v02}{1pt};
+                \draw[thick] \convexpath{v12,v22,v31,v30,v20,v11}{1pt};
+              }
+            \end{tikzpicture}
+          \end{center}
+        \end{onlyenv}
+        \begin{onlyenv}<4-6>
+          \vspace{-0.5em}
+          \begin{center}
+            \begin{tikzpicture}[scale=4]
+              \tikzstyle{v}=[circle, fill, minimum size=0pt, inner sep=0pt]
+              \tikzstyle{c}=[diamond, fill, minimum size=4pt, inner sep=0pt]
+              \tikzstyle{e}=[rectangle, fill, minimum size=3pt, inner sep=0pt]
+              \tikzstyle{select}=[draw, minimum size=3pt]
+              \foreach \i/\k in {0/0, 0.25/1, 0.5/2, 0.75/3} {
+                \foreach \j/\l in {0/0, 0.25/1, 0.5/2, 0.75/3} {
+                  \node[v] (v\k\l) at (\i, \j) {};
+                }
+              }
+
+              \foreach \i in {0, 0.25, 0.5, 0.75} {
+                \foreach \j/\k in {0/0.25, 0.25/0.5, 0.5/0.75} {
+                  \draw[thin, gray] (\i, \j) -- (\i, \k);
+                  \draw[thin, gray] (\j, \i) -- (\k, \i);
+                }
+              }
+              \foreach \i/\j in {0/0.25, 0.25/0.5, 0.5/0.75} {
+                \foreach \k/\l in {0/0.25, 0.25/0.5, 0.5/0.75} {
+                  \draw[thin, gray] (\i, \l) -- (\j, \k);
+                }
+              }
+              \foreach \a/\b in {0/1, 1/2, 2/3} {
+                \foreach \c/\d in {1/0, 2/1, 3/2} {
+                  \node (c\a\c-\b\c-\b\d) at (barycentric cs:v\a\c=1,v\b\c=1,v\b\d=1) {};
+                  \node (c\a\d-\b\d-\a\c) at (barycentric cs:v\a\d=1,v\b\d=1,v\a\c=1) {};
+                }
+              }
+              \uncover<5-6>{
+                \node[v, select] at (v12) {};
+                \node[v, select] at (v21) {};
+              }
+              \uncover<6>{
+                \draw[thick] \convexpath{v03,v13,v22,v21,v11,v02}{1pt};
+                \draw[thick] \convexpath{v12,v22,v31,v30,v20,v11}{1pt};
+              }
+              \phantom{
+                \draw[thick] \convexpath{v02,v12,v11}{1pt};
+                \draw[thick] \convexpath{v12,v21,v11}{1pt};
+                \draw[thick] \convexpath{v12,v22,v21}{1pt};
+              }
+            \end{tikzpicture}
+          \end{center}
+        \end{onlyenv}
+      \end{column}
+      \begin{column}{0.6\textwidth}
+        \begin{onlyenv}<1>
+\begin{minted}[fontsize=\scriptsize]{python}
+-ksp_type cg
+-pc_type mg
+-mg_levels_
+   -pc_type python
+   -pc_python_type firedrake.PatchPC
+   -patch_
+
+
+
+\end{minted}
+        \end{onlyenv}
+        \begin{onlyenv}<2>
+\begin{minted}[fontsize=\scriptsize]{python}
+-ksp_type cg
+-pc_type mg
+-mg_levels_
+   -pc_type python
+   -pc_python_type firedrake.PatchPC
+   -patch_
+      -pc_patch_construct_codim 0
+
+
+\end{minted}
+        \end{onlyenv}
+        \begin{onlyenv}<3>
+\begin{minted}[fontsize=\scriptsize]{python}
+-ksp_type cg
+-pc_type mg
+-mg_levels_
+   -pc_type python
+   -pc_python_type firedrake.PatchPC
+   -patch_
+      -pc_patch_construct_codim 0
+      -pc_patch_construct_type vanka
+      -pc_patch_exclude_subspaces 1
+\end{minted}
+        \end{onlyenv}
+        \begin{onlyenv}<4>
+\begin{minted}[fontsize=\scriptsize]{python}
+-ksp_type cg
+-pc_type mg
+-mg_levels_
+   -pc_type python
+   -pc_python_type firedrake.PatchPC
+   -patch_
+
+
+
+\end{minted}
+        \end{onlyenv}
+        \begin{onlyenv}<5>
+\begin{minted}[fontsize=\scriptsize]{python}
+-ksp_type cg
+-pc_type mg
+-mg_levels_
+   -pc_type python
+   -pc_python_type firedrake.PatchPC
+   -patch_
+      -pc_patch_construct_dim 0
+
+
+\end{minted}
+        \end{onlyenv}
+        \begin{onlyenv}<6>
+\begin{minted}[fontsize=\scriptsize]{python}
+-ksp_type cg
+-pc_type mg
+-mg_levels_
+   -pc_type python
+   -pc_python_type firedrake.PatchPC
+   -patch_
+      -pc_patch_construct_dim 0
+      -pc_patch_construct_type vanka
+      -pc_patch_exclude_subspaces 1
+\end{minted}
+        \end{onlyenv}
+      \end{column}
+    \end{columns}
+  \end{onlyenv}
+  \begin{onlyenv}<7>
+    \begin{columns}
+      \begin{column}{0.333\pagewidth}
+        \includegraphics[width=\textwidth]{stokes-velocity}
+      \end{column}
+      \begin{column}{0.333\pagewidth}
+        \includegraphics[width=\textwidth]{stokes-viscosity}
+      \end{column}
+      \begin{column}{0.333\pagewidth}
+        \begin{itemize}
+        \item Converges in around 16 iterations, even with large
+          viscosity contrasts (Gaussian bumps)
+        \item Falls over when jumps appear
+        \end{itemize}
+      \end{column}
+    \end{columns}
+  \end{onlyenv}
+  \end{overlayarea}
+\end{frame}
+
+\begin{frame}[fragile,t]
+  \frametitle{Divergence free Navier--Stokes with augmented Lagrangian}
+  \vspace{-1.5\baselineskip}
+  {\small\begin{equation*}
+    \text{Find $u \in (H^1)^d$ s.t.}\quad \nu(\grad u, \grad v) + (u\cdot \grad u, v) + \gamma(\div u, \div v) = (f, v) \quad \forall v \in V.
+  \end{equation*}}
+  \vspace*{-\baselineskip}
+  \begin{block}{Stokes complex on Alfeld splits}
+    \begin{equation*}
+      \mathbb{R} \xrightarrow{\operatorname{id}} H^2 \xrightarrow{\grad} H^1(\curl)
+      \xrightarrow{\curl} H^1 \xrightarrow{\div} L^2 \xrightarrow{\operatorname{null}} 0,
+    \end{equation*}
+    Decomposition must capture $\ker \div = \range \curl$.
+
+    Appropriate discrete spaces are constructed in \textcite{Fu:2018}: use
+    barycentrically refined meshes, piecewise continuous space with $k
+    \ge d$, ``macro star'' patch around vertices.
+  \end{block}
+  \begin{overlayarea}{\textwidth}{0.4\textheight}
+    \begin{onlyenv}<1>
+      \begin{center}
+        \includegraphics[height=0.4\textheight]{mh_bary_5}
+      \end{center}
+    \end{onlyenv}
+    \begin{onlyenv}<2->
+  \begin{columns}[T]
+    \begin{column}{0.6\textwidth}
+\begin{minted}[fontsize=\scriptsize]{python}
+-ksp_type fgmres
+-pc_type mg
+-mg_levels_
+   -ksp_type gmres
+   -pc_type python
+   -pc_python_type firedrake.PatchPC
+   -patch_
+      -pc_patch_construct_type python
+      -pc_patch_construct_python_type MacroStar
+\end{minted}
+    \end{column}
+    \begin{column}{0.4\textwidth}
+      \vspace{-1.5em}
+      \begin{center}
+        \includegraphics[height=0.4\textheight]{macrostar}
+      \end{center}
+    \end{column}
+  \end{columns}
+    \end{onlyenv}
+  \end{overlayarea}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Conclusions}
+  \begin{itemize}
+  \item Bidirectional solver/discretisation interface useful
+  \item Playground for preconditioner design: it's easy to get all the
+    operators you need
+  \item With scalability to large problems
+  \item Overlapping Schwarz methods also benefit from this
+  \item With topological decompositions in hand, can provide a
+    \emph{generic} interface, encompassing many useful smoothing schemes
+  \end{itemize}
+
+  \begin{center}
+    Thanks!
+  \end{center}
+\end{frame}
 
 \appendix
 \begin{frame}[allowframebreaks]
