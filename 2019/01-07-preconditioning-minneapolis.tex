@@ -100,7 +100,7 @@ backend=biber]{biblatex}
 {\end{variableblock}}
 
 \renewenvironment{exampleblock}[1]%
-{\begin{variableblock}{#1}{bg=yellow!20,fg=black}{bg=yellow,fg=white}}%
+{\begin{variableblock}{#1}{bg=green!20,fg=black}{bg=green,fg=white}}%
 {\end{variableblock}}
 
 \setbeamercolor{normal text}{
@@ -251,23 +251,27 @@ backend=biber]{biblatex}
 
 \begin{frame}
   \frametitle{When point Jacobi is not enough}
-  \begin{example}
+  \begin{exampleblock}{$H(\div)$ Riesz map}
     Find $u \in V \subset H(\div)$ such that
     \begin{equation*}
       (u, v)_{L^2} + \gamma (\div u, \div v)_{L^2} = (f, v)_{L^2} \quad \text{for
         all }v \in V
     \end{equation*}
-  \end{example}
+  \end{exampleblock}
   \begin{answer}{Problem is difficult even for moderate $\gamma$}
-    \uncover<2->{\textcite{Arnold:2000}: use block Jacobi with blocks
-      around vertices}
+    \textcite{Arnold:2000}: use block Jacobi with blocks around vertices
     \begin{center}
-      \begin{tabular}{c|cccccc}
-        Preconditioner \textbackslash\ $\gamma$ & 0 & 0.1 & 1 & 10 & 100 & 1000 \\
-        \midrule
-        Point Jacobi & 10 & 88 & 147 & 209 & 264 & 321 \\
-        \uncover<2->{Block Jacobi & 5 & 18 & 23 & 24 & 24 & 23}
-      \end{tabular}
+      \begin{table}
+        \centering
+        \begin{tabular}{c|cccccc}
+          Preconditioner \textbackslash\ $\gamma$ & 0 & 0.1 & 1 & 10 & 100 & 1000 \\
+          \midrule
+          Point Jacobi & 10 & 88 & 147 & 209 & 264 & 321 \\
+          Block Jacobi & 5 & 18 & 23 & 24 & 24 & 23
+        \end{tabular}
+        \caption{Preconditioned CG iterations for Raviart-Thomas
+          elements}
+      \end{table}
     \end{center}
   \end{answer}
 \end{frame}
@@ -303,11 +307,11 @@ backend=biber]{biblatex}
 
   \begin{onlyenv}<3>
     \begin{block}{Multigrid for nearly incompressible elasticity}
-      \emph{The suggested smoother is block Jacobi smoother, which takes
-      care of the kernel [...]. These kernel basis functions are
+      \emph{The suggested smoother is a block Jacobi smoother, which takes
+      care of the kernel [\dots]. These kernel basis functions are
       captured by subspaces $V_{l,i}$ as shown}
       \begin{center}
-        \includegraphics[height=3cm]{schoeberl}
+        \includegraphics[height=3.5cm]{schoeberl}
       \end{center}
       \begin{flushright}
         \textcite{Schoeberl:1999} \hspace{4em}
@@ -332,8 +336,8 @@ backend=biber]{biblatex}
 
   \begin{onlyenv}<5>
     \begin{block}{An augmented Lagrangian approach to the Oseen problem}
-      \emph{We use a block Gauss-Seidel method [...] based on the
-      decomposition $V_h = \sum_{i=0}^l V_i$ [...For] P2-P0 finite
+      \emph{We use a block Gauss-Seidel method [\dots] based on the
+      decomposition $V_h = \sum_{i=0}^l V_i$. [\dots For] P2-P0 finite
       elements the natural choice is to gather nodel DOFs for velocity
       inside ovals [around a vertex]}
 
@@ -364,12 +368,12 @@ backend=biber]{biblatex}
                   }
                   child [missing] {}
                   child { node {Prolongation operator}
-                    child { node[fill=red!50] {Local solves over coarse cells}}
+                    child { node[fill=red!50, draw=red] {Local solves over coarse cells}}
                   }
                   child [missing] {}
                   child { node {Relaxation}
                     child { node {GMRES}
-                      child { node[fill=red!50] {Additive star iteration}}
+                      child { node[fill=red!50, draw=red] {Additive star iteration}}
                     }
                   }
                 }
@@ -387,59 +391,58 @@ backend=biber]{biblatex}
 
 \begin{frame}
   \frametitle{Unifying observation}
-  \begin{block}{Abstract relaxation method}
-    Choose a subspace decomposition
-    \begin{equation*}
-      V = \sum_i V_i
-    \end{equation*}
-    solve the problem on each subspace and combine the updates.
-  \end{block}
+  Smoothers all use block Jacobi/G-S with problem-specific choice of blocks.  
   \begin{itemize}
   \item Decompose space (usually) based on some mesh decomposition
   \item Build and solve little problems on the resulting patches
   \item Combine additively or multiplicatively
   \end{itemize}
+
   \pause
-  \begin{example}
-    If $V_i$ matches the parallel mesh decomposition, then we have
-    (non-overlapping) additive Schwarz (parallel subspace solves)
-  \end{example}
+  \begin{challenge}{Challenge}
+    Want to do this inside block preconditioners, and as a multigrid
+    smoother.
+
+    Not sufficient to specify dof decomposition on a (single) global matrix.
+  \end{challenge}
 \end{frame}
+
 
 \section{\texttt{PCPATCH}}
 
-\begin{frame}[fragile]
+\begin{frame}[fragile, t]
   \frametitle{\texttt{PCPATCH}}
-  \begin{onlyenv}<1-2>
-    \begin{challenge}{Requirements}
-      \begin{itemize}
-      \item Want \emph{flexible} PC
-        $\Rightarrow$ change decomposition easily
-      \item Need to nest inside more complex solvers
-      \end{itemize}
-    \end{challenge}
-  \end{onlyenv}
-  \begin{onlyenv}<2->
-    \begin{answer}{Idea}
-      \begin{itemize}
-      \item Separate topological decomposition from algebraic operators
-      \item User only provides topological description of patches
-      \item Ask discretisation library to make the operators once
-        decomposition is obtained
-      \end{itemize}
-    \end{answer}
-  \end{onlyenv}
-  \begin{onlyenv}<3->
-    \begin{exampleblock}{Usage}
-      \begin{itemize}
-      \item PETSc \texttt{DMPlex} + \texttt{PetscDS}\\
-        {\scriptsize \verb|-pc_type patch|}
-      \item Firedrake\\
-        {\scriptsize \verb|-pc_type python -pc_python_type firedrake.PatchPC|\\
-          \verb|-snes_type python -snes_python_type firedrake.PatchSNES|}
-      \end{itemize}
-    \end{exampleblock}
-  \end{onlyenv}
+    \begin{onlyenv}<1-2>
+      \begin{challenge}{Requirements}
+        \begin{itemize}
+        \item Want \emph{flexible} PC $\Rightarrow$ change
+          decomposition easily
+        \item Need to nest inside more complex solvers
+        \end{itemize}
+      \end{challenge}
+    \end{onlyenv}
+    \begin{onlyenv}<2->
+      \begin{answer}{Idea}
+        \begin{itemize}
+        \item Separate topological decomposition from algebraic
+          operators
+        \item User only provides topological description of patches
+        \item Ask discretisation library to make the operators once
+          decomposition is obtained
+        \end{itemize}
+      \end{answer}
+    \end{onlyenv}
+    \begin{onlyenv}<3->
+      \begin{exampleblock}{Library support}
+        \begin{itemize}
+        \item PETSc (\url{mcs.anl.gov/petsc}): \texttt{DMPlex} + \texttt{PetscDS}\\
+          {\scriptsize \verb|-pc_type patch|}
+        \item Firedrake (\url{www.firedrakeproject.org}):\\
+          {\scriptsize \verb|-pc_type python -pc_python_type firedrake.PatchPC|\\
+            \verb|-snes_type python -snes_python_type firedrake.PatchSNES|}
+        \end{itemize}
+      \end{exampleblock}
+    \end{onlyenv}
 \end{frame}
 
 \begin{frame}
@@ -448,7 +451,7 @@ backend=biber]{biblatex}
   \item \texttt{DMPlex} associates dofs with topological entities in mesh
   \item A patch is defined by a set of these entities,
     \texttt{PCPATCH} determines the dofs that correspond to them
-  \item Adjacency relations defined using \texttt{star} and \texttt{closure}
+  \item Adjacency relations defined using topological queries: often \texttt{star} and \texttt{closure}
   \end{itemize}
   \begin{overlayarea}{\textwidth}{0.6\textheight}
     \begin{uncoverenv}<2->
@@ -508,64 +511,70 @@ backend=biber]{biblatex}
   \end{overlayarea}
 \end{frame}
 \begin{frame}[fragile]
- \frametitle{Topological subspace definition via \texttt{DMPlex}}
+ \frametitle{Describing patches}
  \begin{itemize}
- \item Each patch defined by set of mesh points (entities) on which the dofs
-   we're going to solve for in the patch live
+ \item Each patch defined by set of mesh entities
  \end{itemize}
  \begin{block}{Builtin}
    Specify patches by selecting:
    \begin{enumerate}
-   \item Mesh points $\{p_i\}$ to iterate over (e.g.~vertices, cells)
+   \item Mesh entities $\{p_i\}$ to iterate over (e.g.~vertices, cells)
    \item Adjacency relation that gathers points in patch
      \begin{itemize}
-     \item[\texttt{star}] points in $\text{star}(p_i)$
-     \item[\texttt{vanka}] points in $\text{closure}(\text{star}(p_i))$
+     \item[\texttt{star}] entities in $\text{star}(p_i)$
+     \item[\texttt{vanka}] entities in $\text{closure}(\text{star}(p_i))$
      \end{itemize}
    \end{enumerate}
  \end{block}
  \begin{block}{User-defined}
-   Callback provides list of entities in each patch, plus iteration
-   order.
-
-{\scriptsize
-\begin{verbatim}
-PetscErrorCode UserPatches(PC, PetscInt *n, IS **patches, IS *order, void *ctx);
-\end{verbatim}
-}
+   \begin{enumerate}
+   \item Custom adjacency relation (e.g. ``only vertices in
+     \texttt{closure o star}'')
+   \item List of patches, plus iteration order $\Rightarrow$ line-/plane-smoothers
+   \end{enumerate}
  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Patch assembly}
+  \begin{itemize}
+  \item If we just want homogeneous Dirichlet, can use list of dofs to
+    select from assembled global operator
+  \item[\xmark] Doesn't work for other transmission conditions
+  \item[\xmark] Doesn't work for nonlinear smoothers
+  \item[$\Rightarrow$] Callback interface to get PDE library to
+    assemble on each patch
+  \end{itemize}
+  \begin{block}{Callbacks}
+\begin{minted}[fontsize=\scriptsize]{c}
+ /* Patch Jacobian */
+ UserComputeOp(PC, Vec state, Mat operator, Patch patch, void *userctx);
+ /* Patch Residual */
+ UserComputeF(PC, Vec state, Vec residual, Patch patch, void *userctx);
+\end{minted}
+  \end{block}
 \end{frame}
 
 \section{Examples}
 
 \begin{frame}
-  \frametitle{What subspace to choose?}
-  Theory exists for symmetric problems. Consider the problem, find
-  $u \in V$ such that
-  \begin{equation*}
-    \alpha a(u, v) + \beta b(u, v) = (f, v) \quad \forall v \in V,
-  \end{equation*}
-  $\alpha, \beta > 0$ with $\ker{b} := \mathcal{N}$.
-  \pause
-  \begin{theorem}[Sch\"oberl (1999); Lee, Wu, Xu, Zikatanov (2007)]
-    A subspace correction method using $\{V_i\}$ is parameter robust
-    if every $u \in \mathcal{N}$ can be written as a sum
-    $u = \sum_i u_i$ with $u_i \in V_i \cap \mathcal{N}$, i.e.
-    \begin{equation*}
-      \mathcal{N} = \sum_i \mathcal{N} \cap V_i.
-    \end{equation*}
-    \nocite{Schoeberl:1999,Lee:2007}
-  \end{theorem}
-  \pause
-  \begin{corollary}
-    ``All'' we need to do is characterise the kernel: most usefully particular
-    the support of the basis.
+  \frametitle{Which subspace to choose?}
 
-    Appropriate discrete de Rham complexes can help.
-  \end{corollary}
+  \begin{itemize}
+  \item For symmetric problems, can use kernel decomposition ideas of
+    \textcite{Schoeberl:1999} and \textcite{Lee:2007}
+  \item Key challenge is to find a decomposition $\{V_i\}$ such that every $u$
+    in the kernel $\mathcal{N}$ can be written as $u = \sum_i u_i$
+    with $u_i \in V_i \cap \mathcal{N}$.
+  \end{itemize}
+  \pause
+  \begin{answer}{Characterising the kernel}
+    Appropriate discrete de Rham complexes can help us finding the
+    support of a basis for $\mathcal{N}$.
+  \end{answer}
 \end{frame}
 \begin{frame}[t,fragile]
-  \frametitle{$H(\div)$ multigrid in 2D \parencite{Arnold:1997}}
+  \frametitle{$H(\div)$ multigrid in 2D {\small\parencite{Arnold:1997}}}
   \vspace{-1.5\baselineskip}
   \begin{equation*}
     \text{Find $u \in V \subset H(\div)$ s.t.}\quad (u, v)_{L^2} + \gamma (\div u, \div v)_{L^2} = (f, v)_{L^2} \quad \forall v \in V.
@@ -637,7 +646,7 @@ PetscErrorCode UserPatches(PC, PetscInt *n, IS **patches, IS *order, void *ctx);
 \end{frame}
 
 \begin{frame}[fragile, t]
-  \frametitle{{$H(\div)$ multigrid in 2D \parencite{Arnold:1997}}}
+  \frametitle{{$H(\div)$ multigrid in 2D {\small \parencite{Arnold:1997}}}}
   \vspace*{-1.5\baselineskip}
   \begin{equation*}
     \text{Find $u \in V \subset H(\div)$ s.t.}\quad (u, v)_{L^2} + \gamma (\div u, \div v)_{L^2} = (f, v)_{L^2} \quad \forall v \in V.
@@ -724,7 +733,7 @@ PetscErrorCode UserPatches(PC, PetscInt *n, IS **patches, IS *order, void *ctx);
 
 \begin{frame}[fragile]
   \frametitle{$H(\div)$ and $H(\curl)$ multigrid in 3D
-    \parencite{Arnold:2000}}
+    {\small \parencite{Arnold:2000}}}
   \vspace{-1.5\baselineskip}
   \begin{equation*}
     \text{Find $u \in V \subset H(\curl)$ s.t.}\quad (u, v)_{L^2} + \gamma (\curl u, \curl v)_{L^2} = (f, v)_{L^2} \quad \forall v \in V.
@@ -743,15 +752,16 @@ PetscErrorCode UserPatches(PC, PetscInt *n, IS **patches, IS *order, void *ctx);
     {\hfill \url{femtable.org}}
   \end{block}
   \begin{columns}
-    \begin{column}{0.7\textwidth}
+    \begin{column}{0.5\textwidth}
       \begin{itemize}
       \item Exact sequence: $\ker(\curl) = \range(\grad)$, $\ker(\div)
         = \range(\curl)$
       \item $H(\curl)$: star around vertices
-      \item $H(\div)$: star around edges (vertices works too)
+      \item $H(\div)$: star around edges
       \end{itemize}
     \end{column}
-    \begin{column}{0.3\textwidth}
+    \begin{column}{0.5\textwidth}
+      \begin{center}
       \begin{tikzpicture}[scale=2,
         on each segment/.style={
           decorate,
@@ -762,10 +772,15 @@ PetscErrorCode UserPatches(PC, PetscInt *n, IS **patches, IS *order, void *ctx);
               \path [#1]
               (\tikzinputsegmentfirst) -- (\tikzinputsegmentlast);
             }}},
-        dof/.style={postaction={decorate, decoration={markings,
+        nedof/.style={postaction={decorate, decoration={markings,
               mark=at position 0.5 with {
                 \node[transform shape,shape=diamond,fill,draw, inner
                 sep=0pt, minimum height=2.5pt, minimum width=5pt] {};
+              }}}},
+        rtdof/.style={postaction={decorate, decoration={markings,
+              mark=at position 0.5 with {
+                \node[transform shape,shape=diamond,fill,draw, inner
+                sep=0pt, minimum height=5pt, minimum width=2.55pt] {};
               }}}}]
         \foreach \i/\k in {0/0, 0.5/1, 1/2} {
           \foreach \j/\l in {0/0, 0.5/1, 1/2} {
@@ -773,41 +788,69 @@ PetscErrorCode UserPatches(PC, PetscInt *n, IS **patches, IS *order, void *ctx);
           }
         }
 
-        \draw[thick, black, line join=miter, postaction={on each segment={dof}}] (v00)
+        \draw[thick, black, line join=miter, postaction={on each segment={nedof}}] (v00)
         -- (v10) -- (v20) -- (v21) -- (v22) -- (v12) -- (v02) -- (v01)
         -- (v00);
-        \draw[dof, thick, black, line join=cap] (v01) -- (v11);
-        \draw[dof, thick, black, line join=cap] (v11) -- (v21);
-        \draw[dof, thick, black, line join=cap] (v10) -- (v11);
-        \draw[dof, thick, black, line join=cap] (v11) -- (v12);
-        \draw[dof, thick, black, line join=cap] (v01) -- (v10);
-        \draw[dof, thick, black, line join=cap] (v02) -- (v11);
-        \draw[dof, thick, black, line join=cap] (v11) -- (v20);
-        \draw[dof, thick, black, line join=cap] (v12) -- (v21);
-
-
-        \coordinate (e00) at ($(v00) + (45:0.07071)$);
-        \coordinate (e10) at ($(v10) + (135:0.07071)$);
-        \coordinate (e11) at ($(v11) + (225:0.07071)$);
-        \coordinate (e01) at ($(v01) + (315:0.07071)$);
-
+        \draw[nedof, thick, black, line join=cap] (v01) -- (v11);
+        \draw[nedof, thick, black, line join=cap] (v11) -- (v21);
+        \draw[nedof, thick, black, line join=cap] (v10) -- (v11);
+        \draw[nedof, thick, black, line join=cap] (v11) -- (v12);
+        \draw[nedof, thick, black, line join=cap] (v01) -- (v10);
+        \draw[nedof, thick, black, line join=cap] (v02) -- (v11);
+        \draw[nedof, thick, black, line join=cap] (v11) -- (v20);
+        \draw[nedof, thick, black, line join=cap] (v12) -- (v21);
+        \coordinate (i10) at ($(v10) + (90:0.05)$);
+        \coordinate (i20) at ($(v20) + (135:0.07071)$);
+        \coordinate (i21) at ($(v21) + (180:0.05)$);
+        \coordinate (i12) at ($(v12) + (270:0.05)$);
+        \coordinate (i02) at ($(v02) + (315:0.07071)$);
+        \coordinate (i01) at ($(v01) + (0:0.05)$);
         \path[fill=purple, opacity=0.5]
-        \convexpath{e00,e01,e11,e10}{0pt};
+        \convexpath{i01,i02,i12,i21,i20,i10}{0.5pt};
 
-        \coordinate (o11) at ($(v11) + (90:0.03535)$);
-        \coordinate (o21) at ($(v21) + (157.5:0.1)$);
-        \coordinate (o12) at ($(v12) + (270:0.03535)$);
-        \coordinate (o02) at ($(v02) + (337.5:0.1)$);
+        \begin{scope}[shift={(1.5, 0)}]
+          \foreach \i/\k in {0/0, 0.5/1, 1/2} {
+            \foreach \j/\l in {0/0, 0.5/1, 1/2} {
+              \coordinate (v\k\l) at (\i, \j);
+            }
+          }
+          \draw[thick, black, line join=miter, postaction={on each segment={rtdof}}] (v00)
+          -- (v10) -- (v20) -- (v21) -- (v22) -- (v12) -- (v02) -- (v01)
+          -- (v00);
+          \draw[rtdof, thick, black, line join=cap] (v01) -- (v11);
+          \draw[rtdof, thick, black, line join=cap] (v11) -- (v21);
+          \draw[rtdof, thick, black, line join=cap] (v10) -- (v11);
+          \draw[rtdof, thick, black, line join=cap] (v11) -- (v12);
+          \draw[rtdof, thick, black, line join=cap] (v01) -- (v10);
+          \draw[rtdof, thick, black, line join=cap] (v02) -- (v11);
+          \draw[rtdof, thick, black, line join=cap] (v11) -- (v20);
+          \draw[rtdof, thick, black, line join=cap] (v12) -- (v21);
 
-        \path[fill=purple, opacity=0.5]
-        \convexpath{o11,o02,o12,o21}{0pt};
+
+          \coordinate (e00) at ($(v00) + (45:0.07071)$);
+          \coordinate (e10) at ($(v10) + (135:0.07071)$);
+          \coordinate (e11) at ($(v11) + (225:0.07071)$);
+          \coordinate (e01) at ($(v01) + (315:0.07071)$);
+
+          \path[fill=purple, opacity=0.5]
+          \convexpath{e00,e01,e11,e10}{0pt};
+
+          \coordinate (o11) at ($(v11) + (90:0.03535)$);
+          \coordinate (o21) at ($(v21) + (157.5:0.1)$);
+          \coordinate (o12) at ($(v12) + (270:0.03535)$);
+          \coordinate (o02) at ($(v02) + (337.5:0.1)$);
+
+          \path[fill=purple, opacity=0.5]
+          \convexpath{o11,o02,o12,o21}{0pt};
+        \end{scope}
       \end{tikzpicture}
+      \end{center}
     \end{column}
   \end{columns}
 \end{frame}
 
 \begin{frame}[fragile,t]
-  \frametitle{$H(\curl)$ multigrid in 3D \parencite{Arnold:2000}}
+  \frametitle{$H(\curl)$ multigrid in 3D {\small \parencite{Arnold:2000}}}
   \vspace{-1.5\baselineskip}
   \begin{equation*}
     \text{Find $u \in V \subset H(\curl)$ s.t.}\quad (u, v)_{L^2} + \gamma (\curl u, \curl v)_{L^2} = (f, v)_{L^2} \quad \forall v \in V.
@@ -893,7 +936,7 @@ PetscErrorCode UserPatches(PC, PetscInt *n, IS **patches, IS *order, void *ctx);
 \end{frame}
 
 \begin{frame}[fragile,t]
-  \frametitle{$H(\text{div})$ multigrid in 3D \parencite{Arnold:2000}}
+  \frametitle{$H(\div)$ multigrid in 3D {\small \parencite{Arnold:2000}}}
   \vspace{-1.5\baselineskip}
   \begin{equation*}
     \text{Find $u \in V \subset H(\div)$ s.t.}\quad (u, v)_{L^2} + \gamma (\div u, \div v)_{L^2} = (f, v)_{L^2} \quad \forall v \in V.
@@ -1149,7 +1192,7 @@ PetscErrorCode UserPatches(PC, PetscInt *n, IS **patches, IS *order, void *ctx);
       -pc_patch_construct_python_type MacroStar
 \end{verbatim}
     }
-    Just need to write a bit of python to construct patch around each vertex
+    Just need to write custom adjacency to construct patch around each vertex
     \begin{uncoverenv}<5->
 \begin{minted}[fontsize=\scriptsize]{python}
 class MacroStar(OrderedRelaxation):
@@ -1250,6 +1293,8 @@ class MacroStar(OrderedRelaxation):
               \coordinate (o21) at ($(v21) + (337.5:0.1412)$);
 
               \path[fill=purple, opacity=0.5] \convexpath{o11,o12,o21}{0.5pt};
+              \phantom{\draw (-0.2,-0.2) -- (1.2, -0.2) -- (1.2, 1.2)
+                -- (-0.2, 1.2) -- cycle;}
             \end{tikzpicture}
           \end{center}
         \end{column}
@@ -1324,7 +1369,8 @@ class MacroStar(OrderedRelaxation):
               \draw[fill] (barycentric cs:v20=1,v11=1) circle (0.02);
               \draw[fill] (barycentric cs:v11=1,v02=1) circle (0.02);
 
-
+              \phantom{\draw (-0.2,-0.2) -- (1.2, -0.2) -- (1.2, 1.2)
+                -- (-0.2, 1.2) -- cycle;}
             \end{tikzpicture}
           \end{center}
         \end{column}
@@ -1363,20 +1409,16 @@ class MacroStar(OrderedRelaxation):
       approaches
     \item Partition of unity (or not)
     \item Nonlinear relaxation (Firedrake only)
-    \item Cell and interior face integrals
     \end{itemize}
   \end{itemize}
 
   \begin{center}
     Thanks!
   \end{center}
-  \begin{answer}{See also}
-    Kirby, Farrell (MS7 today), Roy (MS7 tomorrow)
-  \end{answer}
 \end{frame}
 
 \appendix
-\begin{frame}[allowframebreaks]
+\begin{frame}
   \frametitle{References}
   \printbibliography[heading=none]
 \end{frame}
