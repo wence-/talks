@@ -45,7 +45,7 @@ backend=biber]{biblatex}
   {\endlist}
   {\item}
 
-\setlength{\bibitemsep}{1ex}
+\setlength{\bibitemsep}{0.5ex}
 \setlength{\fboxsep}{1pt}
 
 \renewbibmacro{in:}{}
@@ -249,32 +249,110 @@ backend=biber]{biblatex}
 %   \end{flushright}
 % \end{frame}
 
-\begin{frame}
-  \frametitle{When point Jacobi is not enough}
-  \begin{exampleblock}{$H(\div)$ Riesz map}
-    Find $u \in V \subset H(\div)$ such that
-    \begin{equation*}
-      (u, v)_{L^2} + \gamma (\div u, \div v)_{L^2} = (f, v)_{L^2} \quad \text{for
-        all }v \in V
-    \end{equation*}
-  \end{exampleblock}
-  \begin{answer}{Problem is difficult even for moderate $\gamma$}
-    \textcite{Arnold:2000}: use block Jacobi with blocks around vertices
-    \begin{center}
-      \begin{table}
-        \centering
-        \begin{tabular}{c|cccccc}
-          Preconditioner \textbackslash\ $\gamma$ & 0 & 0.1 & 1 & 10 & 100 & 1000 \\
-          \midrule
-          Point Jacobi & 10 & 88 & 147 & 209 & 264 & 321 \\
-          Block Jacobi & 5 & 18 & 23 & 24 & 24 & 23
-        \end{tabular}
-        \caption{Preconditioned CG iterations for Raviart-Thomas
-          elements}
-      \end{table}
-    \end{center}
-  \end{answer}
+\begin{frame}[t]
+  \frametitle{Software setting}
+
+  \begin{columns}
+    \begin{column}{0.8\textwidth}
+      \begin{quote}
+        Firedrake \url{www.firedrakeproject.org} {\normalfont
+          [\ldots]} is an automated system for the solution of
+        partial differential equations using the finite element
+        method.
+      \end{quote}
+    \end{column}
+    \begin{column}{0.2\textwidth}
+      \includegraphics[width=0.8\textwidth]{firedrake-small}
+    \end{column}
+  \end{columns}
+  \begin{itemize}
+  \item Finite element problems specified with \emph{embedded}
+    domain specific language, UFL from the
+    FEniCS project.
+  \item \emph{Runtime} compilation to optimised, low-level (C)
+    code.
+  \item PETSc for meshes and (algebraic) solvers.\par
+    {\hfill \scriptsize \arxivlink{1501.01809}{cs.MS}}
+
+    \nocite{Rathgeber:2016,Alnaes:2014}
+  \end{itemize}
+
+  \begin{challenge}{Advert}
+    3rd Firedrake user meeting is in Durham 26 \& 27 September 2019.
+
+    {\centering \url{www.firedrakeproject.org/firedrake_19.html}\par}
+    
+  \end{challenge}
 \end{frame}
+
+\begin{frame}[fragile,t]
+  \frametitle{UFL makes it easy to write complex PDEs}
+  \begin{columns}[T]
+    \begin{column}{0.47\framewidth}
+      \small
+      \begin{block}{Rayleigh-B\'enard convection}
+        \begin{equation*}
+          \begin{split}
+            -\Delta u + u\cdot\nabla u + \nabla p +
+            \frac{\text{Ra}}{\text{Pr}} \hat{g}T &= 0 \\
+            \nabla \cdot u &= 0 \\
+            - \frac{1}{\text{Pr}} \Delta T + u\cdot \nabla T &= 0
+          \end{split}
+        \end{equation*}
+        Newton
+        \begin{equation*}
+          \begin{bmatrix}
+            F   & B^T & M_1 \\
+            C   & 0   & 0   \\
+            M_2 & 0 & K
+          \end{bmatrix}
+          \begin{bmatrix}
+            \delta u \\
+            \delta p \\
+            \delta T
+          \end{bmatrix} =
+          \begin{bmatrix}
+            f_1 \\
+            f_2 \\
+            f_3
+          \end{bmatrix}
+        \end{equation*}
+      \end{block}
+    \end{column}
+    \begin{column}{0.52\framewidth}
+\begin{minted}[fontsize=\scriptsize]{python}
+from firedrake import *
+mesh = ...
+V = VectorFunctionSpace(mesh, "CG", 2)
+W = FunctionSpace(mesh, "CG", 1)
+Z = V * W * W
+Ra = Constant(200)
+Pr = Constant(6.18)
+upT = Function(Z)
+u, p, T = split(upT)
+v, q, S = TestFunctions(Z)
+bcs = ...
+
+F = (inner(grad(u), grad(v))
+   + inner(dot(grad(u), u), v)
+   - inner(p, div(v))
+   + (Ra/Pr)*inner(T*g, v)
+   + inner(div(u), q)
+   + inner(dot(grad(T), u), S)
+   + (1/Pr) * inner(grad(T), grad(S)))*dx
+
+solve(F == 0, upT, bcs=bcs)
+\end{minted}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+
+\begin{frame}[standout]
+  What about solvers?
+\end{frame}
+
+
 \begin{frame}[t]
   \frametitle{Some motivating schemes}
   \begin{onlyenv}<1>
@@ -286,9 +364,7 @@ backend=biber]{biblatex}
       \begin{center}
         \includegraphics[height=3cm]{vanka}
       \end{center}
-      \begin{flushright}
-        \textcite{Vanka:1986} \hspace{4em}
-      \end{flushright}
+      {\hfill \textcite{Vanka:1986}}
     \end{block}
   \end{onlyenv}
   \begin{onlyenv}<2>
@@ -299,9 +375,7 @@ backend=biber]{biblatex}
       \begin{center}
         \includegraphics[width=3cm]{pavarino}
       \end{center}
-      \begin{flushright}
-        \textcite{Pavarino:1993} \hspace{4em}
-      \end{flushright}
+      {\hfill \textcite{Pavarino:1993}}
     \end{block}
   \end{onlyenv}
 
@@ -311,11 +385,9 @@ backend=biber]{biblatex}
       care of the kernel [\dots]. These kernel basis functions are
       captured by subspaces $V_{l,i}$ as shown}
       \begin{center}
-        \includegraphics[height=3.5cm]{schoeberl}
+        \includegraphics[height=3.25cm]{schoeberl}
       \end{center}
-      \begin{flushright}
-        \textcite{Schoeberl:1999} \hspace{4em}
-      \end{flushright}
+      {\hfill\textcite{Schoeberl:1999}}
     \end{block}
   \end{onlyenv}
 
@@ -328,9 +400,7 @@ backend=biber]{biblatex}
       \begin{center}
         \includegraphics[height=2.5cm]{arnold}
       \end{center}
-      \begin{flushright}
-        \textcite{Arnold:2000} \hspace{4em}
-      \end{flushright}
+      {\hfill\textcite{Arnold:2000}}
     \end{block}
   \end{onlyenv}
 
@@ -344,9 +414,7 @@ backend=biber]{biblatex}
       \begin{center}
         \includegraphics[height=2.5cm]{benzi}
       \end{center}
-      \begin{flushright}
-        \textcite{Benzi:2006} \hspace{4em}
-      \end{flushright}
+      {\hfill \textcite{Benzi:2006}}
     \end{block}
   \end{onlyenv}
   \begin{onlyenv}<6>
@@ -382,9 +450,7 @@ backend=biber]{biblatex}
           };
         \end{tikzpicture}
       \end{center}
-      \begin{flushright}
-        \textcite{Farrell:2018} \hspace{4em}
-      \end{flushright}
+      {\hfill \textcite{Farrell:2018}}
     \end{block}
   \end{onlyenv}
 \end{frame}
