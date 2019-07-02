@@ -219,52 +219,15 @@ backend=biber]{biblatex}
 % \end{abstract}
 
 
-% \begin{frame}[t]
-%   \frametitle{Setting}
-
-%   \begin{columns}
-%     \begin{column}{0.8\textwidth}
-%       \begin{quote}
-%         Firedrake \url{www.firedrakeproject.org} {\normalfont
-%           [\ldots]} is an automated system for the solution of
-%         partial differential equations using the finite element
-%         method.
-%       \end{quote}
-%     \end{column}
-%     \begin{column}{0.2\textwidth}
-%       \includegraphics[width=0.8\textwidth]{firedrake-small}
-%     \end{column}
-%   \end{columns}
-%   \begin{itemize}
-%   \item Finite element problems specified with \emph{embedded}
-%     domain specific language, UFL \parencite{Alnaes:2014} from the
-%     FEniCS project.
-%   \item \emph{Runtime} compilation to optimised, low-level (C)
-%     code.
-%   \item PETSc for meshes and (algebraic) solvers.
-%   \end{itemize}
-
-%   \begin{flushright}
-%     {\scriptsize \textcite{Rathgeber:2016} \arxivlink{1501.01809}{cs.MS}}
-%   \end{flushright}
-% \end{frame}
-
 \begin{frame}[t]
   \frametitle{Software setting}
 
-  \begin{columns}
-    \begin{column}{0.8\textwidth}
-      \begin{quote}
-        Firedrake \url{www.firedrakeproject.org} {\normalfont
-          [\ldots]} is an automated system for the solution of
-        partial differential equations using the finite element
-        method.
-      \end{quote}
-    \end{column}
-    \begin{column}{0.2\textwidth}
-      \includegraphics[width=0.8\textwidth]{firedrake-small}
-    \end{column}
-  \end{columns}
+  \begin{quote}
+    Firedrake (\url{www.firedrakeproject.org}) {\normalfont
+      [\ldots]} is an automated system for the solution of
+    partial differential equations using the finite element
+    method.
+  \end{quote}
   \begin{itemize}
   \item Finite element problems specified with \emph{embedded}
     domain specific language, UFL from the
@@ -286,7 +249,7 @@ backend=biber]{biblatex}
 \end{frame}
 
 \begin{frame}[fragile,t]
-  \frametitle{UFL makes it easy to write complex PDEs}
+  \frametitle{UFL makes it easy to write down many complex PDEs}
   \begin{columns}[T]
     \begin{column}{0.47\framewidth}
       \small
@@ -347,11 +310,9 @@ solve(F == 0, upT, bcs=bcs)
   \end{columns}
 \end{frame}
 
-
 \begin{frame}[standout]
-  What about solvers?
+  What about the solver?
 \end{frame}
-
 
 \begin{frame}[t]
   \frametitle{Some motivating schemes}
@@ -627,13 +588,13 @@ solve(F == 0, upT, bcs=bcs)
   \frametitle{Which subspace to choose?}
 
   \begin{itemize}
-  \item For symmetric problems, can use kernel decomposition ideas of
+  \item For symmetric problems, can use kernel decomposition theorem of
     \textcite{Schoeberl:1999} and \textcite{Lee:2007}
   \item Key challenge is to find a decomposition $\{V_i\}$ such that every $u$
     in the kernel $\mathcal{N}$ can be written as $u = \sum_i u_i$
     with $u_i \in V_i \cap \mathcal{N}$.
   \end{itemize}
-  \pause
+
   \begin{answer}{Characterising the kernel}
     Appropriate discrete de Rham complexes can help us finding the
     support of a basis for $\mathcal{N}$.
@@ -779,7 +740,7 @@ solve(F == 0, upT, bcs=bcs)
       \end{center}
     \end{column}
   \end{columns}    
-  \pause
+
   \begin{center}
     \begin{table}
       \begin{tabular}{l|cccccc}
@@ -797,7 +758,7 @@ solve(F == 0, upT, bcs=bcs)
   \end{center}
 \end{frame}
 
-\begin{frame}[fragile]
+\begin{frame}[fragile,t]
   \frametitle{$H(\div)$ and $H(\curl)$ multigrid in 3D
     {\small \parencite{Arnold:2000}}}
   \vspace{-1.5\baselineskip}
@@ -983,7 +944,7 @@ solve(F == 0, upT, bcs=bcs)
       \end{center}
     \end{column}
   \end{columns}    
-  \pause
+
   \begin{center}
     \begin{table}
       \begin{tabular}{l|cccccc}
