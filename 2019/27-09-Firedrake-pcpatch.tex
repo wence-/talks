@@ -5,8 +5,9 @@
 \newcommand{\xmark}{\ding{55}}
 \usepackage{standalone}
 
+\usepackage{svg}
 \usepackage{booktabs}
-\titlegraphic{\hfill\includegraphics[height=1.25cm]{durham-logo}}
+\titlegraphic{\includegraphics[height=1.25cm]{firedrake-word}\hfill\includegraphics[height=1.25cm]{durham-logo}}
 \usepackage{appendixnumberbeamer}
 \usepackage{amsmath}
 \usepackage{amssymb}
@@ -19,8 +20,11 @@
 \newcommand{\ltwov}{\ensuremath{{L}^2(\Omega; \mathbb{R}^d)}\xspace}
 \newcommand{\ltwo}{\ensuremath{{L}^2(\Omega)}\xspace}
 \newcommand{\inner}[1]{\left\langle #1 \right \rangle}
+\usepackage[lined,commentsnumbered]{algorithm2e}
 
-
+\let\star\relax
+\DeclareMathOperator{\star}{star}
+\DeclareMathOperator{\closure}{closure}
 \usepackage{minted}
 \usepackage[url=false,
 doi=true,
@@ -29,6 +33,7 @@ style=authoryear,
 maxnames=5,
 giveninits=true,
 uniquename=init,
+bibencoding=utf8,
 backend=biber]{biblatex}
 \renewcommand{\bibfont}{\fontsize{7}{7}\selectfont}
 \addbibresource{references.bib}
@@ -186,83 +191,30 @@ backend=biber]{biblatex}
 
 \graphicspath{{./\jobname.figures/}{../pictures/}}
 
+\usepackage{cleveref}
 \begin{document}
 
 \maketitle
 
-\begin{abstract}
-  Effective relaxation methods are necessary for good multigrid
-  convergence. For many equations, standard Jacobi and Gau\ss--Seidel
-  are inadequate, and more sophisticated space decompositions are
-  required. Examples include problems with semidefinite terms or
-  saddle point structure.
-
-  In this talk, I will present PCPATCH, which offers a uniform and
-  flexible interface for the topological specification of space
-  decompositions for multigrid relaxation methods.
-
-  Implemented in PETSc, and accessed through Firedrake's Python
-  preconditioners, PCPATCH facilitates access to a wide range of
-  relaxation schemes by simply changing solver options. More complex
-  patches can be built by writing a short piece of Python code. I will
-  illustrate the utility of this approach with some examples.
-\end{abstract}
 % \begin{abstract}
-%   Small block overlapping, and non-overlapping, Schwarz methods are
-%   theoretically highly attractive as multilevel smoothers for a wide
-%   variety of problems that are not amenable to point relaxation
-%   methods.  Examples include monolithic Vanka smoothers for Stokes,
-%   overlapping vertex-patch decompositions for $H(\text{div})$ and
-%   $H(\text{curl})$ problems, along with nearly incompressible
-%   elasticity, and augmented Lagrangian schemes.
+%   Effective relaxation methods are necessary for good multigrid
+%   convergence. For many equations, standard Jacobi and Gau\ss--Seidel
+%   are inadequate, and more sophisticated space decompositions are
+%   required. Examples include problems with semidefinite terms or
+%   saddle point structure.
 
-%   While it is possible to manually program these different schemes,
-%   their use in general purpose libraries has been held back by a lack
-%   of generic, composable interfaces. We present a new approach to the
-%   specification and development such additive Schwarz methods in PETSc
-%   that cleanly separates the topological space decomposition from the
-%   discretisation and assembly of the equations. Our preconditioner is
-%   flexible enough to support overlapping and non-overlapping additive
-%   Schwarz methods, and can be used to formulate line, and plane
-%   smoothers, Vanka iterations, amongst others. I will illustrate these
-%   new features with some examples utilising the Firedrake finite
-%   element library, in particular how the design of an approriate
-%   computational interface enables these schemes to be used as building
-%   blocks inside block preconditioners.
+%   In this talk, I will present PCPATCH, which offers a uniform and
+%   flexible interface for the topological specification of space
+%   decompositions for multigrid relaxation methods.
 
-%   This is joint work with Patrick Farrell and Florian Wechsung
-%   (Oxford), Rob Kirby (Baylor), and Matt Knepley (Buffalo).
+%   Implemented in PETSc, and accessed through Firedrake's Python
+%   preconditioners, PCPATCH facilitates access to a wide range of
+%   relaxation schemes by simply changing solver options. More complex
+%   patches can be built by writing a short piece of Python code. I will
+%   illustrate the utility of this approach with some examples.
 % \end{abstract}
 
 
-\begin{frame}[t]
-  \frametitle{Software setting}
-
-  \begin{quote}
-    Firedrake (\url{www.firedrakeproject.org}) {\normalfont
-      [\ldots]} is an automated system for the solution of
-    partial differential equations using the finite element
-    method.
-  \end{quote}
-  \begin{itemize}
-  \item Finite element problems specified with \emph{embedded}
-    domain specific language, UFL from the
-    FEniCS project.
-  \item \emph{Runtime} compilation to optimised, low-level (C)
-    code.
-  \item PETSc for meshes and (algebraic) solvers.\par
-    {\hfill \scriptsize \arxivlink{1501.01809}{cs.MS}}
-
-    \nocite{Rathgeber:2016,Alnaes:2014}
-  \end{itemize}
-
-  \begin{challenge}{Advert}
-    3rd Firedrake user meeting is in Durham 26 \& 27 September 2019.
-
-    {\centering \url{www.firedrakeproject.org/firedrake_19.html}\par}
-    
-  \end{challenge}
-\end{frame}
 
 \begin{frame}[fragile,t]
   \frametitle{UFL makes it easy to write down many complex PDEs}
@@ -433,8 +385,79 @@ solve(F == 0, upT, bcs=bcs)
 \end{frame}
 
 \begin{frame}
-  \frametitle{Unifying observation}
-  Smoothers all use block Jacobi/G-S with problem-specific choice of blocks.  
+  \frametitle{Abstract mathematical framework}
+  Consider, find $u \in V$ such that
+  \begin{equation}
+    \label{eq:bilinear}
+    a(u, v) = (f, v) \text{ for all } v \in V.
+  \end{equation}
+  Many algorithms for solution of \cref{eq:bilinear} are induced by a space decomposition of $V$
+  \begin{equation*}
+    V = \sum_{i=1}^{J} V_i
+  \end{equation*}
+  along with an update algorithm.
+\end{frame}
+\begin{frame}
+  \frametitle{Additive updates}
+  \begin{algorithm}[H]
+    \SetKwInOut{Input}{input}\SetKwInOut{Output}{output}
+    \Input{Initial guess $u_k \in V$}
+    \Input{Weighting operators $w_i : V_i \to V_i$}
+    \Output{Updated guess $u_{k+1} \in V$}
+    \BlankLine
+    \For{$i = 1$ \KwTo $J$}{
+      Find $\delta u_i \in V_i$ such that
+      \begin{equation*}
+        a(\delta u_i, v_i) = (f, v_i) - a(u_k, v_i) \text{ for all } v_i \in V_i.
+      \end{equation*}
+    }
+    $u_{k+1} \gets u_k + \sum_{i=1}^{J} w_i(\delta u_i)$
+  \end{algorithm}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Multiplicative updates}
+\begin{algorithm}[H]
+  \SetKwInOut{Input}{input}\SetKwInOut{Output}{output}
+  \Input{Initial guess $u_k \in V$}
+  \Output{Updated guess $u_{k+1} \in V$}
+  \BlankLine
+  \For{$i = 1$ \KwTo $J$}{
+    Find $\delta u_i \in V_i$ such that
+    \begin{equation*}
+      a(\delta u_i, v_i) = (f, v_i) - a(u_{k + (i-1)/J}, v_i) \text{ for all } v_i \in V_i.
+    \end{equation*}
+    $u_{k+i/J} \gets u_{k + (i-1)/J} + \delta u_i$
+  }
+\end{algorithm}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Example space decompositions}
+  \begin{block}{Jacobi or Gau\ss-Seidel}
+    \begin{equation*}
+      V = \sum_{i=1}^{N} \operatorname{span} \{\phi_i\}
+    \end{equation*}
+    with $\{\phi_1, \dots, \phi_N\}$ a basis for $V$.
+  \end{block}
+  \begin{block}{Domain decomposition}
+    \begin{equation*}
+      V = V_0 + \sum_{i=1}^J V_i
+    \end{equation*}
+    with $V_0$ a coarse space and $V_i$ functions supported in
+    $\Omega_i \subset \Omega$.
+  \end{block}
+  \begin{block}{Multigrid V-cycle}
+    \begin{equation*}
+      V = \sum_{l=L}^2 V_l + V_1 + \sum_{l=2}^L V_l
+    \end{equation*}
+    with $V_1 \subset V_2 \subset \dots \subset V_L = V$.
+  \end{block}
+\end{frame}
+\begin{frame}
+  \frametitle{Unifying computational observation}
+  Relaxation schemes all use subspace correction method with
+  problem-specific choice of space decomposition.
   \begin{itemize}
   \item Decompose space (usually) based on some mesh decomposition
   \item Build and solve little problems on the resulting patches
@@ -494,7 +517,8 @@ solve(F == 0, upT, bcs=bcs)
   \item \texttt{DMPlex} associates dofs with topological entities in mesh
   \item A patch is defined by a set of these entities,
     \texttt{PCPATCH} determines the dofs that correspond to them
-  \item Adjacency relations defined using topological queries: often \texttt{star} and \texttt{closure}
+  \item Adjacency relations defined using topological queries: often
+    the topological \emph{star} and \emph{closure} operations.
   \end{itemize}
   \begin{overlayarea}{\textwidth}{0.6\textheight}
     \begin{uncoverenv}<2->
@@ -545,10 +569,10 @@ solve(F == 0, upT, bcs=bcs)
 
       \end{tikzpicture}
 
-      \only<2>{\texttt{star(vertex)}}
-      \only<3>{\texttt{closure(star(vertex))}}
-      \only<4>{\texttt{star(edge)}}
-      \only<5>{\texttt{closure(star(edge))}}
+      \only<2>{$\star(\text{\texttt{vertex}})$}
+      \only<3>{$(\closure \circ \star)(\text{\texttt{vertex}})$}
+      \only<4>{$\star(\text{\texttt{edge}})$}
+      \only<5>{$(\closure \circ \star)(\text{\texttt{edge}})$}
     \end{center}
     \end{uncoverenv}
   \end{overlayarea}
@@ -564,15 +588,17 @@ solve(F == 0, upT, bcs=bcs)
    \item Mesh entities $\{p_i\}$ to iterate over (e.g.~vertices, cells)
    \item Adjacency relation that gathers points in patch
      \begin{itemize}
-     \item[\texttt{star}] entities in $\text{star}(p_i)$
-     \item[\texttt{vanka}] entities in $\text{closure}(\text{star}(p_i))$
+     \item[\texttt{star}] entities in $\star(p_i)$
+     \item[\texttt{vanka}] entities in $(\closure \circ \star)(p_i)$
+     \item[\texttt{pardecomp}] entities in $\Omega_i$ (local part of
+       parallel mesh)
      \end{itemize}
    \end{enumerate}
  \end{block}
  \begin{block}{User-defined}
    \begin{enumerate}
-   \item Custom adjacency relation (e.g. ``only vertices in
-     \texttt{closure o star}'')
+   \item Custom adjacency relation (e.g. ``vertices in $\closure
+     \circ \star$ of edges'')
    \item List of patches, plus iteration order $\Rightarrow$ line-/plane-smoothers
    \end{enumerate}
  \end{block}
@@ -581,8 +607,10 @@ solve(F == 0, upT, bcs=bcs)
 \begin{frame}[fragile]
   \frametitle{Patch assembly}
   \begin{itemize}
-  \item If we just want homogeneous Dirichlet, can use list of dofs to
+  \item[\cmark] If we just want homogeneous Dirichlet, can use list of dofs to
     select from assembled global operator
+  \item[\cmark] Completely robust to discretisation library
+  \item[\xmark] Doesn't allow matrix-free implementation
   \item[\xmark] Doesn't work for other transmission conditions
   \item[\xmark] Doesn't work for nonlinear smoothers
   \item[$\Rightarrow$] Callback interface to get PDE library to
@@ -601,21 +629,43 @@ solve(F == 0, upT, bcs=bcs)
 \section{Examples}
 
 \begin{frame}
-  \frametitle{Which subspace to choose?}
+  \frametitle{Which space decomposition?}
 
-  \begin{itemize}
-  \item For symmetric problems, can use kernel decomposition theorem of
-    \textcite{Schoeberl:1999} and \textcite{Lee:2007}
-  \item Key challenge is to find a decomposition $\{V_i\}$ such that every $u$
-    in the kernel $\mathcal{N}$ can be written as $u = \sum_i u_i$
-    with $u_i \in V_i \cap \mathcal{N}$.
-  \end{itemize}
+  \begin{onlyenv}<1>
+    \begin{theorem}[Parameter robust parallel subspace correction]
+      Consider a problem, find $u \in V$ such that
+      \begin{equation*}
+        a_0(u, v) + \varepsilon b(u, v) = (f, v) \text{ for all } v \in V
+      \end{equation*}
+      where $a_0$ symmetric positive definite and $b$ symmetric
+      positive semi-definite.
 
-  \begin{answer}{Characterising the kernel}
-    Appropriate discrete de Rham complexes can help us finding the
-    support of a basis for $\mathcal{N}$.
-  \end{answer}
+      Denote the kernel
+      \begin{equation*}
+        \mathcal{N} := \{ u \in V : b(u, v) = 0 \,\, \forall v \in V \}.
+      \end{equation*}
+      If the space decomposition \emph{captures the kernel}
+      \begin{equation*}
+        \mathcal{N} = \sum_i \mathcal{N} \cap V_i,
+      \end{equation*}
+      the resulting subspace correction method is
+      independent of $\varepsilon$ \parencite{Schoeberl:1999}.
+    \end{theorem}
+  \end{onlyenv}
+  \begin{onlyenv}<2>
+    \begin{corollary}
+      ``All'' we need to do is characterise the kernel: in particular
+      the support of the basis.
+    \end{corollary}
+    \begin{answer}{Characterising the kernel}
+      Appropriate discrete de Rham complexes can help us finding the
+      support of a basis for $\mathcal{N}$.
+    \end{answer}
+  \end{onlyenv}
 \end{frame}
+
+\section{Examples}
+
 \begin{frame}[t,fragile]
   \frametitle{$H(\div)$ multigrid in 2D {\small\parencite{Arnold:1997}}}
   \vspace{-1.5\baselineskip}
@@ -1452,6 +1502,13 @@ class MacroStar(OrderedRelaxation):
       approaches
     \item Partition of unity (or not)
     \item Nonlinear relaxation (Firedrake only)
+    \end{itemize}
+  \item WIP: faster application of patch solves
+    \begin{itemize}
+    \item PETSc (sadly) not designed for lots of tiny problems
+    \item Significant speedup from constructing patch inverse and
+      hard-coding matvec
+    \item Just code Newton ``by hand'' for nonlinear case?
     \end{itemize}
   \end{itemize}
 
