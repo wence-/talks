@@ -215,73 +215,6 @@ backend=biber]{biblatex}
 % \end{abstract}
 
 
-
-\begin{frame}[fragile,t]
-  \frametitle{UFL makes it easy to write down many complex PDEs}
-  \begin{columns}[T]
-    \begin{column}{0.47\framewidth}
-      \small
-      \begin{block}{Rayleigh-B\'enard convection}
-        \begin{equation*}
-          \begin{split}
-            -\Delta u + u\cdot\nabla u + \nabla p +
-            \frac{\text{Ra}}{\text{Pr}} \hat{g}T &= 0 \\
-            \nabla \cdot u &= 0 \\
-            - \frac{1}{\text{Pr}} \Delta T + u\cdot \nabla T &= 0
-          \end{split}
-        \end{equation*}
-        Newton
-        \begin{equation*}
-          \begin{bmatrix}
-            F   & B^T & M_1 \\
-            C   & 0   & 0   \\
-            M_2 & 0 & K
-          \end{bmatrix}
-          \begin{bmatrix}
-            \delta u \\
-            \delta p \\
-            \delta T
-          \end{bmatrix} =
-          \begin{bmatrix}
-            f_1 \\
-            f_2 \\
-            f_3
-          \end{bmatrix}
-        \end{equation*}
-      \end{block}
-    \end{column}
-    \begin{column}{0.52\framewidth}
-\begin{minted}[fontsize=\scriptsize]{python}
-from firedrake import *
-mesh = ...
-V = VectorFunctionSpace(mesh, "CG", 2)
-W = FunctionSpace(mesh, "CG", 1)
-Z = V * W * W
-Ra = Constant(200)
-Pr = Constant(6.18)
-upT = Function(Z)
-u, p, T = split(upT)
-v, q, S = TestFunctions(Z)
-bcs = ...
-
-F = (inner(grad(u), grad(v))
-   + inner(dot(grad(u), u), v)
-   - inner(p, div(v))
-   + (Ra/Pr)*inner(T*g, v)
-   + inner(div(u), q)
-   + inner(dot(grad(T), u), S)
-   + (1/Pr) * inner(grad(T), grad(S)))*dx
-
-solve(F == 0, upT, bcs=bcs)
-\end{minted}
-    \end{column}
-  \end{columns}
-\end{frame}
-
-\begin{frame}[standout]
-  What about the solver?
-\end{frame}
-
 \begin{frame}[t]
   \frametitle{Some motivating schemes}
   \begin{onlyenv}<1>
@@ -384,23 +317,15 @@ solve(F == 0, upT, bcs=bcs)
   \end{onlyenv}
 \end{frame}
 
-\begin{frame}
-  \frametitle{Abstract mathematical framework}
-  Consider, find $u \in V$ such that
-  \begin{equation}
-    \label{eq:bilinear}
-    a(u, v) = (f, v) \text{ for all } v \in V.
-  \end{equation}
-  Many algorithms for solution of \cref{eq:bilinear} are induced by a space decomposition of $V$
+\begin{frame}[t]
+  \frametitle{Parallel subspace corrections \parencite{Xu:1992}}
+  Find $u \in V$ such that
   \begin{equation*}
-    V = \sum_{i=1}^{J} V_i
+    a(u, v) = (f, v) \text{ for all } v \in V.
   \end{equation*}
-  along with an update algorithm.
-\end{frame}
-\begin{frame}
-  \frametitle{Additive updates}
   \begin{algorithm}[H]
     \SetKwInOut{Input}{input}\SetKwInOut{Output}{output}
+    \Input{Space decomposition $V = \sum_{i=1}^J V_i$}
     \Input{Initial guess $u_k \in V$}
     \Input{Weighting operators $w_i : V_i \to V_i$}
     \Output{Updated guess $u_{k+1} \in V$}
@@ -415,10 +340,15 @@ solve(F == 0, upT, bcs=bcs)
   \end{algorithm}
 \end{frame}
 
-\begin{frame}
-  \frametitle{Multiplicative updates}
+\begin{frame}[t]
+  \frametitle{Sequential subspace corrections \parencite{Xu:1992}}
+  Find $u \in V$ such that
+  \begin{equation*}
+    a(u, v) = (f, v) \text{ for all } v \in V.
+  \end{equation*}
 \begin{algorithm}[H]
   \SetKwInOut{Input}{input}\SetKwInOut{Output}{output}
+  \Input{Space decomposition $V = \sum_{i=1}^J V_i$}
   \Input{Initial guess $u_k \in V$}
   \Output{Updated guess $u_{k+1} \in V$}
   \BlankLine
@@ -454,6 +384,7 @@ solve(F == 0, upT, bcs=bcs)
     with $V_1 \subset V_2 \subset \dots \subset V_L = V$.
   \end{block}
 \end{frame}
+
 \begin{frame}
   \frametitle{Unifying computational observation}
   Relaxation schemes all use subspace correction method with
@@ -501,9 +432,9 @@ solve(F == 0, upT, bcs=bcs)
     \begin{onlyenv}<3->
       \begin{exampleblock}{Library support}
         \begin{itemize}
-        \item PETSc (\url{mcs.anl.gov/petsc}): \texttt{DMPlex} + \texttt{PetscDS}\\
+        \item PETSc: \texttt{DMPlex} + \texttt{PetscDS}\\
           {\scriptsize \verb|-pc_type patch|}
-        \item Firedrake (\url{www.firedrakeproject.org}):\\
+        \item Firedrake:\\
           {\scriptsize \verb|-pc_type python -pc_python_type firedrake.PatchPC|\\
             \verb|-snes_type python -snes_python_type firedrake.PatchSNES|}
         \end{itemize}
@@ -632,12 +563,13 @@ solve(F == 0, upT, bcs=bcs)
   \frametitle{Which space decomposition?}
 
   \begin{onlyenv}<1>
+    {\small
     \begin{theorem}[Parameter robust parallel subspace correction]
-      Consider a problem, find $u \in V$ such that
+      Find $u \in V$ such that
       \begin{equation*}
         a_0(u, v) + \varepsilon b(u, v) = (f, v) \text{ for all } v \in V
       \end{equation*}
-      where $a_0$ symmetric positive definite and $b$ symmetric
+      with $a_0$ symmetric positive definite and $b$ symmetric
       positive semi-definite.
 
       Denote the kernel
@@ -648,9 +580,10 @@ solve(F == 0, upT, bcs=bcs)
       \begin{equation*}
         \mathcal{N} = \sum_i \mathcal{N} \cap V_i,
       \end{equation*}
-      the resulting subspace correction method is
+      the resulting subspace correction method has convergence
       independent of $\varepsilon$ \parencite{Schoeberl:1999}.
     \end{theorem}
+    }
   \end{onlyenv}
   \begin{onlyenv}<2>
     \begin{corollary}
@@ -1303,7 +1236,7 @@ class MacroStar(OrderedRelaxation):
 \end{frame}
 
 \begin{frame}[fragile, t]
-  \frametitle{Vanka for Stokes}
+  \frametitle{Monolithic (coupled) smoothers}
   Find $(u, p) \in V\times Q \subset (H^1)^d \times L^2$ s.t.
   \begin{equation*}
     (\grad u, \grad v) - (p, \div v) - (\div u, q) = (f, v) \quad \forall (v, q) \in V \times Q.
@@ -1409,7 +1342,83 @@ class MacroStar(OrderedRelaxation):
         \end{column}
       \end{columns}
     \end{onlyenv}
-    \begin{onlyenv}<3->
+    \begin{onlyenv}<3>
+      \begin{columns}[T]
+        \begin{column}{0.5\textwidth}
+          \begin{center}
+            \begin{tikzpicture}[scale=2.5]
+              \foreach \i/\k in {0/0, 0.5/1, 1/2} {
+                \foreach \j/\l in {0/0, 0.5/1, 1/2} {
+                  \coordinate (v\k\l) at (\i, \j);
+                }
+              }
+              \coordinate (o20) at ($(v20) + (315:0.1)$);
+              \coordinate (o21) at ($(v21) + (0:0.0707)$);
+              \coordinate (o12) at ($(v12) + (90:0.0707)$);
+              \coordinate (o02) at ($(v02) + (135:0.1)$);
+              \coordinate (o01) at ($(v01) + (180:0.0707)$);
+              \coordinate (o10) at ($(v10) + (270:0.0707)$);
+
+              \path[fill=purple, opacity=0.5]
+              \convexpath{o10,o01,o02,o12,o21,o20}{0.5pt};
+
+              % \foreach \i in {10,20,21,12,02,01} {
+              %   \node[shape=circle,draw,white,fill=white,inner
+              %   sep=0pt, minimum size=20pt] at (v\i) {};
+              % }
+              
+              \foreach \i/\k in {0/0, 0.5/1, 1/2} {
+                \foreach \j/\l in {0/0, 0.5/1, 1/2} {
+                  \node[shape=diamond,draw,red, fill=red,inner
+                  sep=0pt,
+                  minimum height=7pt, minimum width=7pt] at (v\k\l) {};
+                  \draw[fill] (v\k\l) circle (0.02);
+                }
+              }
+
+              \draw[thick, black, line join=miter] (v00) -- (v10) -- (v20) -- (v21) -- (v22) -- (v12) -- (v02) -- (v01) -- cycle;
+              \draw[thick, black, line join=miter] (v01) -- (v11) -- (v21);
+              \draw[thick, black, line join=miter] (v10) -- (v11) -- (v12);
+              \draw[thick, black, line join=miter] (v01) -- (v10);
+              \draw[thick, black, line join=miter] (v02) -- (v11) -- (v20);
+              \draw[thick, black, line join=miter] (v12) -- (v21);
+
+              \foreach \i/\j in {0/1, 1/2} {
+                \foreach \k in {0, 1, 2} {
+                  \draw[fill] (barycentric cs:v\i\k=1,v\j\k=1) circle (0.02);
+                  \draw[fill] (barycentric cs:v\k\i=1,v\k\j=1) circle (0.02);
+                }
+              }
+
+              \draw[fill] (barycentric cs:v10=1,v01=1) circle (0.02);
+              \draw[fill] (barycentric cs:v21=1,v12=1) circle (0.02);
+              \draw[fill] (barycentric cs:v20=1,v11=1) circle (0.02);
+              \draw[fill] (barycentric cs:v11=1,v02=1) circle (0.02);
+
+              \phantom{\draw (-0.2,-0.2) -- (1.2, -0.2) -- (1.2, 1.2)
+                -- (-0.2, 1.2) -- cycle;}
+            \end{tikzpicture}
+          \end{center}
+        \end{column}
+        \begin{column}{0.5\textwidth}
+          {\scriptsize
+\begin{verbatim}
+-ksp_type gmres
+-pc_type mg
+-mg_levels_
+   -pc_type python
+   -pc_python_type firedrake.PatchPC
+   -patch_
+      -pc_patch_construct_dim 0
+      -pc_patch_construct_type vanka
+      -pc_patch_exclude_subspaces 1
+
+\end{verbatim}
+          }
+        \end{column}
+      \end{columns}
+    \end{onlyenv}
+    \begin{onlyenv}<4->
       \begin{columns}[T]
         \begin{column}{0.5\textwidth}
           \begin{center}
@@ -1510,6 +1519,7 @@ class MacroStar(OrderedRelaxation):
       hard-coding matvec
     \item Just code Newton ``by hand'' for nonlinear case?
     \end{itemize}
+  \item Paper in preparation
   \end{itemize}
 
   \begin{center}
@@ -1525,4 +1535,3 @@ class MacroStar(OrderedRelaxation):
 
 
 \end{document}
-
