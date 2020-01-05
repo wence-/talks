@@ -249,10 +249,10 @@ backend=biber]{biblatex}
   \end{itemize}
 \end{frame}
 
-\section{Recent highlights}
+\section{Automated finite elements}
 
 \begin{frame}[fragile]
-  \frametitle{Code that looks like maths}
+  \frametitle{Code that captures mathematical structure}
   \begin{columns}
     \begin{column}{0.5\framewidth}
       {\footnotesize
@@ -374,6 +374,8 @@ solve(F == 0, upT, bcs=bcs)
       \item Lower numerical mixing, improved results.
       \item 3-8x faster than models with similar quality of results.
       \item Differentiable: efficient adjoint.
+      \item Used at Finnish Met Institute; Earth Sciences at
+        Imperial; Institute for Infrastructure and Environment (here).
       \item \url{thetisproject.org}
        \end{itemize}
     \end{column}
@@ -448,7 +450,19 @@ solve(F == 0, upT, bcs=bcs)
     \end{block}
 \end{frame}
 
+\begin{frame}
+  \begin{challenge}{}
+    NWP multigrid work required a lot of hand-coding
 
+    Motivated further work in being able to write
+    \emph{preconditioner/solver} algorithms at a more abstract level.
+  \end{challenge}
+
+  \begin{answer}{}
+    Focus for past few years, with application focus of incompressible
+    steady Navier--Stokes equations.
+  \end{answer}
+\end{frame}
 \section{Preconditioning Navier--Stokes}
 
 \begin{frame}
@@ -568,6 +582,7 @@ solve(F == 0, upT, bcs=bcs)
     \begin{itemize}
     \item[\cmark] Viscosity-robust preconditioning
     \item[\xmark] Only 2D, no further implementation until 2018
+      (Farrell, \textbf{LM}, Wechsung)
     \end{itemize}
   \end{block}
 \end{frame}
@@ -647,8 +662,10 @@ solve(F == 0, upT, bcs=bcs)
     Outer Krylov iterations for different choices of $\tilde{A}^{-1}_\gamma$.
   \end{center}
 \end{frame}
+
+
 \begin{frame}
-  \frametitle{Robust smoother}
+  \frametitle{Point smoother is not sufficient}
   \begin{itemize}
   \item Ignorning advection, then the top-left block corresponds to
     discretisation of
@@ -666,60 +683,24 @@ solve(F == 0, upT, bcs=bcs)
     \parencite{Schoeberl:1999}
     \begin{itemize}
     \item a $\gamma$-robust smoother;
-    \item a prolongation operator with $\gamma$-independent continuity constant.
+    \item a prolongation operator with $\gamma$-independent continuity
+      constant.
+    \item[$\Rightarrow$] overlapping Schwarz smoother with
+      decomposition that decomposes the kernel.
     \end{itemize}
   \end{itemize}
-\end{frame}
-
-\begin{frame}[t]
-  \frametitle{Idea: kernel-capturing relaxation}
-  Consider the problem: for $\gamma \in \mathbb{R}_+$, find $u \in V$ such that
-  \begin{equation*}
-    a(u, v) + \gamma (\div u, \div v) = (f, v) \quad \forall v \in V,
-  \end{equation*}
-  where $a$ is SPD.
-
-  \begin{block}{Relaxation method}
-    Choose a subspace decomposition
-    \begin{equation*}
-      V = \sum_i V_i,
-    \end{equation*}
-    solve the problem on each subspace and combine the updates.
-  \end{block}
-  \begin{exampleblock}{Example}
-    If each $V_i$ is the span of a single basis function, this defines a
-    Jacobi (Gauss-Seidel) iteration.
-  \end{exampleblock}
-\end{frame}
-
-\begin{frame}[t]
-  \frametitle{Idea: kernel-capturing relaxation}
-  Define the kernel as
-  \begin{equation*}
-      \mathcal{N} := \{ u \in V : (\div u, \div v) = 0 \,\, \forall v \in V \}.
-  \end{equation*}
-  \begin{theorem}[Sch\"oberl (1999)]
-    An additive subspace correction method using subspaces $\{V_i\}$
-    is parameter robust if every $u \in \mathcal{N}$ can be written as
-    a sum $u = \sum_i u_i$ with $u_i \in V_i \cap \mathcal{N}$, i.e.
-    \begin{equation*}
-      \mathcal{N} = \sum_i \mathcal{N} \cap V_i.
-    \end{equation*}
-    ``The subspace decomposition \emph{captures the kernel}.''
-    \nocite{Ewing:1992,Schoeberl:1999,Lee:2007}
-  \end{theorem}
 \end{frame}
 
 \begin{frame}
   \frametitle{Discretisation requirements}
   \begin{itemize}
   \item Need inf-sup stable pair for velocity and pressure
-  \item Need a \emph{local basis} for the kernel of div.
+  \item Need a \emph{local basis} for the kernel of div (for efficiency).
   \end{itemize}
   \begin{exampleblock}{Low-order}
     \begin{itemize}
     \item[2D] $P_2^2-P_0$
-    \item[3D] $(P_1 \oplus \text{FB})^3-P_0$
+    \item[3D] $(P_1 \oplus \text{FB})^3-P_0$ ($\text{FB}$ cubic face bubbles)
     \item[$\Rightarrow$] overlapping \emph{star} patches
     \end{itemize}
   \begin{figure}
@@ -732,9 +713,9 @@ solve(F == 0, upT, bcs=bcs)
 
 \begin{frame}
   \frametitle{Divergence-free pair}
-  Choose discrete element pair from the Stokes complex:
+  Choose element pair from discrete subcomplex of Stokes complex
   \begin{equation*}
-    \mathbb{R} \xrightarrow{\operatorname{id}} H^2 \xrightarrow{\grad} H^1(\curl) \xrightarrow{\curl} H^1 \xrightarrow{\div} L^2 \xrightarrow{\operatorname{null}} 0.
+    H^2 \xrightarrow{\grad} H^1(\curl) \xrightarrow{\curl} H^1 \xrightarrow{\div} L^2.
   \end{equation*}
   \vspace{-\baselineskip}
   \begin{exampleblock}{Divergence-free}
@@ -748,41 +729,6 @@ solve(F == 0, upT, bcs=bcs)
     \end{center}
   \end{figure}
   \end{exampleblock}
-\end{frame}
-
-\begin{frame}[fragile]
-  \frametitle{Full solver}
-  \resizebox{\textwidth}{!}{
-    \begin{tikzpicture}[
-      every node/.style={draw=black, thick, anchor=west},
-      grow via three points={one child at (0.0,-0.7) and
-        two children at (0.0,-0.7) and (0.0,-1.4)},
-      edge from parent path={(\tikzparentnode.210) |- (\tikzchildnode.west)}]
-      \node {Continuation}
-      child { node {Newton solver with line search}
-        child { node {Krylov solver (FGMRES)}
-          child { node {Block preconditioner}
-            child { node {Approximate Schur complement inverse}}
-            child { node {Full multigrid cycle on augmented momentum block}
-              child { node {Coarse grid solver}
-                child { node {LU factorization}}
-              }
-              child [missing] {}
-              child { node {Prolongation operator}
-                child { node {Local solves over coarse cells}}
-              }
-              child [missing] {}
-              child { node {Relaxation}
-                child { node {GMRES}
-                  child { node {Additive star/macrostar iteration}}
-                }
-              }
-            }
-          }
-        }
-      };
-    \end{tikzpicture}
-  }
 \end{frame}
 
 \begin{frame}
@@ -839,6 +785,41 @@ solve(F == 0, upT, bcs=bcs)
   \end{table}
 \end{frame}
 
+\begin{frame}[fragile]
+  \frametitle{Full solver}
+  \resizebox{\textwidth}{!}{
+    \begin{tikzpicture}[
+      every node/.style={draw=black, thick, anchor=west},
+      grow via three points={one child at (0.0,-0.7) and
+        two children at (0.0,-0.7) and (0.0,-1.4)},
+      edge from parent path={(\tikzparentnode.210) |- (\tikzchildnode.west)}]
+      \node {Continuation}
+      child { node {Newton solver with line search}
+        child { node {Krylov solver (FGMRES)}
+          child { node {Block preconditioner}
+            child { node {Approximate Schur complement inverse}}
+            child { node {Full multigrid cycle on augmented momentum block}
+              child { node {Coarse grid solver}
+                child { node {LU factorization}}
+              }
+              child [missing] {}
+              child { node {Prolongation operator}
+                child { node {Local solves over coarse cells}}
+              }
+              child [missing] {}
+              child { node {Relaxation}
+                child { node {GMRES}
+                  child { node {Additive star/macrostar iteration}}
+                }
+              }
+            }
+          }
+        }
+      };
+    \end{tikzpicture}
+  }
+\end{frame}
+
 \begin{frame}
   \frametitle{Main result}
   \begin{exampleblock}{}
@@ -856,7 +837,7 @@ solve(F == 0, upT, bcs=bcs)
 
       {\hfill\scriptsize\raggedleft R.C.~Kirby, \textbf{LM}. SIAM
         SISC (2018). \arxivlink{1706.01346}{cs.MS}\nocite{Kirby:2018}}
-    \item New preconditioner in PETSc for multigrid relaxation schemes based on
+    \item New preconditioner in PETSc and Firedrake for multigrid relaxation schemes based on
       subspace correction methods
 
       {\hfill\scriptsize\raggedleft P.E.~Farrell, M.G.~Knepley,
@@ -868,7 +849,6 @@ solve(F == 0, upT, bcs=bcs)
 \section{Future directions}
 
 \begin{frame}
-  \frametitle{High performance solvers}
   \begin{block}{Idea}
     \begin{itemize}
     \item Mathematics is the language used to derive optimal solvers.
@@ -898,7 +878,7 @@ solve(F == 0, upT, bcs=bcs)
   \item Broad interdisciplinary research agenda spanning:
     \begin{itemize}
     \item finite element discretisation and implementation;
-    \item linear and non-linear solvers;
+    \item linear and non-linear solvers/preconditioners;
     \item high-performance computing;
     \item domain-specific compilers.
     \end{itemize}
