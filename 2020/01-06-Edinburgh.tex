@@ -21,7 +21,7 @@
 \newcommand{\xmark}{\ding{55}}
 
 \usepackage{booktabs}
-\titlegraphic{\hfill\includegraphics[height=1.25cm]{durham-logo}}
+% \titlegraphic{\hfill\includegraphics[height=1.25cm]{durham-logo}}
 \usepackage{appendixnumberbeamer}
 \def\xunderbrace#1_#2{{\underbrace{#1}_{\mathclap{#2}}}}
 \def\xoverbrace#1^#2{{\overbrace{#1}^{\mathclap{#2}}}}
@@ -236,7 +236,7 @@ backend=biber]{biblatex}
   \frametitle{Outline}
 
   \begin{itemize}
-  \item Overview of some recent research
+  \item Overview
     \begin{itemize}
     \item Automated finite elements
     \item Multigrid preconditioning for numerical weather prediction
@@ -342,7 +342,7 @@ solve(F == 0, upT, bcs=bcs)
         code.
       \end{itemize}
       \begin{flushright}
-        {\scriptsize F.~Rathgeber, D.A.~Ham, \textbf{LM}, M.~Lange,
+        {\scriptsize F.~Rathgeber, D.A.~Ham, \textbf{L.~Mitchell}, M.~Lange,
         F.~Luporini, A.T.T.~McRae, G.-T.~Bercea, G.R.~Markall,
         P.H.J.~Kelly. ACM Transactions on Mathematical Software
         (2016). \arxivlink{1501.01809}{cs.MS}\nocite{Rathgeber:2016}}
@@ -381,7 +381,7 @@ solve(F == 0, upT, bcs=bcs)
     \end{column}
   \end{columns}
   \begin{flushright}
-    {\scriptsize T.~K\"arn\"a, S.C.~Kramer, \textbf{LM}, D.A.~Ham,
+    {\scriptsize T.~K\"arn\"a, S.C.~Kramer, \textbf{L.~Mitchell}, D.A.~Ham,
       M.D.~Piggott, A.M.~Baptista. Geoscientific Model Development
       (2018).
       \arxivlink{1711.08552}{physics.ao-ph}\nocite{Karna:2018}}
@@ -441,7 +441,7 @@ solve(F == 0, upT, bcs=bcs)
     Developed custom tensor-product multigrid scheme, showed robustness
     and scalability.
 
-    {\raggedleft\scriptsize\hfill \textbf{LM}, E.H.~M\"uller. JCP (2016). \arxivlink{1605.00492}{cs.MS}\nocite{Mitchell:2016}}
+    {\raggedleft\scriptsize\hfill \textbf{L.~Mitchell}, E.H.~M\"uller. JCP (2016). \arxivlink{1605.00492}{cs.MS}\nocite{Mitchell:2016}}
     \begin{block}{Future directions}
       Multilevel solvers for hybridised discretisations.
 
@@ -450,19 +450,6 @@ solve(F == 0, upT, bcs=bcs)
     \end{block}
 \end{frame}
 
-\begin{frame}
-  \begin{challenge}{}
-    NWP multigrid work required a lot of hand-coding
-
-    Motivated further work in being able to write
-    \emph{preconditioner/solver} algorithms at a more abstract level.
-  \end{challenge}
-
-  \begin{answer}{}
-    Focus for past few years, with application focus of incompressible
-    steady Navier--Stokes equations.
-  \end{answer}
-\end{frame}
 \section{Preconditioning Navier--Stokes}
 
 \begin{frame}
@@ -487,7 +474,7 @@ solve(F == 0, upT, bcs=bcs)
   \begin{challenge}{Desired properties}
     \begin{itemize}
     \item Growth in time to solution is (at worst)
-      $\mathcal{O}(n\log n)$.
+      $\mathcal{O}(n\log n)$ in number of degrees of freedom (resolution).
     \item Convergence does not degrade with $\nu \to 0$.
     \end{itemize}
   \end{challenge}
@@ -573,6 +560,29 @@ solve(F == 0, upT, bcs=bcs)
 \end{frame}
 
 \begin{frame}
+  \frametitle{Performance of pressure convection-diffusion (PCD)}
+\begin{table}[htbp]
+\centering
+\begin{tabular}{cc|c@{\hspace{9pt}}c@{\hspace{9pt}}c}
+\toprule
+$1/h$ & \# degrees of freedom & \multicolumn{3}{c}{Reynolds number} \\
+  && 10 & 100 & 1000 \\
+\midrule
+$2^4$ & $8.34 \times 10^2$ & 22.0 & 40.4 & 103.3 \\
+$2^5$ & $3.20 \times 10^3$ & 23.0 & 41.3 & 137.7 \\
+$2^6$ & $1.25 \times 10^4$ & 24.5 & 42.0 & 157.0 \\
+$2^7$ & $4.97 \times 10^4$ & 25.5 & 42.7 & 149.0 \\
+$2^8$ & $1.98 \times 10^5$ & 26.0 & 44.0 & 137.0 \\
+\bottomrule
+\end{tabular}
+\caption{Average number of outer Krylov iterations per Newton step for the
+2D regularized lid-driven cavity problem with PCD preconditioner.
+Obtained with IFISS v3.5, $Q_1-P_0$ element pair.}
+\label{tab:pcdlscldc}
+\end{table}
+\end{frame}
+
+\begin{frame}
   \frametitle{Augmented Lagrangian approach}
   \begin{center}
     \includegraphics[width=\textwidth]{benzi06}
@@ -582,7 +592,6 @@ solve(F == 0, upT, bcs=bcs)
     \begin{itemize}
     \item[\cmark] Viscosity-robust preconditioning
     \item[\xmark] Only 2D, no further implementation until 2018
-      (Farrell, \textbf{LM}, Wechsung)
     \end{itemize}
   \end{block}
 \end{frame}
@@ -600,7 +609,7 @@ solve(F == 0, upT, bcs=bcs)
     \item Robust multigrid prolongation
     \end{enumerate}
   \end{answer}
-  {\hfill\raggedleft\scriptsize P.E.~Farrell, \textbf{LM}, F.~Wechsung. SIAM SISC (2019). \arxivlink{1810.03315}{math.NA}\nocite{Farrell:2019}}
+  {\hfill\raggedleft\scriptsize P.E.~Farrell, \textbf{L.~Mitchell}, F.~Wechsung. SIAM SISC (2019). \arxivlink{1810.03315}{math.NA}\nocite{Farrell:2019}}
 \end{frame}
 
 \begin{frame}
@@ -684,9 +693,10 @@ solve(F == 0, upT, bcs=bcs)
     \begin{itemize}
     \item a $\gamma$-robust smoother;
     \item a prolongation operator with $\gamma$-independent continuity
-      constant.
+      constant;
     \item[$\Rightarrow$] overlapping Schwarz smoother with
-      decomposition that decomposes the kernel.
+      decomposition that decomposes the kernel. ``The right blocks for
+      block Jacobi''.
     \end{itemize}
   \end{itemize}
 \end{frame}
@@ -759,6 +769,63 @@ solve(F == 0, upT, bcs=bcs)
   \end{table}
 \end{frame}
 
+\begin{frame}[t]
+  \frametitle{Computational performance --- 3D}
+  % [53.140734383333324, 68.56801668333334, 61.468243016666655, 65.64923281666665]
+  \pgfplotstableread[col sep=comma, row sep=\\]{%
+    Cores,Time,Dofs\\
+    48,5.3e1,2134839\\
+    384,6.9e1,16936779\\
+    3072,6.1e1,134930451\\
+    24576,6.6e1,1077196323\\
+  }\ldctable
+  % [55.02509561666667, 68.57286605, 57.029964033333336, 69.39903468333333]
+  \pgfplotstableread[col sep=comma, row sep=\\]{%
+    Cores,Time,Dofs\\
+    48,5.5e1,2107839\\
+    384,6.9e1,16534263\\
+    3072,5.7e1,130973115\\
+    24576,6.9e1,1042606515\\
+  }\bfstable
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      \begin{center}
+        \begin{tikzpicture}
+          \begin{semilogxaxis}[
+            width=0.955\linewidth,
+            height=0.9\linewidth,
+            log basis x=2,
+            ymin=0,
+            ymax=80,
+            xtick=data,
+            xticklabels from table={\ldctable}{Cores},
+            extra x ticks={48, 384, 3072, 24576},
+            extra x tick labels={$[2.13]$, $[16.9]$,$[135]$,$[1077]$},
+            extra x tick style={tick label style={yshift=-2.5ex}},
+            xlabel={Cores\\{}[DoFs $\times 10^6$]},
+            xlabel style={align=center, style={yshift=-0.5ex}},
+            ylabel near ticks,
+            ylabel style={align=center, text width=4cm},
+            title={3D lid-driven cavity.},
+            ylabel={Time [min]},
+            ]
+            \addplot+ table[x=Cores,y=Time] {\ldctable};
+          \end{semilogxaxis}
+        \end{tikzpicture}
+      \end{center}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      {\centering
+        \includegraphics[width=\textwidth]{LDC-streamlines}}
+      {\scriptsize Velocity streamlines at Reynolds number 5000.
+        Credit F.~Wechsung, University of Oxford.}
+    \end{column}
+  \end{columns}
+  \begin{center}
+    50 continuation steps
+  \end{center}
+\end{frame}
+
 \begin{frame}
   \frametitle{Numerical results --- 2D $P_3^2-P_2^\text{disc}$}
   \begin{table}[htbp]
@@ -785,41 +852,6 @@ solve(F == 0, upT, bcs=bcs)
   \end{table}
 \end{frame}
 
-\begin{frame}[fragile]
-  \frametitle{Full solver}
-  \resizebox{\textwidth}{!}{
-    \begin{tikzpicture}[
-      every node/.style={draw=black, thick, anchor=west},
-      grow via three points={one child at (0.0,-0.7) and
-        two children at (0.0,-0.7) and (0.0,-1.4)},
-      edge from parent path={(\tikzparentnode.210) |- (\tikzchildnode.west)}]
-      \node {Continuation}
-      child { node {Newton solver with line search}
-        child { node {Krylov solver (FGMRES)}
-          child { node {Block preconditioner}
-            child { node {Approximate Schur complement inverse}}
-            child { node {Full multigrid cycle on augmented momentum block}
-              child { node {Coarse grid solver}
-                child { node {LU factorization}}
-              }
-              child [missing] {}
-              child { node {Prolongation operator}
-                child { node {Local solves over coarse cells}}
-              }
-              child [missing] {}
-              child { node {Relaxation}
-                child { node {GMRES}
-                  child { node {Additive star/macrostar iteration}}
-                }
-              }
-            }
-          }
-        }
-      };
-    \end{tikzpicture}
-  }
-\end{frame}
-
 \begin{frame}
   \frametitle{Main result}
   \begin{exampleblock}{}
@@ -829,19 +861,19 @@ solve(F == 0, upT, bcs=bcs)
 
     {\hfill\scriptsize\raggedleft Open source implementation at \url{https://github.com/florianwechsung/alfi}}
   \end{exampleblock}
-  \begin{answer}{Enabling software}
+  \begin{answer}{Enabling mathematical software}
     General implementation enabled by new mathematical software
     developments:
     \begin{itemize}
     \item Extensible block-preconditioning framework in Firedrake
 
-      {\hfill\scriptsize\raggedleft R.C.~Kirby, \textbf{LM}. SIAM
+      {\hfill\scriptsize\raggedleft R.C.~Kirby, \textbf{L.~Mitchell}. SIAM
         SISC (2018). \arxivlink{1706.01346}{cs.MS}\nocite{Kirby:2018}}
     \item New preconditioner in PETSc and Firedrake for multigrid relaxation schemes based on
       subspace correction methods
 
       {\hfill\scriptsize\raggedleft P.E.~Farrell, M.G.~Knepley,
-        \textbf{LM}, F.~Wechsung. \arxivlink{1912.08516}{cs.MS}\nocite{Farrell:2019b}}
+        \textbf{L.~Mitchell}, F.~Wechsung. \arxivlink{1912.08516}{cs.MS}\nocite{Farrell:2019b}}
     \end{itemize}
   \end{answer}
 \end{frame}
@@ -856,7 +888,6 @@ solve(F == 0, upT, bcs=bcs)
     \item It \emph{should be} the language we use to describe their implementation.
     \end{itemize}
   \end{block}
-  \pause
   \begin{challenge}{Challenges}
     \begin{itemize}
     \item Is there appropriate language to describe these problems to a
