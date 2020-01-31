@@ -1,7 +1,8 @@
+% -*- TeX-engine: luatex -*-
 \RequirePackage[l2tabu,orthodox]{nag}
 
-\documentclass[cmyk,luatex,paperwidth=60in,paperheight=36in,landscape]{baposter}
-\usepackage{xcolor}
+\documentclass[paperwidth=60in,paperheight=36in,landscape]{baposter}
+\usepackage[cmyk]{xcolor}
 \definecolor{firedrake_red}{cmyk}{0.07,0.86,0.8,0.09}
 \definecolor{purple}{cmyk}{0.51,0.91,0,0.34}
 \definecolor{blue}{cmyk}{1,0,0,0.9}
@@ -9,6 +10,7 @@
 \definecolor{red}{cmyk}{.15,1,0.9,0.1}
 \definecolor{cyan}{cmyk}{1,0,0,0}
 \definecolor{yellow}{cmyk}{0,0.15,0.87,0}
+\usepackage[lined,commentsnumbered]{algorithm2e}
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{amsfonts}
@@ -23,41 +25,13 @@
 \usetikzlibrary{calc, positioning, trees, plotmarks}
 \usetikzlibrary{shapes, shapes.geometric, decorations.pathreplacing, decorations.markings}
 \usetikzlibrary{arrows, arrows.meta, chains, fit, backgrounds, scopes}
-% https://tex.stackexchange.com/questions/27171/padded-boundary-of-convex-hull
-\newcommand{\convexpath}[2]{
-  [
-  create hullcoords/.code={
-    \global\edef\namelist{#1}
-    \foreach [count=\counter] \nodename in \namelist {
-      \global\edef\numberofnodes{\counter}
-      \coordinate (hullcoord\counter) at (\nodename);
-    }
-    \coordinate (hullcoord0) at (hullcoord\numberofnodes);
-    \pgfmathtruncatemacro\lastnumber{\numberofnodes+1}
-    \coordinate (hullcoord\lastnumber) at (hullcoord1);
-  },
-  create hullcoords
-  ]
-  ($(hullcoord1)!#2!-90:(hullcoord0)$)
-  \foreach [
-  evaluate=\currentnode as \previousnode using \currentnode-1,
-  evaluate=\currentnode as \nextnode using \currentnode+1
-  ] \currentnode in {1,...,\numberofnodes} {
-    let \p1 = ($(hullcoord\currentnode) - (hullcoord\previousnode)$),
-    \n1 = {atan2(\y1,\x1) + 90},
-    \p2 = ($(hullcoord\nextnode) - (hullcoord\currentnode)$),
-    \n2 = {atan2(\y2,\x2) + 90},
-    \n{delta} = {Mod(\n2-\n1,360) - 360}
-    in
-    {arc [start angle=\n1, delta angle=\n{delta}, radius=#2]}
-    -- ($(hullcoord\nextnode)!#2!-90:(hullcoord\currentnode)$)
-  }
-}
 
 \usepackage{graphicx}
-\usepackage{graphbox}
+\usepackage[export]{adjustbox}
+
 \graphicspath{{./\jobname.figures/}{../pictures/}}
 
+\usepackage{booktabs}
 \usepackage[most]{tcolorbox}
 \usepackage{amsmath,amssymb}
 \usepackage{cmbright}
@@ -79,24 +53,10 @@ ItalicFont = *-Light Italic,
 BoldFont = *-Medium,
 BoldItalicFont = *-Medium Italic,]{FiraSans}
 
+\usepackage{ragged2e}
 
 \begin{document}
-% \begin{abstract}
-%   Code generation is an increasingly popular technique for the
-%   development of complicated finite element discretisations of partial
-%   differential equations.  In this poster, we show new developments in
-%   the Firedrake finite element framework that allow the code
-%   generation pipeline to exploit structure inherent to some finite
-%   elements.  This includes, in particular, sum factorisation on tensor
-%   product cells for the full family of $Q^-$ spaces.
 
-%   This is achieved by providing a more expressive interface between
-%   the form compiler and the library providing the implementation of
-%   finite element tabulation.  This is encapsulated in a new finite
-%   element library, FInAT, that explicitly communicates the structure
-%   of elements.  New form compiler algorithms are introduced that
-%   exploit this structure.
-% \end{abstract}
 \begin{poster}{
     grid=false,
     columns=6,
@@ -116,43 +76,71 @@ BoldItalicFont = *-Medium Italic,]{FiraSans}
     headerheight=0.1\textheight,
   }
   {
-    \begin{minipage}[l]{0.3\textwidth}
-      \includegraphics[align=c, height=1.75cm]{durham-logo}
+    \begin{minipage}[c]{0.2\textwidth}
+      {\raggedright
+        \includegraphics[height=0.8cm]{nyu-logo-left}
+        \hskip10pt
+        \includegraphics[height=0.8cm]{nyu-logo-right}\\[0.5\baselineskip]
+
+        \includegraphics[height=1.5cm]{durham-logo}
+        \par
+      }
     \end{minipage}
   } 
   % Title
-  {\color{blue}\scshape\LARGE PCPATCH: topological construction of multigrid
-    relaxation schemes}
+  {{\color{blue}\bfseries\scshape\fontsize{20}{22}\selectfont \texttt{PCPATCH}: topological construction of multigrid
+      relaxation schemes\par}}
   % Authors
-  {\color{blue}\vspace{0.2em}\small\scshape Lawrence~Mitchell\\[0.5em]
-    Patrick~E.~Farrell \quad Matthew~G.~Knepley \quad Florian Wechsung}
+  {{\color{blue}\vspace{0.2em}\small\scshape Lawrence~Mitchell\\
+      {\normalfont \texttt{lawrence.mitchell@durham.ac.uk}}
+      \\[0.5em]
+      {\footnotesize Patrick~E.~Farrell \quad Matthew~G.~Knepley \quad Florian
+        Wechsung\\
+        {\normalfont \texttt{patrick.farrell@maths.ox.ac.uk} \quad
+          \texttt{knepley@buffalo.edu} \quad \texttt{wechsung@nyu.edu}}}}}
   % University logo
-  {
-    \makebox[0.3\textwidth][r]{
-      % \includegraphics[align=c,height=1cm]{oxford-logo}
-    }
-  }
+  {%
+    \begin{minipage}[c]{0.2\textwidth}
+      
+      {\flushright
+        \includegraphics[height=0.8cm]{buffalo-logo}\\[0.5\baselineskip]
 
-  \begin{posterbox}[name=introduction,span=2,column=0,row=0]{}
-    Many multigrid relaxation schemes require overlapping block Jacobi
-    or block Gau\ss-Seidel smoothers.
-
-    Appropriate decomposition of blocks inherited from topological
-    decomposition of mesh.
-
+        \includegraphics[height=1.5cm]{oxford-logo}
+        \par}
+    \end{minipage}
+    
+  }%
+  \begin{posterbox}[name=introduction,span=2,column=0,row=0, height=1]{Block
+      Jacobi multigrid smoothers}
+    \vspace{0.25\baselineskip}
+    {\centering\Large\bfseries H(curl) multigrid\strut\par}
+    \vspace{-0.75\baselineskip}
     \begin{equation*}
       (u, v) + \alpha(\nabla \times u, \nabla \times v) = (f, v)
     \end{equation*}
-
-    \begin{center}
-      \begin{tikzpicture}[scale=2, on each segment/.style={ decorate,
-          decoration={ show path construction, moveto code={}, lineto
-            code={ \path [#1] (\tikzinputsegmentfirst) --
-              (\tikzinputsegmentlast); }}},
-        dof/.style={blue, postaction={decorate, decoration={markings,
-              mark=at position 0.5 with { \node[transform
-                shape,shape=diamond,fill=blue,draw, inner sep=0pt, minimum
-                height=5pt, minimum width=12pt] {}; }}}}]
+    
+    \begin{minipage}[t]{0.66\linewidth}
+\begin{minted}{text}
+-mg_levels_pc_type patch
+-mg_levels_pc_patch_construct_type star
+-mg_levels_pc_patch_construct_dim 0
+\end{minted}      
+      \begin{tabular}{cc|ccccc}
+        \toprule
+        levels & DoFs & \multicolumn{5}{c}{$\alpha$} \\
+                  && $10^0$ & $10^1$ & $10^2$ & $10^3$ & $10^4$ \\
+        \midrule
+        1 & $7.93 \times 10^{3}$ & 18 & 19 & 19 & 19 & 19\\
+        2 & $5.97 \times 10^{4}$ & 19 & 19 & 19 & 19 & 19\\
+        3 & $4.63 \times 10^{5}$ & 20 & 20 & 20 & 20 & 20\\
+        4 & $3.64 \times 10^{6}$ & 20 & 20 & 20 & 20 & 20\\
+        \bottomrule
+      \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.33\linewidth}
+      \strut\vspace*{-\baselineskip}\newline
+      \begin{tikzpicture}[scale=1.5]
         \coordinate (0-0) at (1.5, 0);
         \coordinate (0-1) at (3, 0);
         \coordinate (1-0) at ($(0-0) + (120:1.5)$);
@@ -160,19 +148,62 @@ BoldItalicFont = *-Medium Italic,]{FiraSans}
         \coordinate (1-2) at ($(1-0) + (3, 0)$);
         \coordinate (2-0) at ($(1-0) + (60:1.5)$);
         \coordinate (2-1) at ($(2-0) + (1.5, 0)$);
-        \draw[dof, line join=miter, thick] (0-0) -- (0-1);
-        \draw[dof, line join=miter, thick] (0-1) -- (1-2);
-        \draw[dof, line join=miter, thick] (1-2) -- (2-1);
-        \draw[dof, line join=miter, thick] (2-1) -- (2-0);
-        \draw[dof, line join=miter, thick] (2-0) -- (1-0);
-        \draw[dof, line join=miter, thick] (1-0) -- (0-0);
 
-        \draw[dof, line join=miter, thick] (0-0) -- (1-1);
-        \draw[dof, line join=miter, thick] (0-1) -- (1-1);
-        \draw[dof, line join=miter, thick] (1-0) -- (1-1);
-        \draw[dof, line join=miter, thick] (1-2) -- (1-1);
-        \draw[dof, line join=miter, thick] (2-0) -- (1-1);
-        \draw[dof, line join=miter, thick] (2-1) -- (1-1);
+        \draw[blue, line join=miter, thick] (0-0) -- (0-1) -- (1-2)
+        -- (2-1) -- (2-0) -- (1-0) -- cycle;
+        \draw[blue, line join=miter, thick] (0-0) -- (1-1) -- (2-1);
+        \draw[blue, line join=miter, thick] (1-0) -- (1-1) -- (1-2);
+        \draw[blue, line join=miter, thick] (2-0) -- (1-1) -- (0-1);
+
+        \node[transform shape, shape=diamond, fill=blue,blue,
+        inner sep=0pt, minimum height=2.5pt, minimum width=6pt] at
+        ($(0-0)!0.5!(0-1)$) {};
+
+        \node[transform shape, shape=diamond, fill=blue,blue,
+        inner sep=0pt, minimum height=2.5pt, minimum width=6pt] at
+        ($(1-0)!0.5!(1-1)$) {};
+
+        \node[transform shape, shape=diamond, fill=blue,blue,
+        inner sep=0pt, minimum height=2.5pt, minimum width=6pt] at
+        ($(1-1)!0.5!(1-2)$) {};
+
+        \node[transform shape, shape=diamond, fill=blue,blue,
+        inner sep=0pt, minimum height=2.5pt, minimum width=6pt] at
+        ($(2-0)!0.5!(2-1)$) {};
+
+        \node[transform shape, shape=diamond, fill=blue,blue,
+        inner sep=0pt, minimum height=2.5pt, minimum width=6pt, rotate=120] at
+        ($(0-0)!0.5!(1-0)$) {};
+
+        \node[transform shape, shape=diamond, fill=blue,blue,
+        inner sep=0pt, minimum height=2.5pt, minimum width=6pt, rotate=120] at
+        ($(0-1)!0.5!(1-1)$) {};
+
+        \node[transform shape, shape=diamond, fill=blue,blue,
+        inner sep=0pt, minimum height=2.5pt, minimum width=6pt, rotate=120] at
+        ($(1-1)!0.5!(2-0)$) {};
+
+        \node[transform shape, shape=diamond, fill=blue,blue,
+        inner sep=0pt, minimum height=2.5pt, minimum width=6pt, rotate=120] at
+        ($(1-2)!0.5!(2-1)$) {};
+
+
+        \node[transform shape, shape=diamond, fill=blue,blue,
+        inner sep=0pt, minimum height=2.5pt, minimum width=6pt, rotate=60] at
+        ($(1-0)!0.5!(2-0)$) {};
+
+        \node[transform shape, shape=diamond, fill=blue,blue,
+        inner sep=0pt, minimum height=2.5pt, minimum width=6pt, rotate=60] at
+        ($(0-0)!0.5!(1-1)$) {};
+
+        \node[transform shape, shape=diamond, fill=blue,blue,
+        inner sep=0pt, minimum height=2.5pt, minimum width=6pt, rotate=60] at
+        ($(1-1)!0.5!(2-1)$) {};
+
+        \node[transform shape, shape=diamond, fill=blue,blue,
+        inner sep=0pt, minimum height=2.5pt, minimum width=6pt, rotate=60] at
+        ($(0-1)!0.5!(1-2)$) {};
+
         \begin{scope}[on background layer]
           \draw[cyan, fill=cyan] ([shift={(60:5pt)}]0-0) --
           ([shift={(120:5pt)}]0-1) --
@@ -183,43 +214,144 @@ BoldItalicFont = *-Medium Italic,]{FiraSans}
           cycle;
         \end{scope}
       \end{tikzpicture}
-    \end{center}
+    \end{minipage}
+
+    \vspace{1.75\baselineskip}
+    {\centering\Large\bfseries H(div) multigrid\strut\par}
+    \vspace{-0.75\baselineskip}
     \begin{equation*}
       (u, v) + \alpha(\nabla \cdot u, \nabla \cdot v) = (f, v)
     \end{equation*}
-    \begin{center}
-      \begin{tikzpicture}[scale=2, on each segment/.style={ decorate,
-          decoration={ show path construction, moveto code={}, lineto
-            code={ \path [#1] (\tikzinputsegmentfirst) --
-              (\tikzinputsegmentlast); }}},
-        dof/.style={blue, postaction={decorate, decoration={markings,
-              mark=at position 0.5 with { \node[transform
-                shape,shape=diamond,fill=blue,draw, inner sep=0pt, minimum
-                height=12pt, minimum width=5pt] {}; }}}}]
-        \coordinate (0-0) at (0, 0);
-        \coordinate (2-0) at (0, 1.5);
-        \coordinate (1-0) at ($(0-0) + (150:1.5)$);
-        \coordinate (1-1) at ($(0-0) + (30:1.5)$);
-        \draw[dof, line join=miter, thick] (0-0) -- (2-0);
-        \draw[dof, line join=miter, thick] (0-0) -- (1-1);
-        \draw[dof, line join=miter, thick] (1-1) -- (2-0);
-        \draw[dof, line join=miter, thick] (0-0) -- (1-0);
-        \draw[dof, line join=miter, thick] (1-0) -- (2-0);
+    \begin{minipage}[t]{0.66\linewidth}
+\begin{minted}{text}
+-mg_levels_pc_type patch
+-mg_levels_pc_patch_construct_type star
+-mg_levels_pc_patch_construct_codim 1
+\end{minted}
+      \begin{tabular}{cc|ccccc}
+        \toprule
+        levels & DoFs & \multicolumn{5}{c}{$\alpha$} \\
+                  && $10^0$ & $10^1$ & $10^2$ & $10^3$ & $10^4$ \\
+        \midrule
+        1 & $1.26 \times 10^{4}$ & 40 & 42 & 43 & 44 & 44\\
+        2 & $9.84 \times 10^{4}$ & 42 & 43 & 43 & 43 & 43\\
+        3 & $7.78 \times 10^{5}$ & 45 & 45 & 45 & 45 & 45\\
+        4 & $6.18 \times 10^{6}$ & 46 & 47 & 47 & 47 & 47\\
+        \bottomrule
+      \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.33\linewidth}
+      \strut\vspace*{-\baselineskip}\newline
+      \begin{tikzpicture}[scale=1.5]
+        \coordinate (0-0) at (1.5, 0);
+        \coordinate (0-1) at (3, 0);
+        \coordinate (1-0) at ($(0-0) + (120:1.5)$);
+        \coordinate (1-1) at ($(1-0) + (1.5, 0)$);
+        \coordinate (1-2) at ($(1-0) + (3, 0)$);
+        \coordinate (2-0) at ($(1-0) + (60:1.5)$);
+        \coordinate (2-1) at ($(2-0) + (1.5, 0)$);
+
+        \draw[blue, line join=miter, thick] (0-0) -- (0-1) -- (1-2)
+        -- (2-1) -- (2-0) -- (1-0) -- cycle;
+        \draw[blue, line join=miter, thick] (0-0) -- (1-1) -- (2-1);
+        \draw[blue, line join=miter, thick] (1-0) -- (1-1) -- (1-2);
+        \draw[blue, line join=miter, thick] (2-0) -- (1-1) -- (0-1);
+
+        \node[transform shape, shape=diamond, fill=blue,blue,
+        inner sep=0pt, minimum height=6pt, minimum width=2.5pt] at
+        ($(0-0)!0.5!(0-1)$) {};
+
+        \node[transform shape, shape=diamond, fill=blue,blue,
+        inner sep=0pt, minimum height=6pt, minimum width=2.5pt] at
+        ($(1-0)!0.5!(1-1)$) {};
+
+        \node[transform shape, shape=diamond, fill=blue,blue,
+        inner sep=0pt, minimum height=6pt, minimum width=2.5pt] at
+        ($(1-1)!0.5!(1-2)$) {};
+
+        \node[transform shape, shape=diamond, fill=blue,blue,
+        inner sep=0pt, minimum height=6pt, minimum width=2.5pt] at
+        ($(2-0)!0.5!(2-1)$) {};
+
+        \node[transform shape, shape=diamond, fill=blue,blue,
+        inner sep=0pt, minimum height=6pt, minimum width=2.5pt, rotate=120] at
+        ($(0-0)!0.5!(1-0)$) {};
+
+        \node[transform shape, shape=diamond, fill=blue,blue,
+        inner sep=0pt, minimum height=6pt, minimum width=2.5pt, rotate=120] at
+        ($(0-1)!0.5!(1-1)$) {};
+
+        \node[transform shape, shape=diamond, fill=blue,blue,
+        inner sep=0pt, minimum height=6pt, minimum width=2.5pt, rotate=120] at
+        ($(1-1)!0.5!(2-0)$) {};
+
+        \node[transform shape, shape=diamond, fill=blue,blue,
+        inner sep=0pt, minimum height=6pt, minimum width=2.5pt, rotate=120] at
+        ($(1-2)!0.5!(2-1)$) {};
+
+
+        \node[transform shape, shape=diamond, fill=blue,blue,
+        inner sep=0pt, minimum height=6pt, minimum width=2.5pt, rotate=60] at
+        ($(1-0)!0.5!(2-0)$) {};
+
+        \node[transform shape, shape=diamond, fill=blue,blue,
+        inner sep=0pt, minimum height=6pt, minimum width=2.5pt, rotate=60] at
+        ($(0-0)!0.5!(1-1)$) {};
+
+        \node[transform shape, shape=diamond, fill=blue,blue,
+        inner sep=0pt, minimum height=6pt, minimum width=2.5pt, rotate=60] at
+        ($(1-1)!0.5!(2-1)$) {};
+
+        \node[transform shape, shape=diamond, fill=blue,blue,
+        inner sep=0pt, minimum height=6pt, minimum width=2.5pt, rotate=60] at
+        ($(0-1)!0.5!(1-2)$) {};
         \begin{scope}[on background layer]
-          \draw[cyan, fill=cyan] (0, 0.175) --
-          ($(0, 0.175) + (30:1.15)$) --
-          (0, 1.325) --
-          ($(0, 0.175) + (150:1.15)$) --
+          \draw[cyan, fill=cyan] ($(0-0) + (60:0.15)$) --
+          ($(0-0) + (60:0.15) + (0:1.2)$) --
+          ($(1-1) + (240:0.15)$) --
+          ($(1-1) + (240:0.15) + (180:1.2)$) -- 
           cycle;
         \end{scope}
       \end{tikzpicture}
-    \end{center}
+    \end{minipage}
+
+    \vspace{1.75\baselineskip}
+    {\centering\Large\bfseries Nearly-incompressible elasticity\par}
+    \vspace{-0.75\baselineskip}
     \begin{equation*}
       (\varepsilon(u),\varepsilon(v)) + \alpha(\nabla \cdot u, \nabla
       \cdot v) = (f, v)
     \end{equation*}
-    \begin{center}
-      \begin{tikzpicture}[scale=2,
+    \begin{minipage}[t]{0.66\linewidth}
+\begin{minted}{python}
+def macropatch(self, mesh, vertex):
+  s = mesh.star(vertex)
+  c = concat(*(mesh.closure(p) for p in s))
+  return concat(s, *(mesh.star(p) for p in c))
+\end{minted}
+      \vspace{0pt}
+\begin{minted}{text}
+-mg_levels_pc_type patch
+-mg_levels_pc_patch_construct_dim 0
+-mg_levels_pc_patch_construct_type python
+-mg_levels_pc_patch_construct_python_type macropatch
+\end{minted}
+      \begin{tabular}{cr|cccccccc}
+        \toprule
+        levels & DoFs               & \multicolumn{7}{c}{$\alpha$}                                 \\
+                  &                    & $10^0$ & $10^1$ & $10^2$ & $10^3$ & $10^4$ & $10^6$ & $10^8$ \\
+        \midrule
+        1         & $2.39 \times 10^4$ & 15       & 14   & 18     & 23     & 25     & 26     & 25     \\
+        2         & $1.85\times 10^5$  & 16       & 16   & 21     & 26     & 29     & 31     & 30     \\
+        3         & $1.46\times 10^6$  & 16       & 16   & 22     & 27     & 31     & 32     & 31     \\
+        \bottomrule
+      \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.33\linewidth}
+      \strut\vspace*{-\baselineskip}\newline
+      \begin{tikzpicture}[scale=1.5,
         dof/.style={blue, postaction={decorate,decoration={markings,
               mark=at position 0.5 with {\draw[solid, fill=blue, blue] circle (0.08);}}}
         }]
@@ -294,314 +426,464 @@ BoldItalicFont = *-Medium Italic,]{FiraSans}
           cycle;
         \end{scope}
       \end{tikzpicture}
-    \end{center}
+    \end{minipage}
   \end{posterbox}
 
-  \begin{posterbox}[name=config, span=2,column=2]{}
-    Runtime configuration through options
-\begin{minted}{sh}
--pc_type patch
--pc_patch_construct_type star
+  \begin{posterbox}[name=config, span=2,column=2, height=1]{Building blocks}
+    \tcbset{center title,
+      colframe=red,
+      colback=red!10!white,
+      fonttitle=\bfseries,
+      right=1mm,
+      left=1mm,
+      top=1mm,
+      bottom=0.25mm,
+      boxsep=0.5mm,
+      middle=0mm,
+      toptitle=-0.5mm,
+      bottomtitle=-1mm,
+      valign upper=top,
+      valign lower=center,
+      halign=left,
+      lower separated=false,
+      before title=\strut}
+    \begin{tcolorbox}[title={Overview}]
+      {\raggedright \texttt{PCPATCH} is a PETSc preconditioner
+        providing configurable multigrid relaxation schemes based on
+        topological space decompositions. Out of the box, it offers
+        runtime access to overlapping block smoothers for many nearly
+        singular problems, as well as Vanka-like relaxation for
+        all-at-once multigrid.\par}
+    \end{tcolorbox}
+    \begin{tcolorbox}[title={Topological queries}]
+      Dimension and cell-shape independent specification of
+      decompositions via \texttt{DMPlex}.
+
+      \vspace{0.5\baselineskip}
+
+      \begin{minipage}[c]{0.32\textwidth}
+        {\centering 
+          \begin{tikzpicture}[scale=0.87]
+            \coordinate (0-0) at (1.5, 0); \coordinate (0-1) at (3,
+            0); \coordinate (1-0) at ($(0-0) + (120:1.5)$);
+            \coordinate (1-1) at ($(1-0) + (1.5, 0)$); \coordinate
+            (1-2) at ($(1-0) + (3, 0)$); \coordinate (2-0) at
+            ($(1-0) + (60:1.5)$); \coordinate (2-1) at
+            ($(2-0) + (1.5, 0)$);
+
+            \draw[blue, line join=miter, thick] (0-0) -- (0-1) --
+            (1-2) -- (2-1) -- (2-0) -- (1-0) -- cycle;
+            \draw[blue, line join=miter, thick] (0-0) -- (1-1);
+            \draw[blue, line join=miter, thick] (0-1) -- (1-1);
+            \draw[blue, line join=miter, thick] (1-0) -- (1-1);
+            \draw[blue, line join=miter, thick] (1-2) -- (1-1);
+            \draw[blue, line join=miter, thick] (2-0) -- (1-1);
+            \draw[blue, line join=miter, thick] (2-1) -- (1-1);
+            \draw[solid, blue, fill=blue] (1-1) circle (0.1);
+            \begin{scope}[on background layer]
+              \draw[cyan, fill=cyan] ([shift={(60:5pt)}]0-0) --
+              ([shift={(120:5pt)}]0-1) -- ([shift={(180:5pt)}]1-2) --
+              ([shift={(240:5pt)}]2-1) -- ([shift={(300:5pt)}]2-0) --
+              ([shift={(0:5pt)}]1-0) -- cycle;
+            \end{scope}
+          \end{tikzpicture}
+
+          \texttt{star(vertex)\strut}
+          \par
+        }
+      \end{minipage}
+      \hfill
+      \begin{minipage}[c]{0.32\textwidth}
+        {\centering
+          \begin{tikzpicture}[scale=0.87]
+            \coordinate (0-0) at (0, 0);
+            \coordinate (0-1) at ($({sin(60) * 1.5}, 0)$);
+            \coordinate (0-2) at ($({sin(60) * 3}, 0)$);
+            \coordinate (1-0) at ($({sin(60) * 0}, {sin(60) * 1.5})$);
+            \coordinate (1-1) at ($({sin(60) * 1.5}, {sin(60) * 1.5})$);
+            \coordinate (1-2) at ($({sin(60) * 3}, {sin(60) * 1.5})$);
+            \coordinate (2-0) at ($({sin(60) * 0}, {sin(60) * 3})$);
+            \coordinate (2-1) at ($({sin(60) * 1.5}, {sin(60) * 3})$);
+            \coordinate (2-2) at ($({sin(60) * 3}, {sin(60) * 3})$);
+
+            \draw[blue, line join=miter, thick] (0-0) -- (0-1) --
+            (0-2) -- (1-2) -- (2-2) -- (2-1) -- (2-0) -- (1-0) -- cycle;
+            \draw[blue, line join=miter, thick] (1-0) -- (1-1) -- (1-2);
+            \draw[blue, line join=miter, thick] (0-1) -- (1-1) -- (2-1);
+
+            \draw[solid, blue, fill=blue] ($(1-0)!0.5!(1-1)$) circle
+            (0.1);
+            \begin{scope}[on background layer]
+              \draw[cyan, fill=cyan] ([shift={(45:5pt)}]0-0) --
+              ([shift={(135:5pt)}]0-1) -- ([shift={(225:5pt)}]2-1) --
+              ([shift={(315:5pt)}]2-0) -- cycle;
+            \end{scope}
+          \end{tikzpicture}
+
+          \texttt{star(edge)\strut}
+          \par
+        }
+      \end{minipage}
+      \hfill
+      \begin{minipage}[c]{0.32\textwidth}
+        {\raggedright \texttt{star} relation gathers incident entities with equal or
+          smaller codimension.\par}
+      \end{minipage}
+
+      \vspace{1\baselineskip}
+
+      \begin{minipage}[c]{0.32\textwidth}
+        {\raggedright \texttt{closure} relation gathers incident entities with equal or
+          smaller dimension.\par}
+      \end{minipage}
+      \hfill
+      \begin{minipage}[c]{0.32\textwidth}
+        {\centering
+          \begin{tikzpicture}[scale=0.79]
+            \coordinate (0-0) at (1.5, 0); \coordinate (0-1) at (3,
+            0); \coordinate (1-0) at ($(0-0) + (120:1.5)$);
+            \coordinate (1-1) at ($(1-0) + (1.5, 0)$); \coordinate
+            (1-2) at ($(1-0) + (3, 0)$); \coordinate (2-0) at
+            ($(1-0) + (60:1.5)$); \coordinate (2-1) at
+            ($(2-0) + (1.5, 0)$);
+            \draw[blue, line join=miter, thick] (0-0) -- (0-1) --
+            (1-2) -- (2-1) -- (2-0) -- (1-0) -- cycle;
+            \draw[blue, line join=miter, thick] (0-0) -- (1-1);
+            \draw[blue, line join=miter, thick] (0-1) -- (1-1);
+            \draw[blue, line join=miter, thick] (1-0) -- (1-1);
+            \draw[blue, line join=miter, thick] (1-2) -- (1-1);
+            \draw[blue, line join=miter, thick] (2-0) -- (1-1);
+            \draw[blue, line join=miter, thick] (2-1) -- (1-1);
+            \draw[solid, blue, fill=blue] (barycentric cs:1-1=1,1-0=1,0-0=1) circle (0.1);
+            \begin{scope}[on background layer]
+              \draw[cyan, fill=cyan] ([shift={(270:7.5pt)}]0-0) --
+              ([shift={(30:7.5pt)}]1-1) --
+              ([shift={(150:7.5pt)}]1-0) --
+              cycle;
+            \end{scope}
+          \end{tikzpicture}
+
+          \texttt{closure(cell)\strut}
+          \par
+        }
+      \end{minipage}
+      \hfill
+      \begin{minipage}[c]{0.32\textwidth}
+        {\centering
+          \begin{tikzpicture}[scale=0.87]
+            \coordinate (0-0) at (0, 0);
+            \coordinate (0-1) at ($({sin(60) * 1.5}, 0)$);
+            \coordinate (0-2) at ($({sin(60) * 3}, 0)$);
+            \coordinate (1-0) at ($({sin(60) * 0}, {sin(60) * 1.5})$);
+            \coordinate (1-1) at ($({sin(60) * 1.5}, {sin(60) * 1.5})$);
+            \coordinate (1-2) at ($({sin(60) * 3}, {sin(60) * 1.5})$);
+            \coordinate (2-0) at ($({sin(60) * 0}, {sin(60) * 3})$);
+            \coordinate (2-1) at ($({sin(60) * 1.5}, {sin(60) * 3})$);
+            \coordinate (2-2) at ($({sin(60) * 3}, {sin(60) * 3})$);
+
+            \draw[blue, line join=miter, thick] (0-0) -- (0-1) --
+            (0-2) -- (1-2) -- (2-2) -- (2-1) -- (2-0) -- (1-0) -- cycle;
+            \draw[blue, line join=miter, thick] (1-0) -- (1-1) -- (1-2);
+            \draw[blue, line join=miter, thick] (0-1) -- (1-1) -- (2-1);
+
+            \draw[solid, blue, fill=blue] ($(1-0)!0.5!(1-1)$) circle
+            (0.1);
+            \begin{scope}[on background layer]
+              \draw[cyan, fill=cyan]
+              ([shift={(45:5pt)}]1-1) -- ([shift={(135:5pt)}]1-0) --
+              ([shift={(225:5pt)}]1-0) -- ([shift={(315:5pt)}]1-1) -- cycle;
+            \end{scope}
+          \end{tikzpicture}
+
+          \texttt{closure(edge)\strut}
+          \par
+        }
+      \end{minipage}
+    \end{tcolorbox}
+
+    \begin{tcolorbox}[title={Jacobian and residual evaluation},
+      halign=left]
+      \begin{minipage}[t]{0.75\linewidth}
+        {\raggedright \texttt{PCPATCH} constructs local DoF numberings for each
+          patch and coordinates iteration over patches. Callback
+          interface to discretisation engine for Jacobian and residual
+          evaluation enables nonlinear and matrix-free relaxation.\par}
+\begin{minted}{c}
+int Jacobian(PC pc, PetscInt point, Vec state, 
+  Mat J, IS entities, PetscInt ndof, 
+  PetscInt *dofNumbering, void *ctx);
+int Residual(PC pc, PetscInt point, Vec state, 
+  Vec F, IS entities, PetscInt ndof, 
+  PetscInt *dofNumbering, void *ctx);
+\end{minted}
+      \end{minipage}
+      \hfill
+      \begin{minipage}[t]{0.24\linewidth}
+        \strut\vspace*{-\baselineskip}\newline
+        {\centering
+          \includegraphics[width=0.5\textwidth]{firedrake-noword}
+          \par
+        }
+        \vspace{0.5\baselineskip}
+        {\centering
+          \texttt{DMPlex + PetscDS}
+          \vspace{0.5\baselineskip}
+
+          \begin{tikzpicture}[scale=0.9]
+            \tikzstyle{line} = [draw, -, thick]
+            \tikzstyle{nodraw} = [draw, fill, circle, minimum width=0pt, inner sep=0pt]
+            \tikzstyle{sieve} = [line, circle, font=\scriptsize, inner sep=0pt, minimum size=12pt]
+            \tikzstyle{cell} = [sieve, fill=blue!60]
+            \tikzstyle{facet} = [sieve, fill=green!35]
+            \tikzstyle{edge} = [sieve, fill=red!35]
+            \tikzstyle{vertex} = [sieve, fill=blue!35]
+            \input{../pictures/tet_graph.tex}
+          \end{tikzpicture}
+          \par
+        }
+      \end{minipage}
+    \end{tcolorbox}
+    \begin{tcolorbox}[title={Relaxation schemes}]
+      \begin{algorithm}[H]
+        \SetKwInOut{Input}{input}
+        \SetKwInOut{Output}{output}
+        \Input{\,Initial guess $u^k \in V$, weighting operators $w_i : V_i \to V_i$}
+        \Output{\,Updated guess $u^{k+1} \in V$}
+        \BlankLine
+        \For{$i = 1$ \KwTo $J$}{ Find
+          $\delta u_i \in V_i$ such that
+          \begin{equation*}
+            \begin{aligned}
+              a(\delta u_i, v_i)       & = (f, v_i) - a(u^k, v_i) && \text{linear case}       & \text{\texttt{-pc\_type patch}} \\
+              F(u^k + \delta u_i; v_i) & = 0                      && \text{nonlinear case} & \text{\texttt{-snes\_type patch}}
+            \end{aligned}
+          \end{equation*}
+        } $u^{k+1} \gets u^k + \sum_{i=1}^{J} w_i(\delta u_i)$
+      \end{algorithm}
+    \end{tcolorbox}
+  \end{posterbox}
+  \begin{posterbox}[name=examples, column=4, span=2, height=0.85]{Examples}
+    \vspace{0.25\baselineskip}
+    {\centering\Large\bfseries Vanka relaxation for Stokes\strut\par}
+
+    Find $(u, p) \in V\times Q := \mathbb{P}_2^2 \times \mathbb{P}_1$ such that
+    \vspace{-0.75\baselineskip}
+    \begin{equation*}
+      \nu (\varepsilon{(u)}, \varepsilon{(v)}) - (p, \nabla \cdot v) -
+      (\nabla \cdot u, q) = (f, v) \quad \forall (v, q) \in V \times Q.
+    \end{equation*}
+
+    \begin{minipage}[t]{0.49\linewidth}
+      \strut\vspace*{-\baselineskip}\newline
+      {\centering
+        \begin{tikzpicture}
+          \coordinate (0-0) at (1.5, 0);
+          \coordinate (0-1) at (3, 0);
+          \coordinate (1-0) at ($(0-0) + (120:1.5)$);
+          \coordinate (1-1) at ($(1-0) + (1.5, 0)$);
+          \coordinate (1-2) at ($(1-0) + (3, 0)$);
+          \coordinate (2-0) at ($(1-0) + (60:1.5)$);
+          \coordinate (2-1) at ($(2-0) + (1.5, 0)$);
+          \draw[blue, line join=miter, thick] (0-0) -- (0-1) -- (1-2)
+          -- (2-1) -- (2-0) -- (1-0) -- cycle;
+          \draw[blue, line join=miter, thick] (0-0) -- (1-1) -- (2-1);
+          \draw[blue, line join=miter, thick] (1-0) -- (1-1) -- (1-2);
+          \draw[blue, line join=miter, thick] (2-0) -- (1-1) -- (0-1);
+
+          \begin{scope}[on background layer]
+            \node[regular polygon, regular polygon sides=6, transform
+            shape, fill=cyan, cyan, inner sep=0pt, minimum height=3.75cm, minimum width=3.75cm] at (1-1) {};
+          \end{scope}
+          \begin{scope}[on background layer]
+            \node[regular polygon, regular polygon sides=6, transform shape, fill=red, red, inner sep=0pt, minimum height=14pt, minimum width=14pt] at (0-0) {};
+            \node[regular polygon, regular polygon sides=6, transform shape, fill=red, red, inner sep=0pt, minimum height=14pt, minimum width=14pt] at (0-1) {};
+            \node[regular polygon, regular polygon sides=6, transform shape, fill=red, red, inner sep=0pt, minimum height=14pt, minimum width=14pt] at (1-0) {};
+            \node[regular polygon, regular polygon sides=6, transform shape, fill=red, red, inner sep=0pt, minimum height=14pt, minimum width=14pt] at (1-1) {};
+            \node[regular polygon, regular polygon sides=6, transform shape, fill=red, red, inner sep=0pt, minimum height=14pt, minimum width=14pt] at (1-2) {};
+            \node[regular polygon, regular polygon sides=6, transform shape, fill=red, red, inner sep=0pt, minimum height=14pt, minimum width=14pt] at (2-0) {};
+            \node[regular polygon, regular polygon sides=6, transform shape, fill=red, red, inner sep=0pt, minimum height=14pt, minimum width=14pt] at (2-1) {};
+            
+          \end{scope}
+          \draw[solid, blue, fill=blue] (0-0) circle (0.1);
+          \draw[solid, blue, fill=blue] (0-1) circle (0.1);
+          \draw[solid, blue, fill=blue] (1-0) circle (0.1);
+          \draw[solid, blue, fill=blue] (1-1) circle (0.1);
+          \draw[solid, blue, fill=blue] (1-2) circle (0.1);
+          \draw[solid, blue, fill=blue] (2-0) circle (0.1);
+          \draw[solid, blue, fill=blue] (2-1) circle (0.1);
+
+          \draw[solid, blue, fill=blue] ($(0-0)!0.5!(0-1)$) circle (0.1);
+          \draw[solid, blue, fill=blue] ($(0-1)!0.5!(1-2)$) circle (0.1);
+          \draw[solid, blue, fill=blue] ($(1-2)!0.5!(2-1)$) circle (0.1);
+          \draw[solid, blue, fill=blue] ($(2-0)!0.5!(2-1)$) circle (0.1);
+          \draw[solid, blue, fill=blue] ($(2-0)!0.5!(1-0)$) circle (0.1);
+          \draw[solid, blue, fill=blue] ($(1-0)!0.5!(0-0)$) circle (0.1);
+
+          \draw[solid, blue, fill=blue] ($(0-0)!0.5!(1-1)$) circle (0.1);
+          \draw[solid, blue, fill=blue] ($(0-1)!0.5!(1-1)$) circle (0.1);
+          \draw[solid, blue, fill=blue] ($(1-0)!0.5!(1-1)$) circle (0.1);
+          \draw[solid, blue, fill=blue] ($(1-2)!0.5!(1-1)$) circle (0.1);
+          \draw[solid, blue, fill=blue] ($(2-0)!0.5!(1-1)$) circle (0.1);
+          \draw[solid, blue, fill=blue] ($(2-1)!0.5!(1-1)$) circle (0.1);
+        \end{tikzpicture}
+        \par
+      }
+
+\begin{minted}{text}
 -pc_patch_construct_dim 0
-\end{minted}
+-pc_patch_construct_type vanka
+-pc_patch_exclude_subspaces 1
 
-    More complex user-specified patches via callback
-\begin{minted}{sh}
--pc_type patch
--pc_patch_construct_type python
--pc_patch_construct_python_type MacroPatch
 \end{minted}
-\begin{minted}{python}
-class MacroPatch(object):
-    def patch(self, mesh, vertex):
-        s = mesh.star(vertex)
-        c = concat(*(mesh.closure(p) for p in s))
-        return concat(s, *(mesh.star(p) for p in c))
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.49\linewidth}
+      \strut\vspace*{-\baselineskip}\newline
+      {\centering
+        \begin{tikzpicture}
+          \coordinate (0-0) at (1.5, 0);
+          \coordinate (0-1) at (3, 0);
+          \coordinate (1-0) at ($(0-0) + (120:1.5)$);
+          \coordinate (1-1) at ($(1-0) + (1.5, 0)$);
+          \coordinate (1-2) at ($(1-0) + (3, 0)$);
+          \coordinate (2-0) at ($(1-0) + (60:1.5)$);
+          \coordinate (2-1) at ($(2-0) + (1.5, 0)$);
+          \draw[blue, line join=miter, thick] (0-0) -- (0-1) -- (1-2)
+          -- (2-1) -- (2-0) -- (1-0) -- cycle;
+          \draw[blue, line join=miter, thick] (0-0) -- (1-1) -- (2-1);
+          \draw[blue, line join=miter, thick] (1-0) -- (1-1) -- (1-2);
+          \draw[blue, line join=miter, thick] (2-0) -- (1-1) -- (0-1);
+
+          \begin{scope}[on background layer]
+            \node[regular polygon, regular polygon sides=6, transform
+            shape, fill=cyan, cyan, inner sep=0pt, minimum
+            height=3.725cm, minimum width=3.725cm] at (1-1) {};
+
+            \node[regular polygon, regular polygon sides=6, transform shape, fill=white, white, inner sep=0pt, minimum height=0.75cm, minimum width=0.75cm] at (0-0) {};
+            \node[regular polygon, regular polygon sides=6, transform shape, fill=white, white, inner sep=0pt, minimum height=0.75cm, minimum width=0.75cm] at (0-1) {};
+            \node[regular polygon, regular polygon sides=6, transform shape, fill=white, white, inner sep=0pt, minimum height=0.75cm, minimum width=0.75cm] at (1-0) {};
+            \node[regular polygon, regular polygon sides=6, transform shape, fill=white, white, inner sep=0pt, minimum height=0.75cm, minimum width=0.75cm] at (1-2) {};
+            \node[regular polygon, regular polygon sides=6, transform shape, fill=white, white, inner sep=0pt, minimum height=0.75cm, minimum width=0.75cm] at (2-0) {};
+            \node[regular polygon, regular polygon sides=6, transform shape, fill=white, white, inner sep=0pt, minimum height=0.75cm, minimum width=0.75cm] at (2-1) {};
+          \end{scope}
+          \begin{scope}[on background layer]
+            \node[regular polygon, regular polygon sides=6, transform shape, fill=red, red, inner sep=0pt, minimum height=14pt, minimum width=14pt] at (0-0) {};
+            \node[regular polygon, regular polygon sides=6, transform shape, fill=red, red, inner sep=0pt, minimum height=14pt, minimum width=14pt] at (0-1) {};
+            \node[regular polygon, regular polygon sides=6, transform shape, fill=red, red, inner sep=0pt, minimum height=14pt, minimum width=14pt] at (1-0) {};
+            \node[regular polygon, regular polygon sides=6, transform shape, fill=red, red, inner sep=0pt, minimum height=14pt, minimum width=14pt] at (1-1) {};
+            \node[regular polygon, regular polygon sides=6, transform shape, fill=red, red, inner sep=0pt, minimum height=14pt, minimum width=14pt] at (1-2) {};
+            \node[regular polygon, regular polygon sides=6, transform shape, fill=red, red, inner sep=0pt, minimum height=14pt, minimum width=14pt] at (2-0) {};
+            \node[regular polygon, regular polygon sides=6, transform shape, fill=red, red, inner sep=0pt, minimum height=14pt, minimum width=14pt] at (2-1) {};
+            
+          \end{scope}
+          \draw[solid, blue, fill=blue] (0-0) circle (0.1);
+          \draw[solid, blue, fill=blue] (0-1) circle (0.1);
+          \draw[solid, blue, fill=blue] (1-0) circle (0.1);
+          \draw[solid, blue, fill=blue] (1-1) circle (0.1);
+          \draw[solid, blue, fill=blue] (1-2) circle (0.1);
+          \draw[solid, blue, fill=blue] (2-0) circle (0.1);
+          \draw[solid, blue, fill=blue] (2-1) circle (0.1);
+
+          \draw[solid, blue, fill=blue] ($(0-0)!0.5!(0-1)$) circle (0.1);
+          \draw[solid, blue, fill=blue] ($(0-1)!0.5!(1-2)$) circle (0.1);
+          \draw[solid, blue, fill=blue] ($(1-2)!0.5!(2-1)$) circle (0.1);
+          \draw[solid, blue, fill=blue] ($(2-0)!0.5!(2-1)$) circle (0.1);
+          \draw[solid, blue, fill=blue] ($(2-0)!0.5!(1-0)$) circle (0.1);
+          \draw[solid, blue, fill=blue] ($(1-0)!0.5!(0-0)$) circle (0.1);
+
+          \draw[solid, blue, fill=blue] ($(0-0)!0.5!(1-1)$) circle (0.1);
+          \draw[solid, blue, fill=blue] ($(0-1)!0.5!(1-1)$) circle (0.1);
+          \draw[solid, blue, fill=blue] ($(1-0)!0.5!(1-1)$) circle (0.1);
+          \draw[solid, blue, fill=blue] ($(1-2)!0.5!(1-1)$) circle (0.1);
+          \draw[solid, blue, fill=blue] ($(2-0)!0.5!(1-1)$) circle (0.1);
+          \draw[solid, blue, fill=blue] ($(2-1)!0.5!(1-1)$) circle (0.1);
+        \end{tikzpicture}
+        \par
+      }
+\begin{minted}{text}
+-pc_patch_construct_dim 0
+-pc_patch_construct_type vanka
+-pc_patch_exclude_subspaces 1
+-pc_patch_vanka_dim 0
 \end{minted}
+    \end{minipage}
+
+    \vspace{0.5\baselineskip}
+    {\raggedleft\small Analysis of different patches in \texttt{arXiv:
+        1908.09949 [math.NA]}\par}
+
+    \vspace{0.5\baselineskip}
+    \begin{minipage}[c]{0.4\textwidth}
+      \strut\vspace*{-\baselineskip}\newline
+      {\centering \includegraphics[height=2.25cm]{stokes-velocity}
+        \includegraphics[height=2.25cm]{stokes-viscosity}\par}
+    \end{minipage}
+    \hfill
+    \hspace{0.5em}
+    \begin{minipage}[c]{0.6\textwidth}
+      \strut\vspace*{-\baselineskip}\newline
+      \begin{tabular}{cc|ccccc}
+        \toprule
+        levels & DoFs & \multicolumn{5}{c}{$\nu$} \\
+                  && $10^0$ & $10^1$ & $10^2$ & $10^3$ & $10^4$ \\
+        \midrule
+        1 & $1.48 \times 10^{4}$ & 14 & 14 & 14 & 14 & 14\\
+        2 & $5.84 \times 10^{4}$ & 14 & 14 & 14 & 14 & 14\\
+        3 & $2.32 \times 10^{5}$ & 14 & 14 & 14 & 14 & 14\\
+        4 & $9.25 \times 10^{5}$ & 14 & 14 & 14 & 14 & 14\\
+        \bottomrule
+      \end{tabular}
+    \end{minipage}
+
+    \vspace{1.75\baselineskip}
+    {\centering\Large\bfseries Augmented Lagrangian preconditioning for
+      Navier--Stokes\strut\par}
+    \vspace{-0.75\baselineskip}
+    \begin{equation*}
+      \nu (\varepsilon{(u)}, \varepsilon{(v)}) + ((w \cdot \nabla) u,
+      v) + ((u \cdot \nabla)w, v) + \gamma(\nabla \cdot u, \nabla \cdot v) = (f, v)
+    \end{equation*}
+
+    {\raggedright \texttt{PCPATCH} used to implement parameter-robust multigrid scheme
+    for augmented Lagrangian momentum equation\par}
+
+    \begin{minipage}[c]{0.6\textwidth}
+      \strut\vspace*{-\baselineskip}\newline
+      \begin{tabular}{cc|ccccc}
+        \toprule
+        levels & DoFs & \multicolumn{5}{c}{Reynolds number} \\
+               && 10 & 100 & 1000 & 2500 & 5000 \\
+        \midrule
+        1 & $2.1 \times 10^6$ & 4.50 & 4.00 & 5.00 & 4.50 & 4.00 \\
+        2 & $1.7 \times 10^7$ & 4.50 & 4.33 & 4.50 & 4.00 & 4.00 \\
+        3 & $1.3 \times 10^8$ & 4.50 & 4.33 & 4.00 & 3.50 & 7.00 \\
+        4 & $1.1 \times 10^9$ & 4.50 & 3.66 & 3.00 & 5.00 & 5.00 \\
+        \bottomrule
+      \end{tabular}
+    \end{minipage}
+    \hfill
+    \hspace{0.5em}
+    \begin{minipage}[c]{0.4\textwidth}
+      \strut\vspace*{-\baselineskip}\newline
+      {\centering \includegraphics[height=4cm]{LDC-streamlines}\par}
+    \end{minipage}
+
+    {\raggedleft\small Details in \texttt{arXiv: 1810.03315 [math.NA]}\par}
   \end{posterbox}
-  \begin{posterbox}[name=details, column=5, span=1]{}
-    \includegraphics[width=0.5\textwidth]{pcpatch-paper-qr}
+  \begin{posterbox}[below=examples, name=details, column=4, span=2, height=0.14]{Want to know more?}
+    \begin{minipage}[t]{0.85\textwidth}
+      {\raggedright Paper: \texttt{arXiv: 1912.08516 [cs.MS]}\\
+      Available in PETSc: \url{www.mcs.anl.gov/petsc}\\
+      Interface in Firedrake: \url{www.firedrakeproject.org}\\
+      Funding: EPSRC grants \texttt{EP/R029423/1},
+      \texttt{EP/L015803/1}, \texttt{EP/N032861/1}\\
+      U.S. DoE grant \texttt{DE-AC02-06CH11357}\par}
+    \end{minipage}
+    \begin{minipage}[t]{0.14\textwidth}
+      \strut\vspace*{-\baselineskip}\newline
+      {\centering \includegraphics[width=\textwidth]{pcpatch-paper-qr}\par}
+    \end{minipage}
+
   \end{posterbox}
-  % \begin{posterbox}[name=structure, column=0, below=introduction,
-  %   span=3, height=0.275,
-  %   ]{Tabulation expressions}
-  %   \raggedright
-  %   Arbitrarily structured basis evaluations, composed of six base cases.
-  %   \tcbset{center title,
-  %     colframe=imperial_darkblue,
-  %     colback=imperial_lightblue!10!white,
-  %     fonttitle=\bfseries,
-  %     right=0mm,
-  %     left=0mm,
-  %     top=0.25mm,
-  %     bottom=0.25mm,
-  %     boxsep=0.5mm,
-  %     middle=0mm,
-  %     toptitle=-0.5mm,
-  %     bottomtitle=-1mm,
-  %     valign upper=top,
-  %     valign lower=center,
-  %     halign=center,
-  %     lower separated=false,
-  %   before title=\strut}
-  %   \begin{tcbraster}[raster columns=6,raster equal height=rows]
-  %     \begin{tcolorbox}[title=FIAT, raster multicolumn=3,
-  %       height=2.25cm]
-  %       Tabulation as a literal array
-  %       \tcblower
-  %       \vspace{-0.5\baselineskip}
-  %       \begin{equation*}
-  %         \Psi_i(\xi_q) \mapsto \mathbf{\Psi}_{iq}
-  %       \end{equation*}
-  %     \end{tcolorbox}
-  %     \begin{tcolorbox}[title=Tensor-valued, raster multicolumn=3, height=2.25cm]
-  %       Components are Kronecker $\delta$s
-  %       \tcblower
-  %       \vspace{-0.91\baselineskip}
-  %       \begin{equation*}
-  %         \Psi_{(\alpha, \nu)\kappa}(\xi_q) \mapsto \Psi_{\alpha}^*(\xi_q){\prod_{i=1}^n \delta_{\nu_i \kappa_i}}
-  %       \end{equation*}
-  %     \end{tcolorbox}
-  %     \begin{tcolorbox}[title=Underintegration, raster multicolumn=2, height=1.9cm]
-  %       $\{\xi_q\}$ matches nodes
-  %       \tcblower
-  %       \vspace{-0.5\baselineskip}
-  %       \begin{equation*}
-  %         \Psi_i(\xi_q) \mapsto \delta_{iq}
-  %       \end{equation*}
-  %     \end{tcolorbox}
-  %     \begin{tcolorbox}[title=Enriched, raster multicolumn=4,
-  %       height=1.9cm, valign upper=center]
-  %       \vspace{-\baselineskip}
-  %       \begin{equation*}
-  %         {(\Phi \oplus \Psi)}_i(\xi_q) \mapsto
-  %         \begin{cases}
-  %           \Phi_i(\xi_q) &\text{$i < N_\Phi$}\\
-  %           \Psi_{i-N_\Phi}(\xi_q) &\text{otherwise}
-  %         \end{cases}
-  %       \end{equation*}
-  %     \end{tcolorbox}
-  %     \begin{tcolorbox}[title=Tensor product, raster multicolumn=3, height=2.25cm]
-  %       With tensorial quadrature rule
-  %       \tcblower
-  %       \vspace{-0.96\baselineskip}
-  %       \begin{equation*}
-  %         \Psi_{(i_1, \dots, i_n)}(\xi_{(q_1, \dots, q_n)}) \mapsto \prod_{j=1}^{n} \psi_{i_j}(\xi_{q_j})
-  %       \end{equation*}
-  %     \end{tcolorbox}
-  %     \begin{tcolorbox}[title=$\mathbf{H}(\text{div}/\text{curl})$,
-  %       raster multicolumn=3, height=2.25cm]
-  %       Inner structure
-  %       \vspace{-0.5\baselineskip}
-  %       \begin{equation*}
-  %         \text{\texttt{HDiv}}(\Psi_i(\xi_q)) \mapsto
-  %         \begin{cases}
-  %           [-\Psi_i(\xi_q), 0]\\
-  %           [0, \Psi_i(\xi_q)]
-  %         \end{cases}
-  %       \end{equation*}
-  %     \end{tcolorbox}
-  %   \end{tcbraster}
-  % \end{posterbox}
-
-  % \begin{posterbox}[name=rules, column=0, below=structure, span=3,
-  %   height=0.275]{Compiler algorithms}
-  %   \raggedright
-  %   Structure exploiting code generation implemented in TSFC,
-  %   provides low complexity finite element kernels.
-  %   \vspace{-\baselineskip}
-  %   \subsection*{Delta cancellation}
-  %   \vspace{-0.35\baselineskip}
-  %   \begin{equation*}
-  %     \sum_{i_1, i_2} c_{i_1 i_2} \Psi_{i_1 q}
-  %     \delta_{i_2 a} \mapsto \sum_{i_1} c_{i_1 a}\Psi_{i_1 q}
-  %   \end{equation*}
-  %   \vspace{-2\baselineskip}
-  %   \subsubsection*{\dots across assignments}
-  %   \vspace{-0.35\baselineskip}
-  %   \begin{equation*}
-  %     A_{i_1 i_2 j_1 j_2} = \delta_{i_2 j_2} \sum_q w_q S_q \Psi_{i_1 q}\Psi_{j_1 q} \mapsto A_{i_1 i_2 j_1 i_2} = \sum_q w_q S_q \Psi_{i_1 q}\Psi_{j_1 q}
-  %   \end{equation*}
-  %   \vspace{-1.75\baselineskip}
-  %   \subsection*{Sum factorisation}
-  %   \vspace{-0.35\baselineskip}
-  %   An operation minimal contraction order is chosen by exhaustive search.
-  %   \begin{align*}
-  %     \sum_{q_1 q_2} D\Psi^{(1)}_{i_1 q_1}\Psi^{(2)}_{i_2 q_2}
-  %     D\Psi^{(1)}_{j_1 q_1}\Psi^{(2)}_{j_2 q_2} P^{(1,1)}_{q_1 q_2}
-  %     \mapsto \\
-  %     \sum_{q_1} D\Psi^{(1)}_{i_1 q_1} D\Psi^{(1)}_{j_1 q_1} \sum_{q_2}  \Psi^{(2)}_{i_2 q_2}\Psi^{(2)}_{j_2 q_2} P^{(1,1)}_{q_1 q_2}
-  %   \end{align*}
-  % \end{posterbox}
-
-  % \begin{posterbox}[name=flop-scaling, column=3, below=introduction,
-  %   span=3, height=0.275]{Algorithmic complexity}
-  %   \raggedright
-  %   FLOP complexity computing Laplacian on hexahedral cells
-  %   \begin{equation*}
-  %     \int\!\nabla u \cdot \nabla v\,\text{d}x \quad u, v \in V \subset H^1
-  %   \end{equation*}
-  %   \begin{center}
-  %     \begin{tikzpicture}[scale=0.875]
-  %       \begin{loglogaxis}[
-  %         legend cell align=left,
-  %         legend pos=outer north east,
-  %         xlabel={Polynomial degree ($ \mathrm{n} $)},
-  %         xlabel style={yshift=-0.25em},
-  %         xtick={1,2,3,4,5,6,7,8,10,12,14,16,20,24,28,32},
-  %         xticklabels={1,2,3,4,,,,8,,,,16,,,,32},
-  %         x tick label style={yshift=-0.25em},
-  %         ylabel={FLOP/cell},
-  %         ylabel style={yshift=0.5em},
-  %         y tick label style={xshift=-0.25em},
-  %         ]
-  %         \addplot[densely dotted,mark=o,mark options={solid}, line width=1.5pt]
-  %         table [x=degree, y=coffee, col sep=comma] {\jobname.figures/data/bipoisson_flops.csv};
-  %         \addlegendentry{FIAT mode}
-          
-  %         \addplot[densely dashed,domain=1:32] {36*(x+1)^9};
-  %         \addlegendentry{$ \mathrm{(n+1)^9} $}
-          
-  %         \addplot[densely dotted,mark=*,mark options={solid}, line width=1.5pt]
-  %         table [x=degree, y=spectral, col sep=comma] {\jobname.figures/data/bipoisson_flops.csv};
-  %         \addlegendentry{FInAT mode}
-          
-  %         \addplot[densely dashed,domain=1:32] {(x+1)^7};
-  %         \addlegendentry{$ \mathrm{(n+1)^7} $}
-          
-  %         \addplot[densely dotted,mark=diamond*,mark options={solid}, line width=1.5pt]
-  %         table [x=degree, y=gll_spectral, col sep=comma] {\jobname.figures/data/bipoisson_flops.csv};
-  %         \addlegendentry{Collocated}
-          
-  %         \addplot[densely dashed,domain=1:32] {4*(x+1)^5};
-  %         \addlegendentry{$ \mathrm{(n+1)^5} $}
-  %       \end{loglogaxis}
-  %     \end{tikzpicture}
-  %   \end{center}
-  % \end{posterbox}
-
-  % \begin{posterbox}[name=curl-curl, column=3, below=flop-scaling,
-  %   span=3, height=0.275]{DoF throughput}
-  %   \raggedright
-  %   Throughput on a hexahedral mesh computing curl-curl action:
-  %   \begin{equation*}
-  %     \int_\Omega\!\nabla \times u \cdot \nabla \times v\,\text{d}x \quad u,v \in V \subset H(\text{curl}) 
-  %   \end{equation*}
-  %   \begin{center}
-  %     \begin{tikzpicture}[scale=0.875]
-  %       \begin{loglogaxis}[
-  %         legend cell align=left,
-  %         legend pos=outer north east,
-  %         xlabel={Polynomial degree ($ \mathrm{n} $)},
-  %         xlabel style={yshift=-0.25em},
-  %         xtick={1,2,3,4,5,6,7,8,10,12,14,16,20,24,28,32},
-  %         xticklabels={1,2,3,4,,,,8,,,,16,,,,32},
-  %         x tick label style={yshift=-0.25em},
-  %         ylabel={DoF/s},
-  %         ylabel style={yshift=0.5em},
-  %         y tick label style={xshift=-0.25em},
-  %         ]
-  %         \addplot[densely dotted,mark=star,mark options={solid}, line width=1.5pt] table
-  %         [x=degree, y=rate, col sep=comma] {\jobname.figures/data/curlcurl_spmv.csv};
-  %         \addlegendentry{CSR matrix}
-
-  %         \addplot[dotted,mark=*,mark options={solid,fill=gray}, line width=1.5pt] table
-  %         [x=degree, y=rate, col sep=comma] {\jobname.figures/data/curlcurl_base.csv};
-  %         \addlegendentry{FIAT mode}
-  %         \pgfplotstableread{\jobname.figures/data/curlcurl.dat}{\data}
-  %         \fitCurve{\data}{0}{\C}{\C * x^3 / (x+1)^6}
-  %         \addlegendentry{$ \mathrm{n^3 / (n+1)^6} $}
-
-  %         \addplot[dotted,mark=*,mark options={solid,fill}, line width=1.5pt] table
-  %         [x=degree, y=rate, col sep=comma] {\jobname.figures/data/curlcurl_spectral.csv};
-  %         \addlegendentry{FInAT mode}
-  %         \fitCurve{\data}{1}{\C}{\C * x^3 / (x+1)^4}
-  %         \addlegendentry{$ \mathrm{n^3 / (n+1)^4} $}
-  %       \end{loglogaxis}
-  %     \end{tikzpicture}
-  %   \end{center}
-  % \end{posterbox}
-
-  % \begin{posterbox}[name=future, column=0, below=rules,
-  %   span=3, height=0.235]{Future work}
-  %   \raggedright
-  %   \subsection*{Bernstein on simplices}
-  %   \vspace{-0.35\baselineskip}
-  %   Sum factorisation on simplex elements using Bernstein basis.
-
-  %   Requires mostly similar technology, but now tensor products are
-  %   ragged.
-  %   \vspace{-\baselineskip}
-  %   \subsection*{Local tensor algebra}
-  %   \vspace{-0.35\baselineskip}
-  %   Fast tensor algebra for hybridisation methods.  Requires
-  %   assembling (or providing action of) element tensors with
-  %   structure $D - C A^{-1} B$.
-
-  %   Should also exploit tensor product identities where possible,
-  %   for example,
-  %   $\left(\bigotimes_i A_i\right)^{-1} = \bigotimes_i A_i^{-1}$.
-  %   \vspace{-\baselineskip}
-  %   \subsection*{Vectorisation and performance}
-  %   \vspace{-0.35\baselineskip}
-  %   Work in progress cross-element vectorisation schemes via
-  %   \texttt{loo.py}.  Have low-complexity algorithms, need to do
-  %   the performance analysis to ensure high performance too.
-  % \end{posterbox}    
-  % \begin{posterbox}[name=try, column=3, below=curl-curl,
-  %   span=3, height=0.235]{Try it}
-  %   \raggedright
-  %   \subsection*{More details}
-  %   \vspace{-0.35\baselineskip}
-  %   Homolya, Kirby, Ham, \emph{Exposing and exploiting structure:
-  %     optimal code generation for high-order finite element
-  %     methods}. \texttt{arXiv:\,1711.02473\,[cs.MS]}.
-  %   \vspace{-\baselineskip}
-  %   \subsection*{Code}
-  %   \vspace{-0.35\baselineskip}
-  %   FInAT -- \url{github.com/finat/finat}\\[0.25\baselineskip]
-  %   TSFC -- \url{github.com/firedrakeproject/tsfc}\\[0.25\baselineskip]
-  %   Firedrake -- \url{www.firedrakeproject.org}
-
-  %   \vspace{1.4\baselineskip}
-  %   \begin{minipage}{0.166\textwidth}
-  %     \begin{flushleft}
-  %       \includegraphics[align=c,height=3em]{epsrc-logo}
-  %     \end{flushleft}
-  %   \end{minipage}
-  %   \hfill
-  %   \begin{minipage}{0.166\textwidth}
-  %     \begin{center}
-  %       \includegraphics[align=c,height=3em]{nerc-logo}
-  %     \end{center}
-  %   \end{minipage}
-  %   \hfill
-  %   \begin{minipage}{0.166\textwidth}
-  %     \begin{flushright}
-  %       \includegraphics[align=c,height=4.25em]{nsf-logo}
-  %     \end{flushright}
-  %   \end{minipage}
-  % \end{posterbox}
-  % \begin{posterbox}[name=acknowledgements,
-  %   column=0,span=6,below=future,boxheaderheight=2em,
-  %   height=0.075]{Support}
-  %   \begin{minipage}[t]{0.49\textwidth}
-  %     \raggedright
-  %     \small
-  %     The Grantham Institute\\[0.25\baselineskip]
-  %     National Science Foundation award number 1525697
-  %   \end{minipage}%
-  %   \hspace{0.02\textwidth}%
-  %   \begin{minipage}[t]{0.49\textwidth}
-  %     \raggedright
-  %     \small
-  %     Natural Environment Research Council grant number NE/K008951/1\\[0.25\baselineskip]
-  %     Engineering and Physical Sciences Research Council grant number EP/M011054/1
-  %   \end{minipage}
-  % \end{posterbox}
 \end{poster}
 \end{document}
-
-Local Variables:
-TeX-engine: luatex
-End:
