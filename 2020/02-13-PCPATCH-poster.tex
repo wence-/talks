@@ -40,13 +40,13 @@
   Ligatures = TeX,
   Scale = 1,
   Extension = .otf }
-\setsansfont[
-Numbers = {Monospaced, Lining},
-UprightFont= *-Light,
-ItalicFont = *-Light Italic,
-BoldFont = *-Medium,
-BoldItalicFont = *-Medium Italic,]{FiraSans}
 \setmainfont[
+Numbers = {Monospaced, Lining},
+UprightFont={*-Light},
+ItalicFont ={*-Light Italic},
+BoldFont ={*-Medium},
+BoldItalicFont ={*-Medium Italic},]{FiraSans}
+\setsansfont[
 Numbers = {Monospaced, Lining},
 UprightFont= *-Light,
 ItalicFont = *-Light Italic,
@@ -226,7 +226,7 @@ BoldItalicFont = *-Medium Italic,]{FiraSans}
 \begin{minted}{text}
 -mg_levels_pc_type patch
 -mg_levels_pc_patch_construct_type star
--mg_levels_pc_patch_construct_codim 1
+-mg_levels_pc_patch_construct_dim 1
 \end{minted}
       \begin{tabular}{cc|ccccc}
         \toprule
@@ -258,54 +258,56 @@ BoldItalicFont = *-Medium Italic,]{FiraSans}
         \draw[blue, line join=miter, thick] (1-0) -- (1-1) -- (1-2);
         \draw[blue, line join=miter, thick] (2-0) -- (1-1) -- (0-1);
 
+        \foreach \i in {0.4, 0.6} {
         \node[transform shape, shape=diamond, fill=blue,blue,
         inner sep=0pt, minimum height=6pt, minimum width=2.5pt] at
-        ($(0-0)!0.5!(0-1)$) {};
-
-        \node[transform shape, shape=diamond, fill=blue,blue,
-        inner sep=0pt, minimum height=6pt, minimum width=2.5pt] at
-        ($(1-0)!0.5!(1-1)$) {};
+        ($(0-0)!\i!(0-1)$) {};
 
         \node[transform shape, shape=diamond, fill=blue,blue,
         inner sep=0pt, minimum height=6pt, minimum width=2.5pt] at
-        ($(1-1)!0.5!(1-2)$) {};
+        ($(1-0)!\i!(1-1)$) {};
 
         \node[transform shape, shape=diamond, fill=blue,blue,
         inner sep=0pt, minimum height=6pt, minimum width=2.5pt] at
-        ($(2-0)!0.5!(2-1)$) {};
+        ($(1-1)!\i!(1-2)$) {};
+
+        \node[transform shape, shape=diamond, fill=blue,blue,
+        inner sep=0pt, minimum height=6pt, minimum width=2.5pt] at
+        ($(2-0)!\i!(2-1)$) {};
 
         \node[transform shape, shape=diamond, fill=blue,blue,
         inner sep=0pt, minimum height=6pt, minimum width=2.5pt, rotate=120] at
-        ($(0-0)!0.5!(1-0)$) {};
+        ($(0-0)!\i!(1-0)$) {};
 
         \node[transform shape, shape=diamond, fill=blue,blue,
         inner sep=0pt, minimum height=6pt, minimum width=2.5pt, rotate=120] at
-        ($(0-1)!0.5!(1-1)$) {};
+        ($(0-1)!\i!(1-1)$) {};
 
         \node[transform shape, shape=diamond, fill=blue,blue,
         inner sep=0pt, minimum height=6pt, minimum width=2.5pt, rotate=120] at
-        ($(1-1)!0.5!(2-0)$) {};
+        ($(1-1)!\i!(2-0)$) {};
 
         \node[transform shape, shape=diamond, fill=blue,blue,
         inner sep=0pt, minimum height=6pt, minimum width=2.5pt, rotate=120] at
-        ($(1-2)!0.5!(2-1)$) {};
+        ($(1-2)!\i!(2-1)$) {};
 
 
         \node[transform shape, shape=diamond, fill=blue,blue,
         inner sep=0pt, minimum height=6pt, minimum width=2.5pt, rotate=60] at
-        ($(1-0)!0.5!(2-0)$) {};
+        ($(1-0)!\i!(2-0)$) {};
 
         \node[transform shape, shape=diamond, fill=blue,blue,
         inner sep=0pt, minimum height=6pt, minimum width=2.5pt, rotate=60] at
-        ($(0-0)!0.5!(1-1)$) {};
+        ($(0-0)!\i!(1-1)$) {};
 
         \node[transform shape, shape=diamond, fill=blue,blue,
         inner sep=0pt, minimum height=6pt, minimum width=2.5pt, rotate=60] at
-        ($(1-1)!0.5!(2-1)$) {};
+        ($(1-1)!\i!(2-1)$) {};
 
         \node[transform shape, shape=diamond, fill=blue,blue,
         inner sep=0pt, minimum height=6pt, minimum width=2.5pt, rotate=60] at
-        ($(0-1)!0.5!(1-2)$) {};
+        ($(0-1)!\i!(1-2)$) {};
+        }
         \begin{scope}[on background layer]
           \draw[cyan, fill=cyan] ($(0-0) + (60:0.15)$) --
           ($(0-0) + (60:0.15) + (0:1.2)$) --
@@ -364,10 +366,10 @@ def macropatch(self, mesh, vertex):
         \coordinate (2-1) at ($(2-0) + (1.5, 0)$);
         \foreach \i in {0, 1, 2} {
           \foreach \j in {0, 1} {
-            \draw[fill=blue, blue] (\i-\j) circle (0.04);
+            \draw[fill=blue, blue] (\i-\j) circle (0.053333);
           }
         }
-        \draw[fill=blue, blue] (1-2) circle (0.04);
+        \draw[fill=blue, blue] (1-2) circle (0.053333);
 
         \coordinate (bc0) at (barycentric cs:0-0=1,1-0=1,1-1=1);
         \coordinate (bc1) at (barycentric cs:0-0=1,0-1=1,1-1=1);
@@ -376,7 +378,7 @@ def macropatch(self, mesh, vertex):
         \coordinate (bc4) at (barycentric cs:1-1=1,2-0=1,2-1=1);
         \coordinate (bc5) at (barycentric cs:1-1=1,2-1=1,1-2=1);
         \foreach \i in {0, 1, 2, 3, 4, 5} {
-          \draw[fill=blue, blue] (bc\i) circle (0.04);
+          \draw[fill=blue, blue] (bc\i) circle (0.053333);
         }
 
         \draw[dof, line join=miter, thick] (0-0) -- (0-1);
@@ -433,6 +435,8 @@ def macropatch(self, mesh, vertex):
     \tcbset{center title,
       colframe=red,
       colback=red!10!white,
+      colupper=blue,
+      collower=blue,
       fonttitle=\bfseries,
       right=1mm,
       left=1mm,
@@ -845,7 +849,7 @@ int Residual(PC pc, PetscInt point, Vec state,
     \end{equation*}
 
     {\raggedright \texttt{PCPATCH} used to implement parameter-robust multigrid scheme
-    for augmented Lagrangian momentum equation\par}
+    for augmented Lagrangian momentum equation.\par}
 
     \begin{minipage}[c]{0.6\textwidth}
       \strut\vspace*{-\baselineskip}\newline
@@ -877,7 +881,7 @@ int Residual(PC pc, PetscInt point, Vec state,
       Interface in Firedrake: \url{www.firedrakeproject.org}\\
       Funding: EPSRC grants \texttt{EP/R029423/1},
       \texttt{EP/L015803/1}, \texttt{EP/N032861/1}\\
-      U.S. DoE grant \texttt{DE-AC02-06CH11357}\par}
+      \phantom{Funding:} U.S. DoE grant \texttt{DE-AC02-06CH11357}\par}
     \end{minipage}
     \begin{minipage}[t]{0.14\textwidth}
       \strut\vspace*{-\baselineskip}\newline
