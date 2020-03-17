@@ -133,12 +133,12 @@ backend=biber]{biblatex}
     \and
     M.~G.~Knepley (Buffalo)
     \and
-    F.~Wechsung (Oxford)}}
+    F.~Wechsung (NYU)}}
 \institute{
   \inst{1}Department of Computer Science, Durham University\\
   \inst{*}\texttt{lawrence.mitchell@durham.ac.uk}}
 
-\date{February 12, 2020}
+\date{February 11, 2020}
 \title{PCPATCH: topological construction of multigrid relaxation methods}
 
 \usepackage{tikz}
@@ -200,7 +200,7 @@ backend=biber]{biblatex}
   \frametitle{Some motivating schemes}
   \begin{onlyenv}<1>
     \begin{block}{Coupled multigrid for Stokes/Navier--Stokes}
-      \emph{In the SCGS scheme four velocites and one pressure
+      \emph{In the SCGS scheme four velocities and one pressure
       corresponding to one finite difference node are simultaneously
       updated by inverting a (small) matrix of equations.}
 
@@ -1955,7 +1955,7 @@ def macrostar(mesh, vertex):
   \begin{challenge}{\texttt{PCPATCH}}
     {\small
     \begin{columns}
-      \begin{column}{0.45\textwidth}
+      \begin{column}{0.4\textwidth}
         \begin{itemize}
         \item Simple and flexible interface for subspace correction
           methods.
@@ -1972,12 +1972,63 @@ def macrostar(mesh, vertex):
         \end{itemize}
       \end{column}
       \hspace{1em}
-      \begin{column}{0.45\textwidth}
+      \begin{column}{0.53\textwidth}
         Next steps
         \begin{itemize}
-        \item Batched BLAS: might be much faster
-        \item Implement for extruded meshes?
-        \item GPU implementation?
+        \item Batched BLAS?
+        \item Extruded meshes?
+          \begin{center}
+            \begin{tikzpicture}[scale=0.75]
+              \foreach \i in {0, 1, 2, 3, 4, 5} {
+              \foreach \j in {0, 1, 2, 3} {
+              \coordinate (\i-\j) at ($({sin(60) * 1.5 * \i}, {sin(60) * 0.5 * \j})$);
+              }
+              }
+              \draw[blue, line join=miter, thick] (0-0) -- (5-0) -- (5-3) -- (0-3)
+              -- cycle;
+
+              \foreach \i in {1, 2, 3, 4} {
+              \draw[blue, line join=miter, thick] (\i-0) -- (\i-3);
+              }
+              \foreach \i in {1, 2} {
+              \draw[blue, line join=miter, thick] (0-\i) -- (5-\i);
+              }
+
+              \foreach \i/\j in {0/1, 1/2, 2/3, 3/4, 4/5} {
+              \foreach \k in {0, 1, 2, 3} {
+              \draw[solid, blue, fill=blue] ($(\i-\k)!0.5!(\j-\k)$) circle (0.05);
+              }
+              }
+              \foreach \i/\j in {0/1, 1/2, 2/3} {
+              \foreach \k in {0, 1, 2, 3, 4, 5} {
+              \draw[solid, blue, fill=blue] ($(\k-\i)!0.5!(\k-\j)$) circle (0.05);
+              }
+              }
+
+              \begin{scope}[on background layer]
+                \foreach \i/\j in {0/1, 1/2, 2/3, 3/4, 4/5} {
+                  \draw[cyan, fill=cyan]
+                  ($(\i-0)!0.5!(\j-0) + (45:-5pt)$) --
+                  ($(\i-0)!0.5!(\j-0) + (135:-5pt)$) --
+                  ($(\i-3)!0.5!(\j-3) + (45:5pt)$) --
+                  ($(\i-3)!0.5!(\j-3) + (135:5pt)$) --
+                  cycle;
+                }
+
+                \foreach \i in {0, 1, 2, 3, 4, 5} {
+                  \foreach \j/\k in {0/1, 1/2, 2/3} {
+                    \draw[cyan, fill=cyan]
+                    ($(\i-\j)!0.5!(\i-\k) + (45:-5pt)$) --
+                    ($(\i-\j)!0.5!(\i-\k) + (135:-5pt)$) --
+                    ($(\i-\j)!0.5!(\i-\k) + (45:5pt)$) --
+                    ($(\i-\j)!0.5!(\i-\k) + (135:5pt)$) --
+                    cycle;
+                  }
+                }
+              \end{scope}
+            \end{tikzpicture}
+          \end{center}
+        \item GPU?
         \end{itemize}
       \end{column}
     \end{columns}
@@ -1993,9 +2044,6 @@ def macrostar(mesh, vertex):
       \end{tabular}
     }
   \end{exampleblock}
-  \begin{center}
-    Thanks!
-  \end{center}
 \end{frame}
 
 \appendix
