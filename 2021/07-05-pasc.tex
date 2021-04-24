@@ -1,0 +1,28 @@
+\title{Flexible computational abstractions in the design and
+  implementation of multiphysics preconditioners}
+
+
+\begin{abstract}
+  Small block overlapping, and non-overlapping, Schwarz methods are
+  theoretically highly attractive as multigrid smoothers for a wide
+  variety of problems that are not amenable to point relaxation
+  methods. Examples include monolithic Vanka smoothers for Stokes,
+  overlapping vertex-patch decompositions for $H(\text{div})$ and
+  $H(\text{curl})$ problems, and line smoothers for elliptic problems
+  in thin domains.
+
+  While it is possible to manually program these different schemes,
+  their use in general purpose libraries has been held back by a lack
+  of generic, composable interfaces. I present a new approach to the
+  specification and development such additive Schwarz methods in PETSc
+  that cleanly separates the topological space decomposition from the
+  discretisation and assembly of the equations. This separation
+  enables both linear and nonlinear smoothers to be supported through
+  the same callback interface.
+
+  The preconditioner is flexible enough to support overlapping and
+  non-overlapping additive Schwarz methods, and can be used to
+  formulate line, and plane smoothers, Vanka iterations, and others. I
+  will illustrate the effectiveness with examples using the Firedrake
+  finite element library.
+\end{abstract}

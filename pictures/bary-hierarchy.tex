@@ -1,0 +1,123 @@
+\documentclass{standalone}
+
+\usepackage{tikz}
+\usepackage{expl3}
+\usetikzlibrary{calc,arrows}
+
+\begin{document}
+
+\ExplSyntaxOn
+\newcommand{\fpeval}[1]{\fp_eval:n{#1}}
+\ExplSyntaxOff
+
+\newcommand{\DrawIterated}[7]% number of iterations
+{ \ifnum#1=1%
+  \draw[line join=round] (#2,#3) -- (#4,#5) -- (#6,#7) -- cycle;
+  \else
+  \draw[line join=round] (#2,#3) -- (#4,#5) -- (#6,#7) -- cycle;
+  % Middle
+  \DrawIterated{\numexpr#1-1\relax}%
+  {\fpeval{(#2 + #4)/2}}%
+  {\fpeval{(#3 + #5)/2}}%
+  {\fpeval{(#4 + #6)/2}}%
+  {\fpeval{(#5 + #7)/2}}%
+  {\fpeval{(#2 + #6)/2}}%
+  {\fpeval{(#3 + #7)/2}}
+
+  % Bottom left
+  \DrawIterated{\numexpr#1-1\relax}%
+  {#2}%
+  {#3}%
+  {\fpeval{(#2 + #4)/2}}%
+  {\fpeval{(#3 + #5)/2}}%
+  {\fpeval{(#2 + #6)/2}}%
+  {\fpeval{(#3 + #7)/2}}
+
+  % Bottom right
+  \DrawIterated{\numexpr#1-1\relax}%
+  {\fpeval{(#2 + #4)/2}}%
+  {\fpeval{(#3 + #5)/2}}%
+  {#4}%
+  {#5}%
+  {\fpeval{(#4 + #6)/2}}%
+  {\fpeval{(#5 + #7)/2}}%
+
+  % Top
+  \DrawIterated{\numexpr#1-1\relax}%
+  {\fpeval{(#2 + #6)/2}}%
+  {\fpeval{(#3 + #7)/2}}
+  {\fpeval{(#4 + #6)/2}}%
+  {\fpeval{(#5 + #7)/2}}%
+  {#6}%
+  {#7}
+  
+  \fi
+}
+
+\newcommand{\DrawIteratedBary}[7]% number of iterations
+{ \ifnum#1=1%
+  \draw[line join=round] (#2,#3) -- (#4,#5) -- (#6,#7) -- cycle;
+  \coordinate (0) at (#2,#3);
+  \coordinate (1) at (#4,#5);
+  \coordinate (2) at (#6,#7);
+  \coordinate (bc) at (barycentric cs:0=1,1=1,2=1);
+  \draw[dashed, line join=round] (0) -- (bc) -- (1) (bc) -- (2);
+  \else
+  \draw[line join=round] (#2,#3) -- (#4,#5) -- (#6,#7) -- cycle;
+  % Middle
+  \DrawIteratedBary{\numexpr#1-1\relax}%
+  {\fpeval{(#2 + #4)/2}}%
+  {\fpeval{(#3 + #5)/2}}%
+  {\fpeval{(#4 + #6)/2}}%
+  {\fpeval{(#5 + #7)/2}}%
+  {\fpeval{(#2 + #6)/2}}%
+  {\fpeval{(#3 + #7)/2}}
+
+  % Bottom left
+  \DrawIteratedBary{\numexpr#1-1\relax}%
+  {#2}%
+  {#3}%
+  {\fpeval{(#2 + #4)/2}}%
+  {\fpeval{(#3 + #5)/2}}%
+  {\fpeval{(#2 + #6)/2}}%
+  {\fpeval{(#3 + #7)/2}}
+
+  % Bottom right
+  \DrawIteratedBary{\numexpr#1-1\relax}%
+  {\fpeval{(#2 + #4)/2}}%
+  {\fpeval{(#3 + #5)/2}}%
+  {#4}%
+  {#5}%
+  {\fpeval{(#4 + #6)/2}}%
+  {\fpeval{(#5 + #7)/2}}%
+
+  % Top
+  \DrawIteratedBary{\numexpr#1-1\relax}%
+  {\fpeval{(#2 + #6)/2}}%
+  {\fpeval{(#3 + #7)/2}}
+  {\fpeval{(#4 + #6)/2}}%
+  {\fpeval{(#5 + #7)/2}}%
+  {#6}%
+  {#7}
+  
+  \fi
+}
+
+\begin{tikzpicture}[scale=4]
+  \foreach \i in {1, 2, 3} {
+    \begin{scope}[shift={($(\i*1.5-1.5, 0)$)}]
+      \DrawIterated{\i}{0}{0}{1}{0}{0.5}{\fpeval{sqrt(3)/2}}
+    \end{scope}
+    \begin{scope}[shift={($(\i*1.5-1.5, -1.5)$)}]
+      \DrawIteratedBary{\i}{0}{0}{1}{0}{0.5}{\fpeval{sqrt(3)/2}};
+    \end{scope}
+
+    \draw[-stealth, very thick] ($(-1 + 1.5*\i, -0.1)$) -- +(0, -0.4);
+    \ifnum\i=3
+    \relax
+    \else
+    \draw[-stealth, very thick] ($(-0.5 + 1.5*\i, 0.5)$) -- +(0.5, 0);
+    \fi
+  }
+\end{tikzpicture}
+\end{document}
