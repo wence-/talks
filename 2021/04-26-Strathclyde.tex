@@ -10,9 +10,9 @@
 % preconditioning
 % Plans: high order methods: automation, hp-adaptivity
 % Strathclyde collaboration:
-% -Barranchea (discretisation -> preconditioning)
-% -Dolean (preconditioning [DD not multigrid...])
-% 
+% - Barranchea (discretisation -> preconditioning)
+% - Dolean (preconditioning [DD not multigrid...])
+% - Majumdar (liquid crystals, FEM)
 
 % Background: finite element methods, automation (assembly)
 % Preconditioning: optimal algorithms, composable implementation
@@ -174,7 +174,7 @@ backend=biber]{biblatex}
   \inst{*}\texttt{lawrence.mitchell@durham.ac.uk}}
 
 \date{26th April 2021}
-\title{XXX}
+\title{Symbolics and structure: fast finite elements and preconditioning}
 
 \usepackage{tikz}
 \usetikzlibrary{trees,calc,positioning}
@@ -246,51 +246,6 @@ backend=biber]{biblatex}
 
 \section{Automated finite elements}
 
-\begin{frame}[fragile]
-  \frametitle{Code that captures mathematical structure}
-  \begin{columns}
-    \begin{column}{0.5\framewidth}
-      {\footnotesize
-        Find $(u, p, T) \in V\times W\times Q$ s.t.
-        \begin{align*}
-          \int\!\nabla u \cdot \nabla v + (u \cdot \nabla u) \cdot v \\
-          - p\nabla\cdot v + \frac{\text{Ra}}{\text{Pr}} Tg \hat{z} \cdot v\,\text{d}x &= 0 \\
-          \int\!\nabla\cdot u q\,\text{d}x&= 0\\
-          \int\! (u\cdot \nabla T) S + \text{Pr}^{-1} \nabla T \cdot \nabla
-          S\,\text{d}x &= 0\\
-          \quad \forall\, (v,q,T) \in V\times W \times Q
-        \end{align*}
-        }
-    \end{column}
-      \begin{column}{0.5\framewidth}
-\begin{minted}[fontsize=\scriptsize]{python}
-from firedrake import *
-mesh = Mesh(...)
-V = VectorFunctionSpace(mesh, "CG", 2)
-W = FunctionSpace(mesh, "CG", 1)
-Q = FunctionSpace(mesh, "CG", 1)
-Z = V * W * Q
-Ra = Constant(...)
-Pr = Constant(...)
-upT = Function(Z)
-u, p, T = split(upT)
-v, q, S = TestFunctions(Z)
-bcs = [...]
-
-F = (inner(grad(u), grad(v))
-     + inner(dot(grad(u), u), v)
-     - inner(p, div(v))
-     + (Ra/Pr)*inner(T*g, v)
-     + inner(div(u), q)
-     + inner(dot(grad(T), u), S)
-     + (1/Pr)*inner(grad(T), grad(S)))*dx
-
-solve(F == 0, upT, bcs=bcs)
-\end{minted}
-      \end{column}
-  \end{columns}
-\end{frame}
-
 \begin{frame}
   \frametitle{Firedrake \url{www.firedrakeproject.org}}
   \begin{columns}
@@ -310,18 +265,18 @@ solve(F == 0, upT, bcs=bcs)
       \begin{itemize}
       \item Written in Python.
       \item Finite element problems specified with \emph{embedded}
-        domain specific language, UFL \parencite{Alnaes:2014} from the
-        FEniCS project.
+        domain specific language, UFL from the FEniCS project.
       \item Domain-specific optimising compiler.
-      \item \emph{Runtime} compilation to optimised, low-level (C)
-        code.
+      \item Flexible preconditioning framework for problem-specific multigrid and block preconditioners.
       \end{itemize}
       \begin{flushright}
         {\scriptsize F.~Rathgeber, D.A.~Ham, \textbf{L.~Mitchell}, M.~Lange,
         F.~Luporini, A.T.T.~McRae, G.-T.~Bercea, G.R.~Markall,
         P.H.J.~Kelly. ACM Transactions on Mathematical Software
-        (2016). \arxivlink{1501.01809}{cs.MS}\nocite{Rathgeber:2016}}
-      \end{flushright}
+        (2016). \arxivlink{1501.01809}{cs.MS}\nocite{Rathgeber:2016}
+
+      R.C.~Kirby and \textbf{L.~Mitchell}, SIAM SISC (2018). \arxivlink{1706.01346}{cs.MS}\nocite{Kirby:2018}}
+    \end{flushright}
   \end{onlyenv}
   \begin{onlyenv}<2>
     \begin{block}{Users at}
@@ -332,6 +287,50 @@ solve(F == 0, upT, bcs=bcs)
     \end{block}
   \end{onlyenv}
 \end{overlayarea}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Code that captures mathematical structure}
+  \begin{columns}
+    \begin{column}{0.5\framewidth}
+      Stationary Rayleigh--B\'enard convection, find $(u, p, T) \in V\times W\times Q$ s.t.
+        \begin{align*}
+          {\big(\nabla u, \nabla v\big)}_{L_2} + {\big((u \cdot \nabla u), v\big)}_{L_2} \\
+          - {\big(p, \nabla\cdot v\big)}_{L_2} + \frac{\text{Ra}}{\text{Pr}}
+          {\big(Tg\hat{z}, v\big)}_{L_2} &= 0 \\
+          {\big(\nabla\cdot u, q\big)}_{L_2} &= 0\\
+          {\big(u \cdot \nabla T, S\big)}_{L_2}
+          + \text{Pr}^{-1} {\big(\nabla T, \nabla S\big)}_{L_2} &= 0\\
+          \quad \forall\, (v,q,T) \in V\times W \times Q
+        \end{align*}
+    \end{column}
+      \begin{column}{0.5\framewidth}
+\begin{minted}[fontsize=\scriptsize]{python}
+from firedrake import *
+mesh = Mesh(...)
+V = VectorFunctionSpace(mesh, "CG", 2)
+W = FunctionSpace(mesh, "CG", 1)
+Q = FunctionSpace(mesh, "CG", 1)
+Z = V * W * Q
+Ra = Constant(...)
+Pr = Constant(...)
+upT = Function(Z)
+u, p, T = split(upT)
+v, q, S = TestFunctions(Z)
+bcs = [...]
+
+F = (inner(grad(u), grad(v))
+     + inner(dot(grad(u), u), v)
+     - inner(p, div(v))
+     + (Ra/Pr)*inner(T*g*zhat, v)
+     + inner(div(u), q)
+     + inner(dot(grad(T), u), S)
+     + (1/Pr)*inner(grad(T), grad(S)))*dx
+
+solve(F == 0, upT, bcs=bcs)
+\end{minted}
+      \end{column}
+  \end{columns}
 \end{frame}
 
 \begin{frame}
@@ -469,35 +468,6 @@ solve(F == 0, upT, bcs=bcs)
       (2018).
       \arxivlink{1711.08552}{physics.ao-ph}\nocite{Karna:2018}}
   \end{flushright}
-\end{frame}
-
-
-\begin{frame}
-  \frametitle{Flexible preconditioning}
-  \begin{challenge}{Challenge}
-    Algebraic manipulation of linear systems not sufficient to define
-    preconditioners for many hard problems.
-  \end{challenge}
-  \begin{answer}{Exploit symbolic structure}
-    Provide \emph{two-way} flow of information between
-    discretisation and solver.
-    \begin{itemize}
-    \item PETSc for algebraic composition + manipulation of
-      symbolic problem structure from Firedrake
-    \item Small amount of code to write problem-specific
-      preconditioner
-    \item Does the right thing \emph{inside} multigrid, etc\ldots
-    \item Flexible block preconditioning and monolithic multigrid smoothers.
-    \end{itemize}
-  \end{answer}
-    \begin{flushright}
-      {\scriptsize R.C.~Kirby and \textbf{L.~Mitchell}, SIAM SISC
-        (2018). \arxivlink{1706.01346}{cs.MS}\nocite{Kirby:2018}
-
-        P.E.~Farrell, M.G.~Knepley, \textbf{L.~Mitchell}, F.~Wechsung,
-        ACM TOMS (2021). \arxivlink{1912.08516}{cs.MS}\nocite{Farrell:2021b}
-      }
-    \end{flushright}
 \end{frame}
 
 
@@ -673,22 +643,50 @@ solve(F == 0, upT, bcs=bcs)
 
 
 \begin{frame}
-  \begin{block}{Efficient high-order FEM}
-    Software and mathematics for high-performance PDE solvers on
-    modern hardware. How to efficiently exploit structure for
-    assembly, and solvers?
+  \frametitle{Efficient high-order FEM}
+
+  \begin{challenge}{Challenge}
+    High-order methods are excellent fit to modern HPC hardware, and simulation
+    challenges.
+
+    Efficient implementation and solution is the domain of a few experts.
+  \end{challenge}
+
+  \begin{answer}{Research questions}
+    How to deliver usable simulation tools that exploit structure in
+    high-order methods?
+    \begin{itemize}
+    \item For efficient assembly in engineering-relevant applications;
+    \item For fast solvers: robust $p$-multigrid.
+    \end{itemize}
 
     $\Rightarrow$ EPSRC Excalibur proposal in review (with Patrick
     Farrell, Dave Moxey, Spencer Sherwin, UKAEA).
-  \end{block}
-  \begin{block}{Structure preserving discretisations and preconditioning}
-    Need new theory to understand control of indefinite terms.
-    Possibly similar to recent work on GenEO-style PCs for indefinite
-    problems.
+  \end{answer}
+\end{frame}
 
-    Route to efficient solvers for fully-implicit timestepping schemes
-    for numerical weather prediction (with Colin Cotter, UK Met Office).
-  \end{block}
+\begin{frame}
+  \frametitle{Structure-preservation and preconditioning}
+
+  \begin{challenge}{Challenge}
+    Parameter-robust preconditioners for coupled problems.
+
+    Toolkit: augmented Lagrangian + subspace correction + Hilbert complexes.
+  \end{challenge}
+  
+  \begin{answer}{Research questions}
+    Theory only available for symmetric coercive case. What can we say about
+    \begin{itemize}
+    \item symmetric indefinite problems?
+    \item non-symmetric problems with a kernel?
+    \item Coupled all-at-once relaxation?
+    \item Constraints other than div- or curl-freeness?
+    \end{itemize}
+
+    $\Rightarrow$ NERC proposal in preparation: augmented Lagrangian
+    applied to timestepping schemes with mass conservation (with Colin
+    Cotter, UK Met Office)
+  \end{answer}
 \end{frame}
 
 \begin{frame}
