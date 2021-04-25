@@ -24,7 +24,6 @@
 \newcommand{\cmark}{\ding{51}}
 \newcommand{\xmark}{\ding{55}}
 \usepackage{standalone}
-
 \usepackage{booktabs}
 % \titlegraphic{\hfill\includegraphics[height=1.25cm]{durham-logo}}
 \usepackage{appendixnumberbeamer}
@@ -237,11 +236,48 @@ backend=biber]{biblatex}
 \begin{frame}
   \frametitle{Outline}
 
-  \begin{itemize}
-  \item Overview: automated finite elements
-  \item In depth: augmented Lagrangian preconditioning
-  \item Future directions
-  \end{itemize}
+  \begin{columns}
+    \begin{column}{0.6\textwidth}
+      \begin{itemize}
+      \item Overview
+        \begin{itemize}
+        \item automated finite elements
+        \end{itemize}
+      \item In depth
+        \begin{itemize}
+        \item augmented Lagrangian preconditioning
+        \end{itemize}
+      \item Future directions
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.4\textwidth}
+      \includegraphics[width=0.2\textwidth]{../pictures/guitar/cutaway-eigfunc1.pdf}%
+      \includegraphics[width=0.2\textwidth]{../pictures/guitar/cutaway-eigfunc2.pdf}%
+      \includegraphics[width=0.2\textwidth]{../pictures/guitar/cutaway-eigfunc3.pdf}%
+      \includegraphics[width=0.2\textwidth]{../pictures/guitar/cutaway-eigfunc4.pdf}%
+      \includegraphics[width=0.2\textwidth]{../pictures/guitar/cutaway-eigfunc5.pdf}
+      \\
+      \includegraphics[width=0.2\textwidth]{../pictures/guitar/cutaway-eigfunc8.pdf}%
+      \includegraphics[width=0.2\textwidth]{../pictures/guitar/cutaway-eigfunc9.pdf}%
+      \includegraphics[width=0.2\textwidth]{../pictures/guitar/cutaway-eigfunc10.pdf}%
+      \includegraphics[width=0.2\textwidth]{../pictures/guitar/cutaway-eigfunc11.pdf}%
+      \includegraphics[width=0.2\textwidth]{../pictures/guitar/cutaway-eigfunc12.pdf}
+      \\
+      \includegraphics[width=0.2\textwidth]{../pictures/guitar/cutaway-eigfunc15.pdf}%
+      \includegraphics[width=0.2\textwidth]{../pictures/guitar/cutaway-eigfunc16.pdf}%
+      \includegraphics[width=0.2\textwidth]{../pictures/guitar/cutaway-eigfunc17.pdf}%
+      \includegraphics[width=0.2\textwidth]{../pictures/guitar/cutaway-eigfunc18.pdf}%
+      \includegraphics[width=0.2\textwidth]{../pictures/guitar/cutaway-eigfunc19.pdf}
+      \\[1em]
+      \includegraphics[width=0.333\textwidth]{../pictures/mhd/ldc_1_1_u}%
+      \includegraphics[width=0.333\textwidth]{../pictures/mhd/ldc_500_500_u}%
+      \includegraphics[width=0.333\textwidth]{../pictures/mhd/ldc_5000_5000_u}%
+      \\
+      \includegraphics[width=0.333\textwidth]{../pictures/mhd/ldc_1_1_B}%
+      \includegraphics[width=0.333\textwidth]{../pictures/mhd/ldc_500_500_B}%
+      \includegraphics[width=0.333\textwidth]{../pictures/mhd/ldc_5000_5000_B}%
+    \end{column}
+  \end{columns}
 \end{frame}
 
 \section{Automated finite elements}
@@ -279,9 +315,9 @@ backend=biber]{biblatex}
     \end{flushright}
   \end{onlyenv}
   \begin{onlyenv}<2>
-    \begin{block}{Users at}
+    \begin{block}{User groups at}
       Imperial, Oxford, Bath, Leeds, Durham, Kiel, Rice, Houston,
-      Exeter, Buffalo, Waterloo, Washington, Baylor, Edinburgh, \dots
+      Exeter, Buffalo, Waterloo, Washington, Baylor, Edinburgh, ANU, \dots
 
       Contributors from 15 institutions in the last year.
     \end{block}
@@ -528,7 +564,7 @@ solve(F == 0, upT, bcs=bcs)
   \end{exampleblock}
   \pause
   \begin{challenge}{Problem}
-    Normal multigrid applied to linearised augmented Momentum operator
+    Normal multigrid applied to linearised augmented momentum operator
     doesn't work, gets worse as $\gamma \to \infty$.
 
     $\Rightarrow$ $\grad\div u$ has an enormous kernel. Need a
