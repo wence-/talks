@@ -315,6 +315,11 @@ backend=biber]{biblatex}
     \end{flushright}
   \end{onlyenv}
   \begin{onlyenv}<2>
+    \begin{itemize}
+    \item ExCALIBUR exascale working group code (continuum mechanics)
+    \item Numerics/data structures prototypes for UK Met Office next
+      gen dynamical core (Gung-Ho)
+    \end{itemize}
     \begin{block}{User groups at}
       Imperial, Oxford, Bath, Leeds, Durham, Kiel, Rice, Houston,
       Exeter, Buffalo, Waterloo, Washington, Baylor, Edinburgh, ANU, \dots
@@ -567,7 +572,7 @@ solve(F == 0, upT, bcs=bcs)
     Normal multigrid applied to linearised augmented momentum operator
     doesn't work, gets worse as $\gamma \to \infty$.
 
-    $\Rightarrow$ $\grad\div u$ has an enormous kernel. Need a
+    $\grad\div u$ has an enormous kernel $\Rightarrow$ need a
     specialised multigrid scheme.
   \end{challenge}
 \end{frame}
@@ -619,6 +624,44 @@ solve(F == 0, upT, bcs=bcs)
   \begin{center}
     \includestandalone[height=0.3\textheight]{../pictures/macro-star}
   \end{center}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Structure of full solver}
+  \resizebox{\textwidth}{!}{%
+    \begin{tikzpicture}[%
+  every node/.style={draw=black, thick, anchor=west},
+  grow via three points={one child at (0.0,-0.7) and
+  two children at (0.0,-0.7) and (0.0,-1.4)},
+  edge from parent path={(\tikzparentnode.210) |- (\tikzchildnode.west)}]
+  \node {Continuation}
+    child { node {Newton solver with line search}
+      child { node {Krylov solver (FGMRES)}
+        child { node {Block preconditioner}
+          child { node {Approximate Schur complement inverse}
+              child { node {Exact pressure mass matrix inverse}}
+          }
+          child [missing] {}
+          child { node {F-cycle on augmented momentum block}
+              child { node {Coarse grid solver}
+                child { node {LU factorization}}
+              }
+              child [missing] {}
+              child { node {Prolongation operator}
+                child { node {Local solves over coarse macro cells}}
+              }
+              child [missing] {}
+              child { node {Relaxation}
+                child { node {GMRES}
+                  child { node {Additive macrostar iteration}}
+                }
+              }
+          }
+        }
+      }
+    };
+\end{tikzpicture}
+}
 \end{frame}
 \begin{frame}
   \frametitle{Numerical results --- 2D lid-driven cavity}
@@ -732,13 +775,19 @@ solve(F == 0, upT, bcs=bcs)
     \begin{itemize}
     \item finite element discretisation and implementation;
     \item linear and non-linear solvers/preconditioners;
-    \item high-performance computing.
+    \item high-performance computing \& domain-specific compilers.
     \end{itemize}
   \item Application areas:
     \begin{itemize}
     \item coastal ocean \& freshwater outflow;
     \item renewable energy;
     \item numerical weather prediction.
+    \end{itemize}
+  \item Links:
+    \begin{itemize}
+    \item Dolean, Pestana, Ramage (preconditioning);
+    \item Barranchea (FE discretisation);
+    \item MSP (programming language design).
     \end{itemize}
   \end{itemize}
 \end{frame}
