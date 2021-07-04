@@ -26,3 +26,31 @@
   will illustrate the effectiveness with examples using the Firedrake
   finite element library.
 \end{abstract}
+
+% Motivation:
+% - Block preconditioning, what to do on blocks, how to deliver
+%   auxiliary operators? Or what if the preconditioner is not just the
+%   inverse of a single operator?
+% - Multigrid with "fancy" smoothers: motivation augmented Lagrangian
+%   methods for problems with constraints
+%
+%   Examples:
+%   - Stokes: "Easy"
+%   - Stokes: BFBT?; N-S: PCD
+%   - Stationary problems: N-S (schur complement + AL)
+%   - MHD (probably too much)
+%   - Implicit timestepping (Colin's stuff for shallow-water)
+%
+% - Software
+% - PETSc composition philosophy
+% - callbacks to discretisation library for all the operators.
+% - PCPatch (for the smoothers)
+
+% Things that don't work
+% DD (like ffddm)
+% PCPatch doesn't work for high order (designed around doing dense
+% inverse on assembly patch operators).
+% Batching/small solvers
+% Interface is necessarily (?) not the same as the full Jacobian
+% construction. Design guided by performance?
+
