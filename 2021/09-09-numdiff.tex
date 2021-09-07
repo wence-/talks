@@ -1,0 +1,435 @@
+% -*- TeX-engine: luatex -*-
+\documentclass[presentation,aspectratio=43, 10pt]{beamer}
+\usepackage{booktabs}
+\titlegraphic{\hfill\includegraphics[height=1.25cm]{durham-logo}}
+\def\xunderbrace#1_#2{{\underbrace{#1}_{\mathclap{#2}}}}
+\def\xoverbrace#1^#2{{\overbrace{#1}^{\mathclap{#2}}}}
+\def\xunderarrow#1_#2{{\underset{\overset{\uparrow}{\mathclap{#2}}}{#1}}}
+\def\xoverarrow#1^#2{{\overset{\underset{\downarrow}{\mathclap{#2}}}{#1}}}
+
+\usepackage{appendixnumberbeamer}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{hyperref}
+\usepackage{xspace}
+\newcommand{\arxivlink}[2]{{\texttt{arXiv:\,\href{https://arxiv.org/abs/#1}{#1\,[#2]}}}}
+
+\newcommand{\eps}[1]{\ensuremath{\varepsilon{(#1)}}}
+\newcommand{\honev}{\ensuremath{{H}^1(\Omega; \mathbb{R}^d)}\xspace}
+\newcommand{\ltwov}{\ensuremath{{L}^2(\Omega; \mathbb{R}^d)}\xspace}
+\newcommand{\ltwo}{\ensuremath{{L}^2(\Omega)}\xspace}
+\newcommand{\inner}[1]{\left\langle #1 \right \rangle}
+\newcommand{\dx}{\,\text{d}x}
+\newcommand{\ds}{\,\text{d}s}
+
+
+\usepackage{minted}
+\usepackage[url=false,
+doi=true,
+isbn=false,
+style=authoryear,
+maxnames=5,
+giveninits=true,
+uniquename=init,
+backend=biber]{biblatex}
+\renewcommand{\bibfont}{\fontsize{7}{7}\selectfont}
+\addbibresource{references.bib}
+
+\setlength{\bibitemsep}{1ex}
+\setlength{\fboxsep}{1pt}
+
+\renewbibmacro{in:}{}
+\DeclareFieldFormat[article]{volume}{\textbf{#1}}
+\DeclareFieldFormat{doi}{%
+  doi\addcolon%
+  {\scriptsize\ifhyperref{\href{http://dx.doi.org/#1}{\nolinkurl{#1}}}
+    {\nolinkurl{#1}}}}
+\AtEveryBibitem{%
+\clearfield{pages}%
+\clearfield{issue}%
+\clearfield{number}%
+}
+
+\DeclareMathOperator{\grad}{grad}
+\let\div\relax
+\DeclareMathOperator{\div}{div}
+\DeclareMathOperator{\curl}{curl}
+\DeclareMathOperator{\range}{range}
+\DeclareMathOperator{\sym}{sym}
+\newcommand{\advect}[2]{\ensuremath{(#2 \cdot \nabla) #1}}
+\newcommand{\kerdiv}{\ker\div}
+\newcommand{\kercurl}{\ker\curl}
+\let\Re\relax
+\DeclareMathOperator{\Re}{Re}
+
+\usetheme{metropolis}
+\setbeamertemplate{title graphic}{
+  \vbox to 0pt {
+    \vspace*{1em}
+    \inserttitlegraphic%
+  }%
+  \nointerlineskip%
+}
+\metroset{background=light,progressbar=frametitle,numbering=counter,block=fill}
+
+% https://www.dur.ac.uk/marketingandcommunications/marketing/branding/colourpalette/
+% Most of these are indistinguishable to those suffering colour blindness
+\definecolor{purple}{HTML}{68246D}
+\definecolor{blue}{HTML}{002A41}
+\definecolor{red}{HTML}{BE1E2D}
+\definecolor{cyan}{HTML}{00AEEF}
+\definecolor{yellow}{HTML}{FFD53A}
+
+\newenvironment{variableblock}[3]
+{\setbeamercolor{block body}{#2}
+\setbeamercolor{block title}{#3}
+\begin{block}{#1}}%
+{\end{block}}
+  
+\newenvironment{challenge}[1]%
+{\begin{variableblock}{#1}{bg=red!20,fg=black}{bg=red,fg=white}}%
+{\end{variableblock}}
+
+\newenvironment{answer}[1]%
+{\begin{variableblock}{#1}{bg=cyan!20,fg=black}{bg=cyan,fg=white}}%
+{\end{variableblock}}
+
+\renewenvironment{exampleblock}[1]%
+{\begin{variableblock}{#1}{bg=yellow!20,fg=black}{bg=yellow,fg=white}}%
+{\end{variableblock}}
+
+\setbeamercolor{normal text}{
+  fg=black,
+  bg=white
+}
+\setbeamercolor{alerted text}{
+  fg=red
+}
+\setbeamercolor{example text}{
+  fg=blue
+}
+
+\setbeamercolor{palette primary}{%
+  use=normal text,
+  fg=normal text.bg,
+  bg=purple,
+}
+
+\usetheme{metropolis}
+
+\author{Lawrence Mitchell\inst{1,*}}
+\institute{
+  \inst{1}Department of Computer Science, Durham University\\
+  \inst{*}\texttt{lawrence.mitchell@durham.ac.uk}}
+
+\title{Augmented Lagrangian preconditioning for fluids: theory and practice}
+
+\usepackage{tikz}
+\usetikzlibrary{trees,calc,positioning}
+\usetikzlibrary{shapes, shapes.geometric}
+\usetikzlibrary{arrows,chains,positioning,fit,backgrounds,calc,shapes,
+  shadows,scopes,decorations.markings,plotmarks}
+
+\newcommand*{\tettextsize}{\footnotesize}
+\tikzstyle{line} = [draw, -, thick]
+\tikzstyle{nodraw} = [draw, fill, circle, minimum width=0pt, inner sep=0pt]
+\tikzstyle{sieve} = [line, circle, font=\tettextsize, inner sep=0pt,
+  minimum size=12pt]
+
+\tikzstyle{cell} = [sieve, fill=blue!60]
+\tikzstyle{facet} = [sieve, fill=green!35]
+\tikzstyle{edge} = [sieve, fill=red!35]
+\tikzstyle{vertex} = [sieve, fill=blue!35]
+
+% https://tex.stackexchange.com/questions/27171/padded-boundary-of-convex-hull
+\newcommand{\convexpath}[2]{
+  [
+  create hullcoords/.code={
+    \global\edef\namelist{#1}
+    \foreach [count=\counter] \nodename in \namelist {
+      \global\edef\numberofnodes{\counter}
+      \coordinate (hullcoord\counter) at (\nodename);
+    }
+    \coordinate (hullcoord0) at (hullcoord\numberofnodes);
+    \pgfmathtruncatemacro\lastnumber{\numberofnodes+1}
+    \coordinate (hullcoord\lastnumber) at (hullcoord1);
+  },
+  create hullcoords
+  ]
+  ($(hullcoord1)!#2!-90:(hullcoord0)$)
+  \foreach [
+  evaluate=\currentnode as \previousnode using \currentnode-1,
+  evaluate=\currentnode as \nextnode using \currentnode+1
+  ] \currentnode in {1,...,\numberofnodes} {
+    let \p1 = ($(hullcoord\currentnode) - (hullcoord\previousnode)$),
+    \n1 = {atan2(\y1,\x1) + 90},
+    \p2 = ($(hullcoord\nextnode) - (hullcoord\currentnode)$),
+    \n2 = {atan2(\y2,\x2) + 90},
+    \n{delta} = {Mod(\n2-\n1,360) - 360}
+    in
+    {arc [start angle=\n1, delta angle=\n{delta}, radius=#2]}
+    -- ($(hullcoord\nextnode)!#2!-90:(hullcoord\currentnode)$)
+  }
+}
+
+\graphicspath{{./\jobname.figures/}{../pictures/}}
+
+\usepackage{emoji}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+  Augmented Lagrangian preconditioning for fluids problems was
+  introduced by Benzi and Olshanskii in 2006. The approach offers excellent,
+  parameter-robust, control of the Schur complement approximation. The
+  drawback is that the preconditioning scheme for the top-left block
+  is significantly more complicated, and at the time, an extension to
+  three dimensions was not known.
+
+  In recent years, there has been significant progress in this area,
+  guided by a deeper understanding of how to construct appropriate
+  preconditioners, and software advances that ease implementation.
+
+  The core idea in the design of effective preconditioners for the top
+  left block is characterising a basis for the kernel of the augmented
+  Lagrangian term. Structure preserving discretisations offer a
+  systematic way to attack this problem when the augmentation is a
+  differential operator. The resulting robust multigrid methods
+  require small block overlapping additive Schwarz smoothers.
+
+  In this talk I will discuss the general augmented Lagrangian
+  approach, discuss a flexible preconditioning package that provides
+  fast implementation of optimal methods, and illustrate with some
+  examples covering stationary Navier--Stokes and MHD, along with
+  time-dependent problems.
+\end{abstract}
+
+
+\begin{frame}
+  \frametitle{A first problem}
+  \begin{block}{Stationary, Newtonian, incompressible Navier--Stokes}
+    Find $(u, p) \in \honev \times \ltwo$ such that
+    \begin{alignat*}{2}
+      -  \nu \nabla^2 u + \advect{u}{u} + \nabla p &= f \quad && \text{ in } \Omega, \\
+      \nabla \cdot u &= 0 \quad && \text{ in } \Omega,
+    \end{alignat*}
+    with suitable boundary conditions, and $\nu$ the kinematic viscosity.
+  \end{block}
+  \begin{exampleblock}{Multiple solutions}<2->
+    For $\nu \to 0$, these equations admit multiple solutions
+  \end{exampleblock}
+  \begin{challenge}{Motivating question}<3->
+    What are the solution(s) as $\nu$ varies?
+  \end{challenge}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Block preconditioning}
+  \begin{exampleblock}{Newton linearisation}
+    \begin{equation*}
+      P := \begin{pmatrix}
+        A & B^T \\
+        B & 0
+      \end{pmatrix}
+      \begin{pmatrix}
+        \delta u \\ \delta p
+      \end{pmatrix}
+      =
+      \begin{pmatrix}
+        b \\ 0
+      \end{pmatrix}.
+    \end{equation*}
+  \end{exampleblock}
+  \pause
+  \begin{answer}{Block factorisations}
+    \begin{equation*}
+      P^{-1} =
+      \begin{pmatrix}
+        I   & -A^{-1} B^T \\
+        0 & I \\
+      \end{pmatrix}
+      \begin{pmatrix}
+        A^{-1}  & 0 \\
+        0 & S^{-1} \\
+      \end{pmatrix}
+      \begin{pmatrix}
+        I   & 0 \\
+        -BA^{-1} & I \\
+      \end{pmatrix}
+    \end{equation*}
+  \end{answer}
+  \begin{challenge}{PDE-specific challenge}
+    Find good approximations $\tilde{A}^{-1}$ for $A^{-1}$ and
+    $\tilde{S}^{-1}$ for $S^{-1}$.
+  \end{challenge}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Controlling the Schur complement with augmented
+    Lagrangian idea}
+  \begin{exampleblock}{Continuous augmentation}
+    Add $\gamma \grad\div u$ term to the momentum equation.
+
+    Doesn't change solution since $\div u = 0$
+  \end{exampleblock}
+  \begin{theorem}[Hestenes, Fortin, Glowinski, Olshanksii, \dots]
+    As $\gamma \to \infty$, the Schur complement is well
+    approximated by $\tilde{S}^{-1} = -(\nu + \gamma)M_p^{-1}$.
+  \end{theorem}
+  \pause
+  \begin{exampleblock}{Discrete augmentation}
+    \begin{equation*}
+      \begin{pmatrix}
+        A + \gamma B^T M_p^{-1} B & B^T \\
+        B & 0
+      \end{pmatrix}
+      \begin{pmatrix}
+        u \\ p
+      \end{pmatrix}
+      =
+      \begin{pmatrix}
+        b \\ 0
+      \end{pmatrix}
+    \end{equation*}
+
+    Doesn't change solution since $B u = 0$.
+
+    Again, as $\gamma \to \infty$, $S^{-1}$ is well approximated by
+    $\tilde{S}^{-1} = -(\nu + \gamma)M_p^{-1}$.
+  \end{exampleblock}
+\end{frame}
+\begin{frame}
+  \frametitle{Why does this work?}
+  \begin{answer}{New Schur complement}
+    \begin{equation*}
+    \begin{aligned}
+      S^{-1} &= -(B(A+\gamma B^T M_p^{-1} B)^{-1} B^T)^{-1} \\
+      &= -(B(A^{-1} - \gamma A^{-1} B^T(M_p + B A^{-1} B^T)^{-1}BA^{-1})B^T)^{-1}\\
+      &= -(\underbrace{BA^{-1}B^T}_{\Lambda} - \gamma BA^{-1}B^T (M_p + BA^{-1} B^T)^{-1}BA^{-1}B^T)^{-1}\\
+      &= -(\Lambda^{-1} + \gamma \Lambda^{-1}\Lambda(M_p + \Lambda - \Lambda \Lambda^{-1}\Lambda)^{-1}\Lambda \Lambda^{-1}) \\
+      &= -(BA^{-1}B^T)^{-1} - \gamma M_p^{-1}.\\
+    \end{aligned}
+  \end{equation*}
+   approximate commutator argument (ignoring advection):
+   \begin{equation*}
+     BA^{-1}B^T \approx \nu BB^TA^{-1} \approx \nu M_p^{-1}
+   \end{equation*}
+  \end{answer}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Conservation of misery}
+  \begin{exampleblock}{Good news}
+    \emoji{thumbsup} The Schur complement becomes easy to approximate as $\gamma \to \infty$
+  \end{exampleblock}
+  \begin{challenge}{Bad news}
+    \emoji{thumbsdown} The scalable solver we had for $\tilde{A}^{-1}$ doesn't work for
+    $A_\gamma := A + \gamma B^T M_p^{-1} B$
+  \end{challenge}
+  \pause
+  \begin{center}
+    \begin{tabular}{l| c |c}
+      \toprule
+      &  LU for $\tilde{A}_\gamma^{-1}$ & AMG for $\tilde{A}_\gamma^{-1}$\\
+      \midrule
+      $\gamma=10^{-1}$ & 15 &18\\
+      $\gamma=1$ & 6 &40\\
+      $\gamma=10^{1}$ & 3 &107\\
+      \bottomrule
+    \end{tabular}
+
+    Outer Krylov iterations for different choices of $\tilde{A}^{-1}_\gamma$.
+  \end{center}
+\end{frame}
+
+\begin{frame}
+  \frametitle{$\gamma$-robust multigrid I}
+  \begin{itemize}
+  \item Ignorning advection, then the top-left block corresponds to
+    discretisation of
+    \begin{equation*}
+      a_{\gamma}(u, v) = \xunderbrace{\int_\Omega 2\nu \eps{u}  :
+        \eps{v} \dx}_{\text{sym.~pos.~def.}} \quad +  \quad
+      \textcolor{red}{\xunderbrace{\int_\Omega \gamma\div u\div v \dx}_{\text{sym.~pos.~semi-def.}}}
+    \end{equation*}
+    \pause
+  \item The semi-definite term is singular on all solenoidal fields
+    $\Rightarrow$ the system becomes \emph{nearly singular} as $\gamma
+    \to \infty$
+    \pause
+  \item To build a $\gamma$-robust scheme we need
+    \parencite{Schoeberl:1999}
+    \begin{itemize}
+    \item a $\gamma$-robust smoother;
+    \item a prolongation operator with $\gamma$-independent continuity
+      constant;
+    \item[$\Rightarrow$] overlapping Schwarz smoother with
+      decomposition that decomposes the kernel. ``The right blocks for
+      block Jacobi''.
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{$\gamma$-robust multigrid II}
+  Consider the problem: for
+  $\gamma \in \mathbb{R}_+$, find $u \in V$ such that
+  \begin{equation*}
+    a(u, v) + \gamma b(u, v) = (f, v) \quad \forall v \in V,
+  \end{equation*}
+  where $a$ is SPD, and $b$ is symmetric positive semidefinite.
+
+  This matches our problem (ignoring advection) with $a = \nu (\eps{u},
+  \eps{v})$ and $b = (\div u, \div v)$.
+  \pause
+  \begin{theorem}[Sch\"oberl (1999); Lee, Wu, Xu, Zikatanov (2007)]
+    {\small
+    Let the kernel be
+    \begin{equation*}
+      \mathcal{N} := \{ u \in V : b(u, v) = 0 \,\, \forall v \in V \}.
+    \end{equation*}
+    A Schwarz smoother whose decomposition $V = \sum_i
+    V_i$ satisfies
+    \begin{equation*}
+      \mathcal{N} = \sum_i \mathcal{N} \cap V_i,
+    \end{equation*}
+    is robust wrt $\gamma$.
+    \nocite{Schoeberl:1999,Lee:2007}
+    }
+  \end{theorem}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Systematic construction of $V_i$}
+  Pick a discrete subcomplex of some complex with exact sequence
+  properties.
+
+  Gives easy characterisation of kernel for differential operators.
+
+  \begin{equation*}
+    H^2 \xrightarrow{\grad} H^1(\curl) \xrightarrow{\curl} H^1 \xrightarrow{\div} L^2.
+  \end{equation*}
+  \vspace{-\baselineskip}
+  \begin{exampleblock}{Divergence-free}
+    \begin{itemize}
+    \item Scott--Vogelius pair: $P_k^d-P_{k-1}^\text{disc}$ on barycentrically refined
+      meshes ($k \ge d$).
+    \end{itemize}
+  \begin{figure}
+    \begin{center}
+      \includegraphics[width=5cm]{macrostar}
+    \end{center}
+  \end{figure}
+  \end{exampleblock}
+
+\end{frame}
+
+\appendix
+\begin{frame}[allowframebreaks]
+  \frametitle{References}
+  \printbibliography[heading=none]
+\end{frame}
+
+\end{document}
