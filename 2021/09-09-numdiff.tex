@@ -23,7 +23,7 @@
 \newcommand{\dx}{\,\text{d}x}
 \newcommand{\ds}{\,\text{d}s}
 
-
+\date{2021-09-09}
 \usepackage{minted}
 \usepackage[url=false,
 doi=true,
@@ -118,10 +118,15 @@ backend=biber]{biblatex}
 
 \usetheme{metropolis}
 
-\author{Lawrence Mitchell\inst{1,*}}
+\author{Lawrence Mitchell\inst{1,*}
+\\ {\scriptsize with: Colin Cotter (Imperial) Patrick Farrell, Fabian
+    Laakmann (Oxford), Matt Knepley (Buffalo), Florian Wechsung
+    (NYU)}
+}
 \institute{
   \inst{1}Department of Computer Science, Durham University\\
-  \inst{*}\texttt{lawrence.mitchell@durham.ac.uk}}
+  \inst{*}\texttt{lawrence.mitchell@durham.ac.uk}
+}
 
 \title{Augmented Lagrangian preconditioning for fluids: theory and practice}
 
@@ -130,12 +135,17 @@ backend=biber]{biblatex}
 \usetikzlibrary{shapes, shapes.geometric}
 \usetikzlibrary{arrows,chains,positioning,fit,backgrounds,calc,shapes,
   shadows,scopes,decorations.markings,plotmarks}
-
+\usepackage{tikz-cd}
+\usepackage{standalone}
 \newcommand*{\tettextsize}{\footnotesize}
 \tikzstyle{line} = [draw, -, thick]
 \tikzstyle{nodraw} = [draw, fill, circle, minimum width=0pt, inner sep=0pt]
 \tikzstyle{sieve} = [line, circle, font=\tettextsize, inner sep=0pt,
   minimum size=12pt]
+
+\usepackage{pgf}
+\usepackage{pgfplots}
+\usepackage{pgfplotstable}
 
 \tikzstyle{cell} = [sieve, fill=blue!60]
 \tikzstyle{facet} = [sieve, fill=green!35]
@@ -180,31 +190,31 @@ backend=biber]{biblatex}
 \begin{document}
 \maketitle
 
-\begin{abstract}
-  Augmented Lagrangian preconditioning for fluids problems was
-  introduced by Benzi and Olshanskii in 2006. The approach offers excellent,
-  parameter-robust, control of the Schur complement approximation. The
-  drawback is that the preconditioning scheme for the top-left block
-  is significantly more complicated, and at the time, an extension to
-  three dimensions was not known.
+% \begin{abstract}
+%   Augmented Lagrangian preconditioning for fluids problems was
+%   introduced by Benzi and Olshanskii in 2006. The approach offers excellent,
+%   parameter-robust, control of the Schur complement approximation. The
+%   drawback is that the preconditioning scheme for the top-left block
+%   is significantly more complicated, and at the time, an extension to
+%   three dimensions was not known.
 
-  In recent years, there has been significant progress in this area,
-  guided by a deeper understanding of how to construct appropriate
-  preconditioners, and software advances that ease implementation.
+%   In recent years, there has been significant progress in this area,
+%   guided by a deeper understanding of how to construct appropriate
+%   preconditioners, and software advances that ease implementation.
 
-  The core idea in the design of effective preconditioners for the top
-  left block is characterising a basis for the kernel of the augmented
-  Lagrangian term. Structure preserving discretisations offer a
-  systematic way to attack this problem when the augmentation is a
-  differential operator. The resulting robust multigrid methods
-  require small block overlapping additive Schwarz smoothers.
+%   The core idea in the design of effective preconditioners for the top
+%   left block is characterising a basis for the kernel of the augmented
+%   Lagrangian term. Structure preserving discretisations offer a
+%   systematic way to attack this problem when the augmentation is a
+%   differential operator. The resulting robust multigrid methods
+%   require small block overlapping additive Schwarz smoothers.
 
-  In this talk I will discuss the general augmented Lagrangian
-  approach, discuss a flexible preconditioning package that provides
-  fast implementation of optimal methods, and illustrate with some
-  examples covering stationary Navier--Stokes and MHD, along with
-  time-dependent problems.
-\end{abstract}
+%   In this talk I will discuss the general augmented Lagrangian
+%   approach, discuss a flexible preconditioning package that provides
+%   fast implementation of optimal methods, and illustrate with some
+%   examples covering stationary Navier--Stokes and MHD, along with
+%   time-dependent problems.
+% \end{abstract}
 
 
 \begin{frame}
@@ -223,6 +233,36 @@ backend=biber]{biblatex}
   \begin{challenge}{Motivating question}<3->
     What are the solution(s) as $\nu$ varies?
   \end{challenge}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Challenges for solvers}
+  \begin{challenge}{Desired properties}
+    \begin{itemize}
+    \item Growth in time to solution is (at worst)
+      $\mathcal{O}(n\log n)$ in number of degrees of freedom (resolution).
+    \item Convergence does not degrade with $\nu \to 0$.
+    \end{itemize}
+  \end{challenge}
+  \begin{columns}[t]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Direct methods}
+        \begin{itemize}
+        \item[\emoji{thumbsup}] Convergence independent of $\nu$
+        \item[\emoji{thumbsdown}] Time to solution $\mathcal{O}(n^2)$ (3D).
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Krylov methods}
+        \begin{itemize}
+        \item[\emoji{thumbsup}] Time to solution $\mathcal{O}(n \log n)$ (with
+          multilevel preconditioner)
+        \item[\emoji{thumbsdown}] Convergence independent of $\nu$ challenging
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
 \end{frame}
 
 \begin{frame}
@@ -267,8 +307,39 @@ backend=biber]{biblatex}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Controlling the Schur complement with augmented
-    Lagrangian idea}
+  \frametitle{What about that Schur complement?}
+  \begin{columns}
+    \begin{column}{0.55\textwidth}
+      Want an approximation $\tilde{S}^{-1}$ that
+      \begin{enumerate}
+      \item is robust to parameter variation
+      \item is cheap to construct/apply
+      \item scales well in parallel
+      \end{enumerate}
+
+      Generally (1) is the hardest to satisfy.
+
+      $\Rightarrow$ augmented Lagrangian approach.
+    \end{column}
+    \begin{column}{0.45\textwidth}
+      \includegraphics[width=0.333\textwidth]{mhd/ldc_1_1_u}%
+      \includegraphics[width=0.333\textwidth]{mhd/ldc_500_500_u}%
+      \includegraphics[width=0.333\textwidth]{mhd/ldc_5000_5000_u}%
+      \\
+      \includegraphics[width=0.333\textwidth]{mhd/ldc_1_1_B}%
+      \includegraphics[width=0.333\textwidth]{mhd/ldc_500_500_B}%
+      \includegraphics[width=0.333\textwidth]{mhd/ldc_5000_5000_B}%
+
+      \vspace{2em}
+      {\raggedleft\scriptsize
+        \textcite{Laakmann:2021} \arxivlink{2104.14855}{math.NA}\par}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Controlling the Schur complement: augmented
+    Lagrangian}
   \begin{exampleblock}{Continuous augmentation}
     Add $\gamma \grad\div u$ term to the momentum equation.
 
@@ -401,33 +472,272 @@ backend=biber]{biblatex}
   \end{theorem}
 \end{frame}
 
-\begin{frame}
-  \frametitle{Systematic construction of $V_i$}
-  Pick a discrete subcomplex of some complex with exact sequence
-  properties.
-
-  Gives easy characterisation of kernel for differential operators.
-
-  \begin{equation*}
-    H^2 \xrightarrow{\grad} H^1(\curl) \xrightarrow{\curl} H^1 \xrightarrow{\div} L^2.
-  \end{equation*}
-  \vspace{-\baselineskip}
-  \begin{exampleblock}{Divergence-free}
-    \begin{itemize}
-    \item Scott--Vogelius pair: $P_k^d-P_{k-1}^\text{disc}$ on barycentrically refined
-      meshes ($k \ge d$).
-    \end{itemize}
-  \begin{figure}
+\begin{frame}[fragile]
+  \frametitle{Toolkit for construction of $V_i$: discrete Hilbert complexes}
+  \begin{exampleblock}{Stokes complex}
+    In 2D, the Stokes complex and S--V subcomplex are
     \begin{center}
-      \includegraphics[width=5cm]{macrostar}
+      \begin{tikzcd}
+        H^2 \arrow[r, "\curl"] \arrow[d] & \mathbf{H}^1 \arrow[r,
+        "\div"]
+        \arrow[d] & L^2 \arrow[d] \\
+        \mathbb{HCT}_{k+1} \arrow[r, "\curl"] & (\mathbb{CG}_k)^2
+        \arrow[r, "\div"] & \mathbb{DG}_{k-1}
+      \end{tikzcd}
+      \includestandalone[width=0.52\textwidth]{../pictures/HCT-complex}
     \end{center}
-  \end{figure}
+    Analogous complex in 3D (no pictures) due to \textcite{Fu:2018}.
+    \begin{center}
+      \begin{tikzcd}
+        H^2 \arrow[r, "\grad"] & \mathbf{H}^1(\curl) \arrow[r,
+        "\curl"] & \mathbf{H}^1 \arrow[r, "\div"] & L^2
+      \end{tikzcd}
+    \end{center}
   \end{exampleblock}
-
 \end{frame}
 
+\begin{frame}
+  \frametitle{A picture}
+  \begin{answer}{Idea}
+    \begin{enumerate}
+    \item Pick velocity space
+    \item Walk left along complex
+    \item Pick $V_i$ to cover support of the $\mathbb{HCT}$ basis.
+    \end{enumerate}
+  \end{answer}
+    Giving a \emph{macrostar} decomposition around each vertex in the mesh.
+    \begin{center}
+      \includestandalone[height=0.3\textheight]{../pictures/macro-star}
+    \end{center}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Numerical results --- 2D lid-driven cavity}
+  \begin{table}[htbp]
+    \centering
+    \begin{tabular}{cc|ccccc}
+      \toprule
+      \# ref. & \# dofs & \multicolumn{5}{c}{Reynolds number} \\
+              && 10 & 100 & 1000 & 5000 & 10000 \\
+      \midrule
+      1 & $9.3 \times 10^4$ & 2.50 & 2.33 & 2.33 & 5.50 & 8.50 \\
+      2 & $3.7 \times 10^5$ & 2.00 & 2.00 & 2.00 & 4.00 & 6.00 \\
+      3 & $1.5 \times 10^6$ & 2.00 & 1.67 & 1.67 & 2.50 & 3.50 \\
+      4 & $5.9 \times 10^6$ & 2.00 & 1.67 & 1.50 & 1.50 & 4.00 \\
+      \bottomrule
+    \end{tabular}
+    \caption{Average number of outer Krylov iterations per Newton step
+      for a 2D regularised lid-driven cavity problem with
+      $(\mathbb{CG}_3)^{2}-\mathbb{DG}_2$ pair.}
+  \end{table}
+  \begin{flushright}
+    {\scriptsize
+    P.E.~Farrell, \textbf{L.~Mitchell}, L.R.~Scott, and F.~Wechsung,
+    SMAI JCM (2021).
+    \arxivlink{2004.09398}{math.NA}\nocite{Farrell:2021a}
+    }
+  \end{flushright}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Numerical results --- 3D lid-driven cavity}
+  \begin{table}[htbp]
+    \centering
+    \begin{tabular}{cc|ccccc}
+      \toprule
+      \# ref. & \# dofs & \multicolumn{5}{c}{Reynolds number} \\
+              && 10 & 100 & 1\,000 & 2\,500 & 5\,000 \\
+      \midrule
+      1   & $1.03\times 10^6$     & 3.00  & 3.67  & 3.50 & 4.00 & 5.00\\
+      2   & $8.22\times 10^6$     & 3.50  & 3.67  & 4.00 & 4.00 & 4.00\\
+      3   & $6.55\times 10^7$     & 3.00  & 3.33  & 3.50 & 3.50 & 4.00\\
+      \bottomrule
+    \end{tabular}
+    \caption{Average number of outer Krylov iterations per Newton step for a
+      3D regularised lid-driven cavity problem with
+      $(\mathbb{CG}_3)^{2}-\mathbb{DG}_2$ pair.}
+  \end{table}
+  \begin{flushright}
+    {\scriptsize
+    P.E.~Farrell, \textbf{L.~Mitchell}, L.R.~Scott, and F.~Wechsung,
+    SMAI JCM (2021).
+    \arxivlink{2004.09398}{math.NA}\nocite{Farrell:2021a}
+    }
+  \end{flushright}
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{Computational performance --- 3D}
+  % [53.140734383333324, 68.56801668333334, 61.468243016666655, 65.64923281666665]
+  \pgfplotstableread[col sep=comma, row sep=\\]{%
+    Cores,Time,Dofs\\
+    48,5.3e1,2134839\\
+    384,6.9e1,16936779\\
+    3072,6.1e1,134930451\\
+    24576,6.6e1,1077196323\\
+  }\ldctable
+  % [55.02509561666667, 68.57286605, 57.029964033333336, 69.39903468333333]
+  \pgfplotstableread[col sep=comma, row sep=\\]{%
+    Cores,Time,Dofs\\
+    48,5.5e1,2107839\\
+    384,6.9e1,16534263\\
+    3072,5.7e1,130973115\\
+    24576,6.9e1,1042606515\\
+  }\bfstable
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      \begin{center}
+        \begin{tikzpicture}
+          \begin{semilogxaxis}[
+            width=0.955\linewidth,
+            height=0.9\linewidth,
+            log basis x=2,
+            ymin=0,
+            ymax=80,
+            xtick=data,
+            xticklabels from table={\ldctable}{Cores},
+            extra x ticks={48, 384, 3072, 24576},
+            extra x tick labels={$[2.13]$, $[16.9]$,$[135]$,$[1077]$},
+            extra x tick style={tick label style={yshift=-2.5ex}},
+            xlabel={Cores\\{}[DoFs $\times 10^6$]},
+            xlabel style={align=center, style={yshift=-0.5ex}},
+            ylabel near ticks,
+            ylabel style={align=center, text width=4cm},
+            title={3D lid-driven cavity.},
+            ylabel={Time [min]},
+            ]
+            \addplot+ table[x=Cores,y=Time] {\ldctable};
+          \end{semilogxaxis}
+        \end{tikzpicture}
+      \end{center}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      {\centering
+        \includegraphics[width=\textwidth]{LDC-streamlines}}
+      {\scriptsize Velocity streamlines at Reynolds number 5000.
+        Credit F.~Wechsung, NYU.}
+    \end{column}
+  \end{columns}
+  \begin{center}
+    50 continuation steps
+  \end{center}
+\end{frame}
+
+\begin{frame}
+  \frametitle{AL for implicit timestepping}
+
+  \begin{block}{Shallow water with compatible FEM}
+    \begin{align*}
+      u^{n+1} - u^{n} + \Delta t (u^{n+1/2} \cdot \nabla) u^{n+1/2} +
+      \Delta t g h^{n+1/2} \\
+      \alert{-\gamma \nabla\left(h^{n+1} - h^n + \Delta t \nabla
+      \cdot (h^{n+1/2} u^{n+1/2})\right)} &= 0\\
+      h^{n+1} - h^n + \Delta t \nabla \cdot (h^{n+1/2} u^{n+1/2}) &= 0
+    \end{align*}
+    After discretisation and linearisation, Schur complement
+    approximation
+
+    \begin{equation*}
+      \tilde{S} \approx \gamma^{-1} L^{-1}(I - g \Delta t/2 L),
+    \end{equation*}
+    $L$ the Laplacian (or just ignore as $\Delta t \to \infty$).
+  \end{block}
+\end{frame}
+\begin{frame}
+  \frametitle{Preliminary results}
+  {\scriptsize
+    \centering
+    \begin{tikzpicture}[%
+      every node/.style={draw=black, thick, anchor=west},
+      grow via three points={one child at (0.0,-0.7) and
+        two children at (0.0,-0.7) and (0.0,-1.4)},
+      edge from parent path={(\tikzparentnode.210) |- (\tikzchildnode.west)}]
+      \node {Newton solver with line search}
+      child { node {Krylov solver (FGMRES)}
+        child { node {Block preconditioner}
+          child { node {Approximate Schur complement inverse}
+            child { node {$\tilde{S}^{-1} = M_\text{DG}^{-1}$ } }
+          }
+          child [missing] {}
+          child { node {Geometric MG}
+            child { node {Coarse grid solver}
+              child { node {LU factorisation}}
+            }
+            child [missing] {}
+            child { node {Relaxation}
+              child { node {GMRES (3 iterations)}
+                child { node {ASM smoother}}
+              }
+            }
+          }
+        }
+      };
+    \end{tikzpicture}
+    \par}
+\end{frame}
+\begin{frame}
+  \frametitle{Williamson mountain testcase}
+  \begin{table}[htbp]
+    \centering
+    \begin{tabular}{cc|ccccc}
+      \toprule
+      \# ref. & \# cells & \# $h$ dofs & \# $u$ dofs & FGMRES its\\
+      \midrule
+      3   & 1280 & 3840 & 9600 & 6--7\\
+      4 & 5120  & 15360 & 38400 & 6--7\\
+      5 & 20480 & 61440 & 153600 & 6--7\\
+      6 & 81920 & 245760 & 614400 & 6--7\\
+      7 & 327680 & 983040 & 2457600 & 6--7\\
+      \bottomrule
+    \end{tabular}
+    \caption{Krylov iterations per Newton step with
+      $\Delta t = 1\text{hour}$}
+  \end{table}
+
+  {\centering
+    \includegraphics[height=0.4\textheight]{williamson-mountain-al}\par
+    }
+\end{frame}
+
+\begin{frame}
+  \frametitle{Computational technology: \texttt{PCPATCH} + Firedrake}
+  General framework for small block overlapping Schwarz smoothers in
+  PETSc and Firedrake
+
+  \begin{itemize}
+  \item Separate topological decomposition from algebraic operators
+  \item Ask discretisation library to make the operators once
+    decomposition is obtained
+  \end{itemize}
+  \begin{block}{Operators}
+    Callback interface to discretisation/PDE library.
+  \end{block}
+
+  {\raggedleft
+    \scriptsize \textcite{Farrell:2021b}, TOMS, \arxivlink{1912.08516}{cs.MS}\par}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Summary}
+  \begin{itemize}
+  \item AL formulation gives systematic way of producing Schur
+    complement approximations for many problems
+  \item Moves difficulty to development of appropriate additive
+    Schwarz smoothers in multigrid
+  \item[$\Rightarrow$] Discrete Hilbert complexes can guide this.
+  \end{itemize}
+
+  \begin{challenge}{Open questions}
+    Really no theory for handling non-symmetric terms (mostly just
+    ``hope GMRES helps enough'')
+
+    Not super-efficient at high order
+
+    Bigger block systems become expensive: all at once multigrid?
+  \end{challenge}
+\end{frame}
 \appendix
-\begin{frame}[allowframebreaks]
+\begin{frame}
   \frametitle{References}
   \printbibliography[heading=none]
 \end{frame}
