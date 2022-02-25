@@ -1,28 +1,15 @@
 % -*- TeX-engine: luatex -*-
 \documentclass[presentation,aspectratio=43, 10pt]{beamer}
-\usepackage{pifont}
-\newcommand{\cmark}{\ding{51}}
-\newcommand{\xmark}{\ding{55}}
-
-\usepackage{booktabs}
 \usepackage{transparent}
 \titlegraphic{\hfill{\transparent{0.2}\includegraphics[height=1.25cm]{durham-logo}}}
 \usepackage{appendixnumberbeamer}
 \usepackage{amsmath}
 \usepackage{amssymb}
-\usepackage{amsfonts}
 \usepackage{bm}
 \usepackage{mathtools}
 \usepackage{hyperref}
 \usepackage{xspace}
 \newcommand{\arxivlink}[2]{{\texttt{arXiv:\,\href{https://arxiv.org/abs/#1}{#1\,[#2]}}}}
-
-\newcommand{\honev}{\ensuremath{{H}^1(\Omega; \mathbb{R}^d)}\xspace}
-\newcommand{\ltwov}{\ensuremath{{L}^2(\Omega; \mathbb{R}^d)}\xspace}
-\newcommand{\ltwo}{\ensuremath{{L}^2(\Omega)}\xspace}
-\newcommand{\inner}[1]{\left\langle #1 \right \rangle}
-\newcommand{\dx}{\,\text{d}x}
-\newcommand{\ds}{\,\text{d}s}
 
 \usepackage{emoji}
 \usepackage{minted}
@@ -120,58 +107,21 @@ backend=biber]{biblatex}
 
 \title{Composition and DSLs for finite element computation: pros and cons}
 
-\usepackage{tikz}
-\usetikzlibrary{trees,calc,positioning}
-\usetikzlibrary{shapes, shapes.geometric}
-\usetikzlibrary{arrows,chains,positioning,fit,backgrounds,calc,shapes,
-  shadows,scopes,decorations.markings,plotmarks}
-
-\newcommand*{\tettextsize}{\footnotesize}
-\tikzstyle{line} = [draw, -, thick]
-\tikzstyle{nodraw} = [draw, fill, circle, minimum width=0pt, inner sep=0pt]
-\tikzstyle{sieve} = [line, circle, font=\tettextsize, inner sep=0pt,
-  minimum size=12pt]
-
-\tikzstyle{cell} = [sieve, fill=blue!60]
-\tikzstyle{facet} = [sieve, fill=green!35]
-\tikzstyle{edge} = [sieve, fill=red!35]
-\tikzstyle{vertex} = [sieve, fill=blue!35]
-
-% https://tex.stackexchange.com/questions/27171/padded-boundary-of-convex-hull
-\newcommand{\convexpath}[2]{
-  [
-  create hullcoords/.code={
-    \global\edef\namelist{#1}
-    \foreach [count=\counter] \nodename in \namelist {
-      \global\edef\numberofnodes{\counter}
-      \coordinate (hullcoord\counter) at (\nodename);
-    }
-    \coordinate (hullcoord0) at (hullcoord\numberofnodes);
-    \pgfmathtruncatemacro\lastnumber{\numberofnodes+1}
-    \coordinate (hullcoord\lastnumber) at (hullcoord1);
-  },
-  create hullcoords
-  ]
-  ($(hullcoord1)!#2!-90:(hullcoord0)$)
-  \foreach [
-  evaluate=\currentnode as \previousnode using \currentnode-1,
-  evaluate=\currentnode as \nextnode using \currentnode+1
-  ] \currentnode in {1,...,\numberofnodes} {
-    let \p1 = ($(hullcoord\currentnode) - (hullcoord\previousnode)$),
-    \n1 = {atan2(\y1,\x1) + 90},
-    \p2 = ($(hullcoord\nextnode) - (hullcoord\currentnode)$),
-    \n2 = {atan2(\y2,\x2) + 90},
-    \n{delta} = {Mod(\n2-\n1,360) - 360}
-    in
-    {arc [start angle=\n1, delta angle=\n{delta}, radius=#2]}
-    -- ($(hullcoord\nextnode)!#2!-90:(hullcoord\currentnode)$)
-  }
-}
-
 \graphicspath{{./\jobname.figures/}{../pictures/}}
+
 
 \begin{document}
 \maketitle
+% Abstract:
+
+% The Firedrake system uses a multi-layered set of DSLs and
+% domain-specific optimising compilers to generate (hopefully) high
+% performance code for finite element assembly. The goal is to deliver
+% expert-level performance to all users, who may not be experts in the
+% necessary low level optimisations, and data structure design. In this
+% talk I will discuss some of the design choices, optimisations and
+% algorithmic transformations that they enable, and pros and cons of
+% this generative approach.
 
 \begin{frame}
   \frametitle{Setting}
@@ -459,26 +409,9 @@ solve(F == 0, upT, bcs=bcs)
 \end{frame}
 
 \appendix
-\begin{frame}[allowframebreaks]
+\begin{frame}
   \frametitle{References}
   \printbibliography[heading=none]
 \end{frame}
 
 \end{document}
-% Name: Lawrence Mitchell
-% Affiliation: Durham University
-% Address: Department of Computer Science, Upper Mountjoy, Durham, DH1 3LE
-% Phone: +44 131 334 4314
-% email: lawrence.mitchell@durham.ac.uk
-% title: 
-
-% Abstract:
-
-% The Firedrake system uses a multi-layered set of DSLs and
-% domain-specific optimising compilers to generate (hopefully) high
-% performance code for finite element assembly. The goal is to deliver
-% expert-level performance to all users, who may not be experts in the
-% necessary low level optimisations, and data structure design. In this
-% talk I will discuss some of the design choices, optimisations and
-% algorithmic transformations that they enable, and pros and cons of
-% this generative approach.
