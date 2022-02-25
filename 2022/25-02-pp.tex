@@ -1,0 +1,484 @@
+% -*- TeX-engine: luatex -*-
+\documentclass[presentation,aspectratio=43, 10pt]{beamer}
+\usepackage{pifont}
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
+
+\usepackage{booktabs}
+\usepackage{transparent}
+\titlegraphic{\hfill{\transparent{0.2}\includegraphics[height=1.25cm]{durham-logo}}}
+\usepackage{appendixnumberbeamer}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage{bm}
+\usepackage{mathtools}
+\usepackage{hyperref}
+\usepackage{xspace}
+\newcommand{\arxivlink}[2]{{\texttt{arXiv:\,\href{https://arxiv.org/abs/#1}{#1\,[#2]}}}}
+
+\newcommand{\honev}{\ensuremath{{H}^1(\Omega; \mathbb{R}^d)}\xspace}
+\newcommand{\ltwov}{\ensuremath{{L}^2(\Omega; \mathbb{R}^d)}\xspace}
+\newcommand{\ltwo}{\ensuremath{{L}^2(\Omega)}\xspace}
+\newcommand{\inner}[1]{\left\langle #1 \right \rangle}
+\newcommand{\dx}{\,\text{d}x}
+\newcommand{\ds}{\,\text{d}s}
+
+\usepackage{emoji}
+\usepackage{minted}
+\usepackage[url=false,
+doi=true,
+isbn=false,
+style=authoryear,
+maxnames=5,
+giveninits=true,
+uniquename=init,
+backend=biber]{biblatex}
+\renewcommand{\bibfont}{\fontsize{7}{7}\selectfont}
+\addbibresource{references.bib}
+
+\setlength{\bibitemsep}{1ex}
+\setlength{\fboxsep}{1pt}
+
+\renewbibmacro{in:}{}
+\DeclareFieldFormat[article]{volume}{\textbf{#1}}
+\DeclareFieldFormat{doi}{%
+  doi\addcolon%
+  {\scriptsize\ifhyperref{\href{http://dx.doi.org/#1}{\nolinkurl{#1}}}
+    {\nolinkurl{#1}}}}
+\AtEveryBibitem{%
+\clearfield{pages}%
+\clearfield{issue}%
+\clearfield{number}%
+}
+
+\DeclareMathOperator{\grad}{grad}
+\let\div\relax
+\DeclareMathOperator{\div}{div}
+\DeclareMathOperator{\curl}{curl}
+\DeclareMathOperator{\range}{range}
+\DeclareMathOperator{\sym}{sym}
+\usetheme{metropolis}
+\setbeamertemplate{title graphic}{
+  \vbox to 0pt {
+    \vspace*{1em}
+    \inserttitlegraphic%
+  }%
+  \nointerlineskip%
+}
+\metroset{background=light,progressbar=frametitle,numbering=counter,block=fill}
+
+% https://www.dur.ac.uk/marketingandcommunications/marketing/branding/colourpalette/
+% Most of these are indistinguishable to those suffering colour blindness
+\definecolor{purple}{HTML}{68246D}
+\definecolor{blue}{HTML}{002A41}
+\definecolor{red}{HTML}{BE1E2D}
+\definecolor{cyan}{HTML}{00AEEF}
+\definecolor{yellow}{HTML}{FFD53A}
+
+\newenvironment{variableblock}[3]
+{\setbeamercolor{block body}{#2}
+\setbeamercolor{block title}{#3}
+\begin{block}{#1}}%
+{\end{block}}
+  
+\newenvironment{challenge}[1]%
+{\begin{variableblock}{#1}{bg=red!20,fg=black}{bg=red,fg=white}}%
+{\end{variableblock}}
+
+\newenvironment{answer}[1]%
+{\begin{variableblock}{#1}{bg=cyan!20,fg=black}{bg=cyan,fg=white}}%
+{\end{variableblock}}
+
+\renewenvironment{exampleblock}[1]%
+{\begin{variableblock}{#1}{bg=yellow!20,fg=black}{bg=yellow,fg=white}}%
+{\end{variableblock}}
+
+\setbeamercolor{normal text}{
+  fg=black,
+  bg=white
+}
+\setbeamercolor{alerted text}{
+  fg=red
+}
+\setbeamercolor{example text}{
+  fg=blue
+}
+
+\setbeamercolor{palette primary}{%
+  use=normal text,
+  fg=normal text.bg,
+  bg=purple,
+}
+
+\usetheme{metropolis}
+
+\author{Lawrence Mitchell\inst{1,*}}
+\institute{
+  \inst{1}\textcolor{black!20}{Department of Computer Science, Durham University}\\
+  \inst{*}\texttt{lawrence@wence.uk}}
+
+\title{Composition and DSLs for finite element computation: pros and cons}
+
+\usepackage{tikz}
+\usetikzlibrary{trees,calc,positioning}
+\usetikzlibrary{shapes, shapes.geometric}
+\usetikzlibrary{arrows,chains,positioning,fit,backgrounds,calc,shapes,
+  shadows,scopes,decorations.markings,plotmarks}
+
+\newcommand*{\tettextsize}{\footnotesize}
+\tikzstyle{line} = [draw, -, thick]
+\tikzstyle{nodraw} = [draw, fill, circle, minimum width=0pt, inner sep=0pt]
+\tikzstyle{sieve} = [line, circle, font=\tettextsize, inner sep=0pt,
+  minimum size=12pt]
+
+\tikzstyle{cell} = [sieve, fill=blue!60]
+\tikzstyle{facet} = [sieve, fill=green!35]
+\tikzstyle{edge} = [sieve, fill=red!35]
+\tikzstyle{vertex} = [sieve, fill=blue!35]
+
+% https://tex.stackexchange.com/questions/27171/padded-boundary-of-convex-hull
+\newcommand{\convexpath}[2]{
+  [
+  create hullcoords/.code={
+    \global\edef\namelist{#1}
+    \foreach [count=\counter] \nodename in \namelist {
+      \global\edef\numberofnodes{\counter}
+      \coordinate (hullcoord\counter) at (\nodename);
+    }
+    \coordinate (hullcoord0) at (hullcoord\numberofnodes);
+    \pgfmathtruncatemacro\lastnumber{\numberofnodes+1}
+    \coordinate (hullcoord\lastnumber) at (hullcoord1);
+  },
+  create hullcoords
+  ]
+  ($(hullcoord1)!#2!-90:(hullcoord0)$)
+  \foreach [
+  evaluate=\currentnode as \previousnode using \currentnode-1,
+  evaluate=\currentnode as \nextnode using \currentnode+1
+  ] \currentnode in {1,...,\numberofnodes} {
+    let \p1 = ($(hullcoord\currentnode) - (hullcoord\previousnode)$),
+    \n1 = {atan2(\y1,\x1) + 90},
+    \p2 = ($(hullcoord\nextnode) - (hullcoord\currentnode)$),
+    \n2 = {atan2(\y2,\x2) + 90},
+    \n{delta} = {Mod(\n2-\n1,360) - 360}
+    in
+    {arc [start angle=\n1, delta angle=\n{delta}, radius=#2]}
+    -- ($(hullcoord\nextnode)!#2!-90:(hullcoord\currentnode)$)
+  }
+}
+
+\graphicspath{{./\jobname.figures/}{../pictures/}}
+
+\begin{document}
+\maketitle
+
+\begin{frame}
+  \frametitle{Setting}
+  \begin{columns}
+    \begin{column}{0.8\textwidth}
+      \begin{quote}
+        Firedrake \url{www.firedrakeproject.org} {\normalfont
+          [\ldots]} is an automated system for the solution of
+        partial differential equations using the finite element
+        method.
+      \end{quote}
+    \end{column}
+    \begin{column}{0.2\textwidth}
+      \includegraphics[width=0.8\textwidth]{firedrake}
+    \end{column}
+  \end{columns}
+  \begin{itemize}
+  \item \alert{Uses \emph{embedded} domain specific language, UFL
+    \parencite{Alnaes:2014} from the FEniCS project}
+  \item \alert{Form compiler and ``symbolic'' element library}
+  \item PETSc for meshes and (algebraic) solvers \nocite{Balay:2016}
+  \end{itemize}
+
+  {\raggedleft
+    \scriptsize \textcite{Rathgeber:2016} \arxivlink{1501.01809}{cs.MS}\par}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Why DSLs at all?}
+
+  \begin{block}{Contention}
+    DSLs (in various forms) pervade much of scientific software
+    because the ergonomics of metaprogramming in (almost?) all
+    languages is \emph{terrible}.
+
+    Especially if you want arbitrary composition and want to avoid
+    accidental performance pitfalls.
+  \end{block}
+  \pause
+  \begin{answer}{Corollary}
+    Composition in libraries is \emph{algebraic} not symbolic
+
+    \pause
+
+    Or you design representations of symbolic structure and then have
+    a DSL.
+  \end{answer}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{DSLs in Firedrake: UFL}
+  \begin{columns}
+    \begin{column}{0.5\framewidth}
+      {\footnotesize
+        Find $(u, p, T) \in V\times W\times Q$ s.t.
+        \begin{align*}
+          \int\!\nabla u \cdot \nabla v + (u \cdot \nabla u) \cdot v \\
+          - p\nabla\cdot v + \frac{\text{Ra}}{\text{Pr}} Tg \hat{z} \cdot v\,\text{d}x &= 0 \\
+          \int\!\nabla\cdot u q\,\text{d}x&= 0\\
+          \int\! (u\cdot \nabla T) S + \text{Pr}^{-1} \nabla T \cdot \nabla
+          S\,\text{d}x &= 0\\
+          \quad \forall\, (v,q,T) \in V\times W \times Q
+        \end{align*}
+        }
+    \end{column}
+      \begin{column}{0.5\framewidth}
+\begin{minted}[fontsize=\tiny]{python}
+from firedrake import *
+mesh = Mesh(...)
+V = VectorFunctionSpace(mesh, "CG", 2)
+W = FunctionSpace(mesh, "CG", 1)
+Q = FunctionSpace(mesh, "CG", 1)
+Z = V * W * Q
+Ra = Constant(...)
+Pr = Constant(...)
+upT = Function(Z)
+u, p, T = split(upT)
+v, q, S = TestFunctions(Z)
+bcs = [...]
+
+F = (inner(grad(u), grad(v))
+     + inner(dot(grad(u), u), v)
+     - inner(p, div(v))
+     + (Ra/Pr)*inner(T*g, v)
+     + inner(div(u), q)
+     + inner(dot(grad(T), u), S)
+     + (1/Pr)*inner(grad(T), grad(S)))*dx
+
+solve(F == 0, upT, bcs=bcs)
+\end{minted}
+      \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Mostly good!}
+  \begin{itemize}
+  \item UFL is now >15 years old
+  \item Surface has mostly stood test of time
+  \item Really it's a symbolic algebra package with some FE-specific
+    terminal nodes and builtin FE-relevant DAG rewrites
+  \end{itemize}
+  \begin{challenge}{Problems}
+    \emph{Implementation} is showing its age.
+
+    Difficult to get recognition for reimplementation of the same API
+  \end{challenge}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Can I write down \emph{my} problem?}
+  \begin{itemize}
+  \item[\emoji{thumbsup}] If you can express your problem in UFL, great!
+  \item[\emoji{thumbsdown}] If you can't, it's a mathematical software
+    research problem to figure out what to do, rather than a SMOP
+  \end{itemize}
+  \pause
+  \begin{answer}{Problem}
+    Graceful degradation with a DSL is \emph{hard}
+
+    \pause
+    How do you enable it without forcing model developer to abandon
+    all the nice stuff?
+
+    \pause
+    Ongoing work in UFL/Firedrake with \texttt{ExternalOperator}
+    (Nacime Bouziani, David Ham, India Marsden, Reuben Nixon-Hill)
+  \end{answer}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{DSLs in Firedrake: GEM}
+  \begin{challenge}{Motivation}
+    Algorithmically optimal FE basis evaluation (exploiting sum
+    factorisation and similar)
+
+    Goal: transform coefficients at node points to coefficients at
+    quadrature points
+    \begin{equation*}
+      \tilde{u}_q = B u
+    \end{equation*}
+  \end{challenge}
+
+  \begin{answer}{Problem}
+    \emoji{thumbsdown} If element library gives you $B$ as a dense
+    array, can't deliver optimal contraction
+
+    \emoji{thumbsup} Library solution: provide the action $Bu$ as a
+    primitive
+
+    \emoji{question} what about composition?
+  \end{answer}
+\end{frame}
+\begin{frame}[fragile]
+  \frametitle{FInAT: An algebra for basis evaluation}
+  \footnotesize
+  \begin{itemize}
+  \item Literal array
+    \begin{equation*}
+      \Psi_i(\xi_q) \mapsto \bm{\Psi}_{iq}
+    \end{equation*}
+  \item Tensor-valued, components are Kronecker $\delta$s
+    \begin{equation*}
+      \Psi_{(\alpha, \nu)\kappa}(\xi_q) \mapsto \Psi_{\alpha}^*(\xi_q){\prod_{i=1}^n \delta_{\nu_i \kappa_i}}
+    \end{equation*}
+  \item Underintegration, $\{\xi_q\}$ matches nodes
+    \begin{equation*}
+      \Psi_i(\xi_q) \mapsto \delta_{iq}
+    \end{equation*}
+  \item Enriched (direct sum)
+    \begin{equation*}
+      {(\Phi \oplus \Psi)}_i(\xi_q) \mapsto
+      \begin{cases}
+        \Phi_i(\xi_q) &\text{$i < N_\Phi$}\\
+        \Psi_{i-N_\Phi}(\xi_q) &\text{otherwise}
+      \end{cases}
+    \end{equation*}
+  \item Tensor product (with tensor-product quad rule)
+    \begin{equation*}
+      \Psi_{(i_1, \dots, i_n)}(\xi_{(q_1, \dots, q_n)}) \mapsto \prod_{j=1}^{n} \psi_{i_j}(\xi_{q_j})
+    \end{equation*}
+  \item Rank-promotion ($\mathbf{H}(\text{div}/\text{curl})$)
+    \begin{equation*}
+      \text{\texttt{HDiv}}(\Psi_i(\xi_q)) \mapsto
+      \begin{cases}
+        [-\Psi_i(\xi_q), 0]\\
+        [0, \Psi_i(\xi_q)]
+      \end{cases}
+    \end{equation*}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{A compiler can now DTRT}
+  \begin{itemize}
+  \item With structure exposed, all new elements get fast basis
+    evaluation
+  \item \dots Once the optimisation pass has been written in the
+    compiler \parencite{Homolya:2018}
+  \item Language is essentially Einstein notation, plus
+    structure-preserving concatenation/reshape \parencite{Homolya:2017a}
+  \end{itemize}
+
+  \begin{answer}{Algebraic approach?}
+    I think you can do this composition algebraically (c.f.~work by
+    Toby Isaac in PETSc \url{https://gitlab.com/tisaac/lans-feec})
+
+    Library is restricted to a static schedule, so might not be
+    operation minimal if extents of the tensor product (say) are not
+    all the same.
+  \end{answer}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Also for interpolation}
+  \begin{itemize}
+  \item Other interface library should expose is for interpolation
+  \item Given some $f$, want to represent it in the finite element
+    space by acting each dual functional on $f$
+  \item Same idea: FInaT provides compositional algebra
+  \item[\emoji{thumbsdown}] I haven't worked out the composition for
+    tensor-product + enriched together yet.
+  \item[\emoji{thumbsdown}] will need new optimisation pass in compiler
+  \end{itemize}
+\end{frame}
+\begin{frame}
+  \frametitle{What's the catch?}
+  \begin{challenge}{How to lower to executable kernels?}
+    TSFC just picks an operation minimal loop schedule and emits C
+    code (via \url{https://github.com/inducer/loopy})
+
+    \emoji{thumbsdown} bad solution for matrix-matrix as soon as
+    extents are bigger than \sim 8
+
+    \emoji{thumbsdown} implementation is (close to) operation-minimal,
+    but not low-level optimised
+  \end{challenge}
+  \begin{answer}{What to do?}
+    Scheduling and optimisation at loop level is something for the
+    downstream compiler to handle
+
+    I think Kaushik will talk about some of this in loopy? (MS59, 4:50
+    PST today)
+
+    \emoji{question} Can one avoid effort by devolving to MLIR linalg
+    dialect?
+  \end{answer}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Where are we now?}
+  \begin{answer}{Pros}
+    \begin{itemize}
+    \item If your problem fits the abstraction, most things are golden
+    \item It works pretty well!
+    \item There's lots of fun computational science to do along the way
+    \end{itemize}
+  \end{answer}
+  \begin{challenge}{Cons}
+    \begin{itemize}
+    \item I would like if we had to maintain fewer bits of code
+    \item \dots especially taking advantage of other people's
+      performance optimisations
+    \item Firedrake doesn't offer a library interface: so
+      non-expressible features are hard to include
+    \end{itemize}
+  \end{challenge}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Open questions/conclusions}
+  \begin{itemize}
+  \item DSLs from scratch are tunable to the domain, is there a common
+    target to lower to? Or do we have to replicate effort each time?
+  \item Do we need structure-preservation and compilation in this way,
+    or is algebraic composition sufficient?
+  \item How do we make composition of generated and hand-written code
+    ergonomic?
+  \item Are all of these problems because Python?
+  \end{itemize}
+
+  \begin{center}
+    \large Thanks!
+  \end{center}
+\end{frame}
+
+\appendix
+\begin{frame}[allowframebreaks]
+  \frametitle{References}
+  \printbibliography[heading=none]
+\end{frame}
+
+\end{document}
+% Name: Lawrence Mitchell
+% Affiliation: Durham University
+% Address: Department of Computer Science, Upper Mountjoy, Durham, DH1 3LE
+% Phone: +44 131 334 4314
+% email: lawrence.mitchell@durham.ac.uk
+% title: 
+
+% Abstract:
+
+% The Firedrake system uses a multi-layered set of DSLs and
+% domain-specific optimising compilers to generate (hopefully) high
+% performance code for finite element assembly. The goal is to deliver
+% expert-level performance to all users, who may not be experts in the
+% necessary low level optimisations, and data structure design. In this
+% talk I will discuss some of the design choices, optimisations and
+% algorithmic transformations that they enable, and pros and cons of
+% this generative approach.
