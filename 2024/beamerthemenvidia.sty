@@ -1,0 +1,134 @@
+% SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+% SPDX-License-Identifier: LicenseRef-NvidiaProprietary
+%
+% NVIDIA CORPORATION, its affiliates and licensors retain all
+% intellectual property and proprietary rights in and to this
+% material, related documentation and any modifications thereto. Any
+% use, reproduction, disclosure or distribution of this material and
+% related documentation without an express license agreement from
+% NVIDIA CORPORATION or its affiliates is strictly prohibited.
+%
+% NVIDIA LaTeX beamer theme
+
+\usepackage{tikz}
+\usetikzlibrary{calc}
+
+\usepackage[final,letterspace=50,step=2,stretch=10]{microtype}
+\microtypecontext{spacing=nonfrench}
+\usepackage{url}
+\usepackage{fontspec}
+\usepackage{minted}
+\setmainfont[
+Numbers = {Monospaced}]{NVIDIA Sans}
+\setsansfont[
+Numbers={Monospaced}]{NVIDIA Sans}
+
+\setmonofont{Roboto Mono}
+\usepackage{listings}
+
+\definecolor{nvidiagreen}{RGB}{118,185,0}
+\definecolor{greenlight2}{RGB}{226,255,140}
+\definecolor{greenlight1}{RGB}{178,230,57}
+\definecolor{greendark1}{RGB}{51,122,0}
+\definecolor{greendark2}{RGB}{19,77,0}
+
+\definecolor{greylight2}{RGB}{204,204,204}
+\definecolor{greylight1}{RGB}{153,153,153}
+\definecolor{grey}{RGB}{128,128,128}
+\definecolor{greydark1}{RGB}{102,102,102}
+\definecolor{greydark2}{RGB}{51,51,51}
+
+\setbeamercolor{normal text}{fg=black,bg=white}
+\usebeamercolor[fg]{normal text}
+
+\setbeamercolor{structure}{fg=nvidiagreen}
+
+\setbeamertemplate{title}{
+  \raggedright%
+  \linespread{1.0}%
+  \usebeamercolor[fg]{normal text}\inserttitle%
+  \par%
+  \vspace*{0.5em}
+}
+\setbeamertemplate{subtitle}{
+  \raggedright%
+  \usebeamercolor[fg]{normal text}\insertsubtitle%
+  \par%
+  \vspace{0.5em}
+}
+
+\setbeamertemplate{author}{
+  \vspace*{2em}
+  \insertauthor%
+  \par%
+  \vspace*{0.25em}
+}
+\setbeamertemplate{date}{
+  \insertdate%
+  \par%
+}
+\setbeamertemplate{institute}{
+  \vspace*{3mm}
+  \insertinstitute%
+  \par%
+}
+\setbeamertemplate{title page}{
+  \begin{tikzpicture}[remember picture, overlay]
+    \node[above right, inner sep=0pt] at (current page.south west)
+    { \includegraphics[width=\paperwidth]{nv_background}};
+
+    \node[anchor=north west] at ($(current page.north west)$)
+    { \includegraphics[width=4cm]{nv_black} };
+      
+  \end{tikzpicture}
+  \begin{minipage}[b][\paperheight][b]{\paperwidth}
+    \vfill%
+    \ifx\inserttitle\@empty\else\usebeamertemplate*{title}\fi
+    \ifx\insertsubtitle\@empty\else\usebeamertemplate*{subtitle}\fi
+    \vspace*{1\baselineskip}
+    \ifx\beamer@shortauthor\@empty\else\usebeamertemplate*{author}\fi
+    \ifx\insertinstitute\@empty\else\usebeamertemplate*{institute}\fi
+    \vfill
+    \vspace*{1mm}
+  \end{minipage}
+}
+
+\setbeamercolor{frametitle}{fg=black}
+\setbeamercolor{framesubtitle}{fg=structure}
+
+\setbeamertemplate{frametitle}[default][center]
+
+\setbeamerfont{page number in head/foot}{size=\tiny}
+\setbeamertemplate{footline}{%
+  \begin{tikzpicture}[remember picture, overlay]
+    \node[anchor=south east] (A) at ($(current page.south east) + (-0.2cm, 0.1cm)$) {
+      \includegraphics[height=0.4cm]{nv_black.png}
+    };
+    \node (B) [left of=A, xshift=0.1cm,yshift=0.1265mm]
+    {\usebeamerfont{page number in head/foot}\insertframenumber};
+    \draw[line width=0.15cm,nvidiagreen]
+      (current page.south east) --
+      ($(current page.south east) + (0, 0.464cm)$);
+  \end{tikzpicture}
+}
+
+\setbeamercolor{item}{fg = structure}
+\setbeamertemplate{itemize items}{\textbullet}
+
+\def\maketitle{%
+  \ifbeamer@inframe
+    \titlepage
+  \else
+    \frame[plain,noframenumbering]{\titlepage}
+  \fi
+}
+\def\titlepage{%
+  \usebeamertemplate{title page}
+}
+
+\mode<presentation>
+
+\beamertemplatenavigationsymbolsempty
+
+\mode<all>
+\endinput

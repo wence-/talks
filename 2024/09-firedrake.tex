@@ -1,19 +1,220 @@
-\documentclass[presentation,aspectratio=43, 10pt]{beamer}
+% -*- TeX-engine: luatex -*-
 
-\title{The modern CUDA ecosystem: how to talk to your GPU}
+\documentclass[aspectratio=169]{beamer}
+\usetheme{nvidia}
+
+\usepackage{booktabs}
+\title{The modern CUDA ecosystem}
+\subtitle{how to talk to your GPU}
+\author{Lawrence Mitchell}
+\institute{\texttt{lmitchell@nvidia.com}}
 \begin{document}
 
-\begin{abstract}
-  Firedrake emerged, in part, from projects looking at finite elements
-  on GPUs, but that was in the depths of history and we swiftly
-  pivoted to a CPU-centric approach.
+\maketitle
 
-  A decade later, there is interest in revisiting this decision, and
-  both the hardware and software have moved on since the last time
-  Firedrake tried this in anger. As well as a much broader ecosystem
-  of GPU libraries, there is also renewed interest in making the core
-  programming experience harder to misuse. To that end, I'll present
-  some thoughts on device-side libraries and programming abstractions
-  for writing fast kernels correctly.
-\end{abstract}
+\begin{frame}
+  \frametitle{Prehistory}
+  \begin{quote}
+    The contributions of this paper are: a high-performance
+    implementation of a finite element solver for an
+    advection-diffusion problem written using NVidia CUDA (Section 3),
+    a prototype implementation of a compiler that generates CUDA code
+    from UFL sources (Section 4.2), [\dots]
+  \end{quote}
+  {
+    \scriptsize
+    \raggedleft
+    Markall, Ham, and Kelly.
+    \emph{Towards generating optimised finite
+      element solvers for GPUs from high-level specifications},
+    Procedia Computer Science (2010)
+    \par
+    GTX 480, 1.5GB @ 177GB/s, 1.3TFLOP/s (32bit), 168GFLOP/s (64bit)
+    \par
+  }
+\end{frame}
+\begin{frame}
+  \frametitle{Prehistory}
+  \begin{quote}
+    [W]e present finite element implementations that are
+    written in both CUDA, for NVidia GPUs, and OpenCL, [\dots We] show
+    that the point at which it becomes profitable to switch algorithms
+    differs between target architectures. Using OpenCL achieves
+    functional portability across different multicore and GPU
+    platforms; we demonstrate that performance portability is more
+    challenging to achieve.
+  \end{quote}
+  {
+    \scriptsize
+    \raggedleft
+    Markall, Slemmer, Ham, Kelly, Cantwell, and Sherwin.
+    \emph{Finite element assembly strategies on multi-core and many-core architectures},
+    Int.~J.~Num.~Meth.~Fluids (2011)
+    \par
+    \vspace{\baselineskip}
+    GTX 480, 1.5GB @ 177GB/s, 1.3TFLOP/s (32bit), 168GFLOP/s (64bit)
+    \par
+  }
+\end{frame}
+
+\begin{frame}
+  \frametitle{\textcolor{black!40}{Pre}history}
+  \begin{quote}
+    PyOP2 provides an API for the implementation of target-specific
+    backends. At present, backends for sequential C code, C with
+    OpenMP, and CUDA code are fully supported.
+  \end{quote}
+  {
+    \scriptsize
+    \raggedleft
+    Markall, Rathgeber, Mitchell, Loriant, Bertolli, Ham, and Kelly.
+    \emph{Performance-portable finite element assembly using PyOP2 and FEniCS},
+    ISC (2013)
+    \par
+    Tesla M2050, 3GB @ 148GB/s, 1TFLOP/s (32bit), 515GFLOP/s (64bit)
+    \par
+  }
+\end{frame}
+
+\begin{frame}
+  \frametitle{History}
+  \begin{quote}
+    This paper presents only performance results [\dots] on CPUs
+    [\dots The] available hybrid parallel and GPU linear solver
+    libraries are far more limited than PETSc’s MPI-only functionality
+    [\dots we] have therefore given priority to achieving high
+    performance and feature completeness for the CPU backend using
+    MPI.\@
+  \end{quote}
+  {
+    \scriptsize
+    \raggedleft
+    Rathgeber, Ham, Mitchell, Lange, Luporini, McRae, Bercea, Markall,
+    and Kelly. \emph{Firedrake: automating the finite element method
+      by composing abstractions}, ACM TOMS (2016)
+    \par
+  }
+\end{frame}
+
+\begin{frame}
+  \frametitle{History}
+  \begin{quote}
+    Remove all code generation backends except for the sequential CPU
+    backend [\dots We]
+    have now reached reasonable consensus that the existing
+    implementations for GPUs are not the right place to start for
+    high-performance assembly.
+  \end{quote}
+  {
+    \scriptsize
+    \raggedleft
+    Mitchell. \url{https://github.com/OP2/PyOP2/pull/507}, (2016)
+    \par
+  }
+\end{frame}
+
+\begin{frame}
+  \frametitle{What about today?}
+
+  \begin{itemize}
+  \item Data center GPUs have \emph{quite a lot} of RAM
+    \begin{itemize}
+    \item H100 PCIe: 80GB @ 2TB/s, 51.2TFLOP/s (32bit), 51.2TFLOP/s (64bit)
+    \end{itemize}
+  \item They are both easier and harder to program
+    \begin{itemize}
+    \item Compiler is better at finding parallelism
+    \item Automatic caches
+    \item Best perf/watt utilises \emph{tensor cores}
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Tensor cores}
+  \begin{columns}[t]
+    \begin{column}{0.5\textwidth}
+      \begin{block}{What}
+        \begin{itemize}
+        \item Specialised hardware for matrix-matrix accumulate: $D \gets A B + C$
+        \item Zoo of different precisions
+        \item \emph{Collective} across a warp
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \begin{block}{Why}
+        \begin{itemize}
+        \item Addressing power wall
+        \item One instruction does more work
+        \item Data access more structured: less integer addressing
+        \item Low precision: power cost of multiplication scales like
+          square of mantissa
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Example: relative power}
+  \begin{table}
+    \centering
+    \begin{tabular}{ccc}
+      \toprule
+      Precision & Operation & Relative energy/FLOP \\
+      \midrule
+      FP64 & FMA & 2.5 \\
+      FP32 & FMA & 1.0 \\
+      FP16 & FMA & 0.5 \\
+      FP64 & MMA & 1.5 \\
+      FP16 & MMA & 0.12 \\
+      FP8 & MMA & 0.06 \\
+      \bottomrule
+    \end{tabular}
+    \caption{Relative energy cost per FLOP for matrix-matrix multiply
+      on Hopper}
+  \end{table}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Pretend it's the 80s (60s?)}
+  \begin{itemize}
+  \item My algorithm needs 64bit/32bit precision, what do all these fancy
+    formats help me?
+  \item Iterative refinement everywhere!\\
+    {\scriptsize
+      \raggedleft
+      Haidar, Bayraktar, Tomov, Dongarra, Higham, Proc. R. Soc. A (2020)
+      \par}
+  \item Or, emulate high-precision scalar with low-precision tensor\\
+    {\scriptsize
+      \raggedleft
+      Hiroyuki, Katsuhisa, Yokota. Int.\~J.~HPCA (2024)
+      \par}
+  \end{itemize}
+\end{frame}
+\begin{frame}
+  \frametitle{Do I have to do this all myself?}
+  
+\end{frame}
+
+\begin{frame}
+  \frametitle{Work with us}
+  
+\end{frame}
+% \begin{abstract}
+%   Firedrake emerged, in part, from projects looking at finite elements
+%   on GPUs, but that was in the depths of history and we swiftly
+%   pivoted to a CPU-centric approach.
+
+%   A decade later, there is interest in revisiting this decision, and
+%   both the hardware and software have moved on since the last time
+%   Firedrake tried this in anger. As well as a much broader ecosystem
+%   of GPU libraries, there is also renewed interest in making the core
+%   programming experience harder to misuse. To that end, I'll present
+%   some thoughts on device-side libraries and programming abstractions
+%   for writing fast kernels correctly.
+% \end{abstract}
 \end{document}
