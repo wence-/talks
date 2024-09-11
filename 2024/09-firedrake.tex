@@ -21,6 +21,7 @@
     a prototype implementation of a compiler that generates CUDA code
     from UFL sources (Section 4.2), [\dots]
   \end{quote}
+  \pause
   {
     \scriptsize
     \raggedleft
@@ -44,6 +45,7 @@
     platforms; we demonstrate that performance portability is more
     challenging to achieve.
   \end{quote}
+  \pause
   {
     \scriptsize
     \raggedleft
@@ -64,6 +66,7 @@
     backends. At present, backends for sequential C code, C with
     OpenMP, and CUDA code are fully supported.
   \end{quote}
+  \pause
   {
     \scriptsize
     \raggedleft
@@ -86,6 +89,7 @@
     performance and feature completeness for the CPU backend using
     MPI.\@
   \end{quote}
+  \pause
   {
     \scriptsize
     \raggedleft
@@ -105,6 +109,7 @@
     implementations for GPUs are not the right place to start for
     high-performance assembly.
   \end{quote}
+  \pause
   {
     \scriptsize
     \raggedleft
@@ -123,34 +128,32 @@
     \end{itemize}
   \item They are both easier and harder to program
     \begin{itemize}
-    \item Compiler is better at finding parallelism
     \item Automatic caches
-    \item Best perf/watt utilises \emph{tensor cores}
+    \item There is a memory model!
+    \item No longer just SIMT
     \end{itemize}
   \end{itemize}
 \end{frame}
 
-
 \begin{frame}
-  \frametitle{Tensor cores}
+  \frametitle{Big change: tensor cores}
   \begin{columns}[t]
     \begin{column}{0.5\textwidth}
       \begin{block}{What}
         \begin{itemize}
-        \item Specialised hardware for matrix-matrix accumulate: $D \gets A B + C$
+        \item Hardware/instructions for matrix-matrix accumulate: $D \gets A B + C$
         \item Zoo of different precisions
         \item \emph{Collective} across a warp
         \end{itemize}
       \end{block}
     \end{column}
     \begin{column}{0.5\textwidth}
-      \begin{block}{Why}
+      \begin{block}{Why: power wall}
         \begin{itemize}
-        \item Addressing power wall
-        \item One instruction does more work
-        \item Data access more structured: less integer addressing
-        \item Low precision: power cost of multiplication scales like
-          square of mantissa
+        \item Fewer instructions 
+        \item Data access: wider loads/stores
+        \item Low precision: energy of multiplication goes like
+          square of mantissa length
         \end{itemize}
       \end{block}
     \end{column}
@@ -158,12 +161,12 @@
 \end{frame}
 
 \begin{frame}
-  \frametitle{Example: relative power}
+  \frametitle{Example: relative energy usage}
   \begin{table}
     \centering
     \begin{tabular}{ccc}
       \toprule
-      Precision & Operation & Relative energy/FLOP \\
+      Precision & Operation & Energy/FLOP \\
       \midrule
       FP64 & FMA & 2.5 \\
       FP32 & FMA & 1.0 \\
@@ -173,7 +176,7 @@
       FP8 & MMA & 0.06 \\
       \bottomrule
     \end{tabular}
-    \caption{Relative energy cost per FLOP for matrix-matrix multiply
+    \caption{Energy cost (arbitrary units) per FLOP for matrix-matrix multiply
       on Hopper}
   \end{table}
 \end{frame}
@@ -188,21 +191,221 @@
       \raggedleft
       Haidar, Bayraktar, Tomov, Dongarra, Higham, Proc. R. Soc. A (2020)
       \par}
-  \item Or, emulate high-precision scalar with low-precision tensor\\
+  \item Emulate high-precision scalar with low-precision tensor\\
     {\scriptsize
       \raggedleft
       Hiroyuki, Katsuhisa, Yokota. Int.\~J.~HPCA (2024)
       \par}
   \end{itemize}
 \end{frame}
-\begin{frame}
-  \frametitle{Do I have to do this all myself?}
+
+
+\begin{frame}[fragile]
+  \frametitle{Library ecosystem}
+  \begin{onlyenv}<1-2>
+    Encapsulate ``speed of light'' performance for computational
+    primitives. 
+    \pause
+
+    \begin{block}{Old guard}
+      \begin{itemize}
+      \item thrust: host side \verb~<algorithm>~
+
+        {\scriptsize
+          \raggedleft
+          Bell and Hoberock. App. GPU Computing (2012)
+          \par
+        }
+      \item CUB:~device side building blocks
+
+        {\scriptsize
+          \raggedleft
+          Merrill and Garland, Tech Report NVR-2016-002 (2016)
+          \par
+        }
+      \item Spec-sheet throughput via algorithmic choice
+      \item \dots and architecture-specific autotuning for last-mile
+      \end{itemize}
+    \end{block}
+  \end{onlyenv}
   
+  \begin{onlyenv}<3>
+    \begin{block}{Newer: device side libraries, JIT}
+      Idea: bring CUB approach to broader set of use cases
+      \begin{itemize}
+      \item cooperative groups: thread block decompositions and sync
+        primitives
+      \item cuBLASDx: device side BLAS
+      \item CUTLASS:~device side ``BLIS''
+      \item libcu++: device side C++ standard library
+      \item cuCollections: device side hash tables
+      \item NVRTC/nvJitLink: runtime compilation, JIT linking/LTO
+      \item \dots
+      \end{itemize}
+    \end{block}
+  \end{onlyenv}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{cooperative groups}
+
+  \begin{onlyenv}<1-2>
+    \begin{block}{What's wrong with this code?}
+\begin{minted}{cuda}
+__device__ int sum(int *x, int n) {
+  ...;
+  __syncthreads();
+  ...;
+}
+\end{minted}
+      \pause
+\begin{minted}{cuda}
+__global__ void kernel(int *x, int n) {
+  if (threadIdx.x < blockDim.x / 2) {
+    // oops, implicit contract that everyone
+    // in the block calls me is violated
+    sum(x, n);
+  }
+}
+\end{minted}
+    \end{block}
+  \end{onlyenv}
+  \pause
+  \begin{onlyenv}<3>
+\begin{minted}{cuda}
+__device__ int sum(thread_block comm, int *x, int n) {
+   ...;
+   comm.sync();
+   ...;
+}
+
+__global__ void kernel(int *x, int n) {
+  auto comm = this_thread_block();
+  // Can't diverge here by construction
+  sum(comm, x, n);
+}
+\end{minted}
+  \end{onlyenv}
+  \begin{onlyenv}<4>
+    \begin{block}{Idea}
+      \begin{itemize}
+      \item Historically \verb~__syncthreads()~
+        \begin{itemize}
+        \item Which threads? All those in a thread block
+        \item Was that correct? Hard to say
+        \end{itemize}
+      \item \verb~cooperative_groups~ introduces communicator-like
+        concepts describing sets of threads
+        \begin{itemize}
+        \item Collective API, barriers, broadcasts
+        \item warp-sized groups offer intra-warp shuffles/voting
+        \item \dots
+        \end{itemize}
+      \end{itemize}
+    \end{block}
+    {
+      \scriptsize
+      \raggedleft
+      \url{https://developer.nvidia.com/blog/cooperative-groups/}
+      \par
+    }
+  \end{onlyenv}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Device side libraries}
+  \begin{onlyenv}<1>
+    \begin{block}{Everyone knows}
+      \begin{itemize}
+      \item Kernel fusion is key
+      \item Avoids launch latency, better cache reuse
+      \item Not just on GPUs
+        \begin{itemize}
+        \item Build to order BLAS
+        \item PETE, Blitz++, numexpr, \dots
+        \end{itemize}
+      \end{itemize}
+    \end{block}
+  \end{onlyenv}
+  \begin{onlyenv}<2>
+    \begin{block}{cuBLASDx}
+      \begin{itemize}
+      \item Build to order GEMMs in \verb~__device__~ code.
+      \item Interleave with rest of your kernel
+      \item Works on data in shared memory
+      \item Utilities for pack/unpack with layout reshaping
+      \item A good fit for change-of-basis tensor contractions in TSFC
+        kernels?
+      \end{itemize}
+    \end{block}
+  \end{onlyenv}
+  \begin{onlyenv}<3>
+\begin{minted}[mathescape=true]{cuda}
+using namespace cublasdx;
+// primitive for $C_{mn} \gets \alpha A_{mk} B_{kn} + \beta C_{mn}$, m, n, k compile-time known
+using BLAS = decltype(Size<m, n, k>()
+  + Precision<float>() + Type<real>() + SM<900>() + ...)
+
+__device__ void kernel(float *A, float *B, float *C, ...) {
+   ...; 
+   cublasdx::copy<BLAS, alignment::a>(A, a_smem);
+   ...;
+   BLAS().execute(alpha, a_smem, b_smem, beta, c_smem);
+   ...;
+}
+\end{minted}
+    {
+      \scriptsize
+      \raggedleft
+      \url{https://docs.nvidia.com/cuda/cublasdx/}
+      \par
+    }
+  \end{onlyenv}
+  \begin{onlyenv}<4>
+    \begin{block}{CUTLASS}
+      \begin{itemize}
+      \item Building blocks with lower-level control than cuBLASDx
+      \item Specialises for architecture
+      
+      \item emits tensor-core operations where possible, scalar code
+        if not
+      \item \dots this is arch/matrix size-specific, best not to do it
+        yourself
+      \item Also warp producer-consumer pattern for Hopper onwards
+      \end{itemize}
+    \end{block}
+    {
+      \scriptsize
+      \raggedleft
+      \url{https://github.com/NVIDIA/cutlass/blob/main/media/docs/code_organization.md}
+      \par
+    }
+  \end{onlyenv}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Work with us}
-  
+  \frametitle{Why so complicated?}
+  \begin{itemize}
+  \item SIMT model doesn't fit to tensor cores
+  \item Probably no hope that a parallelising compiler will get you
+    there
+  \item \dots 50-odd years of trying hasn't managed it yet
+  \item Compile-time specialisation rules the roost
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Broad recommendations}
+  \begin{itemize}
+  \item Look to libraries
+  \item 
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \begin{center}
+    We have open roles in this, and related areas, come speak to me!
+  \end{center}
 \end{frame}
 % \begin{abstract}
 %   Firedrake emerged, in part, from projects looking at finite elements
