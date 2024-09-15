@@ -1,4 +1,5 @@
 % -*- TeX-engine: luatex -*-
+\RequirePackage[l2tabu,orthodox]{nag}
 
 \documentclass[aspectratio=169]{beamer}
 \usetheme{nvidia}
@@ -8,6 +9,19 @@
 \subtitle{how to talk to your GPU}
 \author{Lawrence Mitchell}
 \institute{\texttt{lmitchell@nvidia.com}}
+\usepackage{soul}
+
+\usepackage[url=false,
+doi=true,
+isbn=false,
+style=authoryear,
+maxnames=5,
+giveninits=true,
+uniquename=init,
+backend=biber]{biblatex}
+\renewcommand{\bibfont}{\fontsize{7}{7}\selectfont}
+\addbibresource{09-firedrake.bib}
+
 \begin{document}
 
 \maketitle
@@ -28,7 +42,7 @@
     Markall, Ham, and Kelly.
     \emph{Towards generating optimised finite
       element solvers for GPUs from high-level specifications},
-    Procedia Computer Science (2010)
+    Procedia Computer Science (2010) \nocite{Markall:2010}
     \par
     GTX 480, 1.5GB @ 177GB/s, 1.3TFLOP/s (32bit), 168GFLOP/s (64bit)
     \par
@@ -51,7 +65,7 @@
     \raggedleft
     Markall, Slemmer, Ham, Kelly, Cantwell, and Sherwin.
     \emph{Finite element assembly strategies on multi-core and many-core architectures},
-    Int.~J.~Num.~Meth.~Fluids (2011)
+    Int.~J.~Num.~Meth.~Fluids (2012) \nocite{Markall:2013a}
     \par
     \vspace{\baselineskip}
     GTX 480, 1.5GB @ 177GB/s, 1.3TFLOP/s (32bit), 168GFLOP/s (64bit)
@@ -72,7 +86,7 @@
     \raggedleft
     Markall, Rathgeber, Mitchell, Loriant, Bertolli, Ham, and Kelly.
     \emph{Performance-portable finite element assembly using PyOP2 and FEniCS},
-    ISC (2013)
+    ISC (2013) \nocite{Markall:2013}
     \par
     Tesla M2050, 3GB @ 148GB/s, 1TFLOP/s (32bit), 515GFLOP/s (64bit)
     \par
@@ -95,7 +109,7 @@
     \raggedleft
     Rathgeber, Ham, Mitchell, Lange, Luporini, McRae, Bercea, Markall,
     and Kelly. \emph{Firedrake: automating the finite element method
-      by composing abstractions}, ACM TOMS (2016)
+      by composing abstractions}, ACM TOMS (2016) \nocite{Rathgeber:2016}
     \par
   }
 \end{frame}
@@ -118,30 +132,64 @@
   }
 \end{frame}
 
-\begin{frame}
+\begin{frame}[fragile]
   \frametitle{What about today?}
 
-  \begin{itemize}
-  \item Data center GPUs have \emph{quite a lot} of RAM
-    \begin{itemize}
-    \item H100 PCIe: 80GB @ 2TB/s, 51.2TFLOP/s (32bit), 51.2TFLOP/s (64bit)
-    \end{itemize}
-  \item They are both easier and harder to program
-    \begin{itemize}
-    \item Automatic caches
-    \item There is a memory model!
-    \item No longer just SIMT
-    \end{itemize}
-  \end{itemize}
+  \begin{onlyenv}<1>
+    \begin{block}{Firedrake}
+      \begin{itemize}
+      \item Matrix-free multigrid exists
+      \item Sparse solvers better supported on GPUs
+      \item Maybe it's time for another go
+      \end{itemize}
+    \end{block}
+    \begin{block}{Premise}
+      \begin{itemize}
+      \item PETSc is still the foundation of the solver interaction
+      \item Firedrake would need to develop GPU-enabled \verb~assemble~
+      \end{itemize}
+    \end{block}
+  \end{onlyenv}
+  \begin{onlyenv}<2>
+    \begin{block}{GPUs}
+      \begin{itemize}
+      \item Data center GPUs have \emph{quite a lot} of RAM
+        \begin{itemize}
+        \item H100 PCIe: 80GB @ 2TB/s, 51.2TFLOP/s (32bit),
+          51.2TFLOP/s (64bit)
+        \end{itemize}
+      \item They are both easier and harder to program
+        \begin{itemize}
+        \item Automatic caches
+        \item There is a memory model!
+        \item Just SIMT is not enough for peak performance
+        \end{itemize}
+      \end{itemize}
+    \end{block}
+  \end{onlyenv}
 \end{frame}
 
+% \begin{frame}
+%   \frametitle{Programming model: SIMT}
+%   \begin{block}{'twas ever thus}
+%     \begin{itemize}
+%     \item Broadly unchanged since Ian Buck's 2006 thesis
+%     \item Threads grouped into warps (32 threads) and thread blocks
+%     \item Communication within a thread block is fast
+%     \item Communication between thread blocks is
+%       ``slow''
+%     \item \dots \emph{but}, can't target the tensors cores this way
+%     \end{itemize}
+%   \end{block}
+% \end{frame}
+
 \begin{frame}
-  \frametitle{Big change: tensor cores}
+  \frametitle{Tensor cores}
   \begin{columns}[t]
     \begin{column}{0.5\textwidth}
       \begin{block}{What}
         \begin{itemize}
-        \item Hardware/instructions for matrix-matrix accumulate: $D \gets A B + C$
+        \item Hardware/instructions for matrix-matrix accumulate: $C \gets A B + C$
         \item Zoo of different precisions
         \item \emph{Collective} across a warp
         \end{itemize}
@@ -150,10 +198,10 @@
     \begin{column}{0.5\textwidth}
       \begin{block}{Why: power wall}
         \begin{itemize}
-        \item Fewer instructions 
+        \item Fewer instructions
         \item Data access: wider loads/stores
-        \item Low precision: energy of multiplication goes like
-          square of mantissa length
+        \item Energy cost of multiplication goes like
+          square of mantissa bits
         \end{itemize}
       \end{block}
     \end{column}
@@ -161,7 +209,7 @@
 \end{frame}
 
 \begin{frame}
-  \frametitle{Example: relative energy usage}
+  \frametitle{Energy costs}
   \begin{table}
     \centering
     \begin{tabular}{ccc}
@@ -176,32 +224,48 @@
       FP8 & MMA & 0.06 \\
       \bottomrule
     \end{tabular}
-    \caption{Energy cost (arbitrary units) per FLOP for matrix-matrix multiply
+    \caption{Energy cost (arbitrary units) per FLOP for $C \gets A B + C$
       on Hopper}
   \end{table}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Pretend it's the 80s (60s?)}
+  \frametitle{Algorithms: back to the 60s}
   \begin{itemize}
   \item My algorithm needs 64bit/32bit precision, what do all these fancy
     formats help me?
   \item Iterative refinement everywhere!\\
     {\scriptsize
       \raggedleft
-      Haidar, Bayraktar, Tomov, Dongarra, Higham, Proc. R. Soc. A (2020)
+      Haidar, Bayraktar, Tomov, Dongarra, Higham, Proc.~R.~Soc.~A
+      (2020) \nocite{Haidar:2020}
       \par}
   \item Emulate high-precision scalar with low-precision tensor\\
     {\scriptsize
       \raggedleft
-      Hiroyuki, Katsuhisa, Yokota. Int.\~J.~HPCA (2024)
+      Ozaki, Ogita, Oishi, Rump, Num.~Alg.~(2012) \nocite{Ozaki:2012}\\
+      Ootomo, Ozaki, Yokota. Int.~J.~HPCA (2024) \nocite{Ootomo:2024}
       \par}
   \end{itemize}
 \end{frame}
 
 
+\begin{frame}
+  \frametitle{What does Firedrake need?}
+  \begin{block}{Codegen: TSFC/PyOP\st{2}3}
+    \begin{itemize}
+    \item Fast small(-ish) matrix-matrix
+    \item Cooperative thread parallelism \emph{within} an element
+    \item \dots especially for structured elements?
+    \item Code gen needs to be tensor-contraction aware
+    \item Fast gather/scatter: copy engines on newer hardware
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+
 \begin{frame}[fragile]
-  \frametitle{Library ecosystem}
+  \frametitle{Library ecosystem to help}
   \begin{onlyenv}<1-2>
     Encapsulate ``speed of light'' performance for computational
     primitives. 
@@ -213,14 +277,14 @@
 
         {\scriptsize
           \raggedleft
-          Bell and Hoberock. App. GPU Computing (2012)
+          Bell and Hoberock. App. GPU Computing (2012) \nocite{Bell:2012}
           \par
         }
       \item CUB:~device side building blocks
 
         {\scriptsize
           \raggedleft
-          Merrill and Garland, Tech Report NVR-2016-002 (2016)
+          Merrill and Garland, Tech Report NVR-2016-002 (2016) \nocite{Merrill:2016}
           \par
         }
       \item Spec-sheet throughput via algorithmic choice
@@ -233,9 +297,9 @@
     \begin{block}{Newer: device side libraries, JIT}
       Idea: bring CUB approach to broader set of use cases
       \begin{itemize}
-      \item cooperative groups: thread block decompositions and sync
+      \item \alert{cooperative groups}: thread block decompositions and sync
         primitives
-      \item cuBLASDx: device side BLAS
+      \item \alert{cuBLASDx}: device side BLAS
       \item CUTLASS:~device side ``BLIS''
       \item libcu++: device side C++ standard library
       \item cuCollections: device side hash tables
@@ -334,8 +398,7 @@ __global__ void kernel(int *x, int n) {
       \item Interleave with rest of your kernel
       \item Works on data in shared memory
       \item Utilities for pack/unpack with layout reshaping
-      \item A good fit for change-of-basis tensor contractions in TSFC
-        kernels?
+      \item Plausibly good fit for change-of-basis tensor contractions in TSFC
       \end{itemize}
     \end{block}
   \end{onlyenv}
@@ -343,6 +406,7 @@ __global__ void kernel(int *x, int n) {
 \begin{minted}[mathescape=true]{cuda}
 using namespace cublasdx;
 // primitive for $C_{mn} \gets \alpha A_{mk} B_{kn} + \beta C_{mn}$, m, n, k compile-time known
+// specialised for sm_90 (Hopper)
 using BLAS = decltype(Size<m, n, k>()
   + Precision<float>() + Type<real>() + SM<900>() + ...)
 
@@ -361,26 +425,26 @@ __device__ void kernel(float *A, float *B, float *C, ...) {
       \par
     }
   \end{onlyenv}
-  \begin{onlyenv}<4>
-    \begin{block}{CUTLASS}
-      \begin{itemize}
-      \item Building blocks with lower-level control than cuBLASDx
-      \item Specialises for architecture
-      
-      \item emits tensor-core operations where possible, scalar code
-        if not
-      \item \dots this is arch/matrix size-specific, best not to do it
-        yourself
-      \item Also warp producer-consumer pattern for Hopper onwards
-      \end{itemize}
-    \end{block}
-    {
-      \scriptsize
-      \raggedleft
-      \url{https://github.com/NVIDIA/cutlass/blob/main/media/docs/code_organization.md}
-      \par
-    }
-  \end{onlyenv}
+ %  \begin{onlyenv}<4>
+ %    \begin{block}{CUTLASS}
+ %      \begin{itemize}
+ %      \item Building blocks with lower-level control than cuBLASDx
+ %      \item Specialises for architecture
+  
+ %      \item emits tensor-core operations where possible, scalar code
+ %        if not
+ %      \item \dots this is arch/matrix size-specific, best not to do it
+ %        yourself
+ %      \item Also warp producer-consumer pattern for Hopper onwards
+ %      \end{itemize}
+ %    \end{block}
+ %    {
+ %    \scriptsize
+ %    \raggedleft
+ %    \url{https://github.com/NVIDIA/cutlass/blob/main/media/docs/code_organization.md}
+ %    \par
+ %  }
+ %  \end{onlyenv}
 \end{frame}
 
 \begin{frame}
@@ -395,18 +459,42 @@ __device__ void kernel(float *A, float *B, float *C, ...) {
 \end{frame}
 
 \begin{frame}
-  \frametitle{Broad recommendations}
-  \begin{itemize}
-  \item Look to libraries
-  \item 
-  \end{itemize}
+  \frametitle{Not touched on}
+  \begin{block}{Library-level interoperability}
+    \begin{itemize}
+    \item Mostly OK, some rough edges with MPI
+    \item \dots MPI-5 (6?) might help
+    \item I don't like implicit ``current device'' concept
+    \item \dots modernisation efforts here
+    \end{itemize}
+  \end{block}
 \end{frame}
-
+\begin{frame}
+  \frametitle{Where to go for more}
+  \begin{itemize}
+  \item Many best practices written up in technical blogs
+  \item Or presentations at GTC
+  \end{itemize}
+  \begin{block}{Some pointers}
+    \begin{itemize}
+    \item \url{docs.nvidia.com/cuda/cuda-c-best-practices-guide/}
+    \item Intro to CUDA performance optimisation: \url{nvidia.com/en-us/on-demand/session/gtc24-s62191/}
+    \item Early days: \url{github.com/NVIDIA/accelerated-computing-hub/}
+    \end{itemize}
+  \end{block}
+\end{frame}
 \begin{frame}
   \begin{center}
-    We have open roles in this, and related areas, come speak to me!
+    We have open roles in these, and related areas, come speak to me!
   \end{center}
 \end{frame}
+
+\begin{frame}[t,allowframebreaks]
+  \frametitle{References}
+  \printbibliography[heading=none]
+\end{frame}
+
+
 % \begin{abstract}
 %   Firedrake emerged, in part, from projects looking at finite elements
 %   on GPUs, but that was in the depths of history and we swiftly
