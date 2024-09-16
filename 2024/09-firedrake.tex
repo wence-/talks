@@ -56,8 +56,8 @@ backend=biber]{biblatex}
     that the point at which it becomes profitable to switch algorithms
     differs between target architectures. Using OpenCL achieves
     functional portability across different multicore and GPU
-    platforms; we demonstrate that performance portability is more
-    challenging to achieve.
+    platforms; \textbf{we demonstrate that performance portability is more
+    challenging to achieve}.
   \end{quote}
   \pause
   {
@@ -455,6 +455,18 @@ __device__ void kernel(float *A, float *B, float *C, ...) {
     there
   \item \dots 50-odd years of trying hasn't managed it yet
   \item Compile-time specialisation rules the roost
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{High-abstraction vision}
+  \begin{itemize}
+  \item Exploit known data-parallel interfaces (often in pydata)
+  \item provide parallel, accelerated implementation behind them
+  \item e.g.~\verb~cunumeric~
+    (\url{https://github.com/nv-legate/cunumeric})
+  \item Model is good fit to the Firedrake philosophy
+  \item Bringing library ecosystem to python as a first-class citizen
   \end{itemize}
 \end{frame}
 
